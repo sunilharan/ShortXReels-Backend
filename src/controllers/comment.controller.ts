@@ -76,6 +76,37 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
     throw new Error(error.message);
   }
 });
+export const getById = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userId = req.userId;
+    const commentId = req.params.id;
+
+    if (!commentId || !ObjectId.isValid(commentId)) {
+      res.status(400);
+      throw new Error('invalid_comment_id');
+    }
+    const comment = await Comment.findById(commentId)
+      .populate('commentedBy', 'name profile')
+      .populate('likedBy', 'name profile')
+      .populate('replies.repliedBy', 'name profile')
+      .populate('replies.likedBy', 'name profile')
+      .sort({ createdAt: -1 })
+      .exec();
+    if (!comment) {
+      res.status(404);
+      throw new Error('comment_not_found');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: comment,
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
 
 export const deleteComment = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -99,7 +130,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('comment_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: t('comment_deleted'),
     });
@@ -143,7 +174,7 @@ export const editComment = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('comment_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: comment,
     });

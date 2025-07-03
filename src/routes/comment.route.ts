@@ -1,14 +1,15 @@
 import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware";
-import { createComment, deleteComment, getCommentsByReel, updateComment,editComment } from "../controllers/comment.controller";
+import { createComment, deleteComment, getCommentsByReel, updateComment,editComment,getById } from "../controllers/comment.controller";
 
 const router = Router();
 
 router.use(authenticate);
 router.get("/getByReel/:id", getCommentsByReel);
-router.post("/create", createComment);
-router.delete("/delete/:id", deleteComment);
-router.patch("/edit", editComment);
-router.patch("/update", updateComment);
+router.get("/:id", getById);
+router.post("/", createComment);
+router.delete("/:id", deleteComment);
+router.put("/", editComment);
+router.put("/update", updateComment);
 
 export default router;
