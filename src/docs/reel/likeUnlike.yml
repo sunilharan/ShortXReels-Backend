@@ -1,0 +1,56 @@
+/reel/likeUnlike:
+  post:
+    summary: Like or unlike a reel
+    tags: ["Reel"]
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              action:
+                type: string
+                enum: ["like", "unlike"]
+                example: "like"
+    responses:
+      200:
+        description: Reel liked or unliked successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    likesCount:
+                      type: number
+                    likedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

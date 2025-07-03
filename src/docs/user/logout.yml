@@ -1,0 +1,30 @@
+/user/logout:
+  post:
+    tags: ["User"]
+    summary: "Logout a user"
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    responses:
+      200:
+        description: "User logged out successfully"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      409:
+        description: "Conflict"
+      500:
+        description: "Internal Server Error"

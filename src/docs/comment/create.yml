@@ -1,0 +1,65 @@
+/comment/create:
+  post:
+    tags: ["Comment"]
+    summary: Create a new comment
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reelId:
+                type: string
+                description: The ID of the reel to comment on.
+              content:
+                type: string
+                description: The content of the comment.
+    responses:
+      201:
+        description: Successfully created comment.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    reelId:
+                      type: string
+                    commentId:
+                      type: string
+                    content:
+                      type: string
+                    commentedBy:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      409:
+        description: "Conflict"
+      500:
+        description: "Internal Server Error"

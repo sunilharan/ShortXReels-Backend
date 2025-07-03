@@ -1,0 +1,123 @@
+/reel/getByFeedType:
+  get:
+    tags: ["Reel"]
+    summary: "Get reels by feed type"
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - in: query
+        name: feedType
+        required: true
+        schema:
+          type: string
+          enum: ['popular', 'newHot','original']
+      - in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+          default: 1
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          default: 10
+      - in: query
+        name: search
+        required: false
+        schema:
+          type: string
+          description: "Search term for captions or categories"
+    responses:
+      200:
+        description: "Reels fetched successfully"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    reels:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          createdBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          caption:
+                            type: string
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                type:
+                                  type: string
+                                image:
+                                  type: string
+                          video:
+                            type: string
+                            format: binary
+                          size:
+                            type: number
+                          duration:
+                            type: number
+                          views:
+                            type: number
+                          likedBy:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                profile:
+                                  type: string
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string  
+                            format: date-time
+                    pagination:
+                      type: object
+                      properties:
+                        total:
+                          type: integer
+                        searchTotal:
+                          type: integer
+                        previousPage:
+                          type: integer
+                        currentPage:
+                          type: integer
+                        nextPage:
+                          type: integer
+      400:
+        description: "Bad request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Reels not found"
+      500:    
+        description: "Internal server error"

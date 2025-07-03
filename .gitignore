@@ -68,7 +68,7 @@ testem.log
 Thumbs.db
 package-lock.json
 images
-upload
+uploads
 build
 /dbBackup
 .yarn

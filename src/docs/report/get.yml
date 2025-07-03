@@ -1,0 +1,154 @@
+/report/get:
+  get:
+    description: Get all reports
+    tags: [Report]
+    parameters:
+      - $ref: "#/components/parameters/AcceptLanguage"
+      - in: query
+        name: page
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: ["active", "inactive", "deleted"]
+      - in: query
+        name: reason
+        schema:
+          type: string
+          enum:
+            - Spam or repetitive content
+            - Scam or fraudulent content
+            - Harassment or bullying
+            - Misleading title or thumbnail
+            - Harmful or dangerous acts
+            - Age-restricted content shown without warning
+            - Nudity (unrated or inappropriate)
+            - Sexual activity (unrated or inappropriate)
+            - Excessive violence (unrated or inappropriate)
+            - Hate speech or abusive language
+            - Incorrect movie information
+            - Fake or AI-generated scene
+            - Out-of-context movie clip
+            - Spoiler without warning
+            - Copyright infringement
+            - Pirated or leaked content
+            - Irrelevant or not movie-related
+            - Low quality or broken video
+            - Offensive captions or subtitles
+            - Other
+      - in: query
+        name: sortBy
+        schema:
+          type: string
+          enum: ["createdAt", "updatedAt"]
+      - in: query
+        name: sortOrder
+        schema:
+          type: string
+          enum: ["asc", "desc"]
+      - in: query
+        name: reviewBy
+        schema:
+          type: string
+      - in: query
+        name: reviewResultValid
+        schema:
+          type: boolean
+      - in: query
+        name: reelId
+        schema:
+          type: string
+    responses:
+      200:
+        description: A list of reports
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    reports:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          reel:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              caption:
+                                type: string
+                              video:
+                                type: string
+                          reportedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          reason:
+                            type: string
+                          description:
+                            type: string
+                          status:
+                            type: string
+                          reviewBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          reviewResultValid:
+                            type: boolean
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                    pagination:
+                      type: object
+                      properties:
+                        total:
+                          type: integer
+                        searchTotal:
+                          type: integer
+                        previousPage:
+                          type: integer
+                        currentPage:
+                          type: integer
+                        nextPage:
+                          type: integer
+      400:
+        description: Bad Request
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Not Found
+      500:
+        description: Internal Server Error

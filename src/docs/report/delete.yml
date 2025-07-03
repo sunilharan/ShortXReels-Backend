@@ -1,0 +1,34 @@
+/report/delete/{id}:
+  delete:
+    tags: ["Report"]
+    summary: Delete a report
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        description: The ID of the report to delete.
+    responses:
+      200:
+        description: Successfully deleted report.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

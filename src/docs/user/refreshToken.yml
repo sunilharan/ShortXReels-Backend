@@ -1,0 +1,45 @@
+/user/refreshToken:
+  post:
+    tags: ["User"]
+    summary: "Refresh token of a user"
+    security: []
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              refreshToken:
+                type: string
+    responses:
+      200:
+        description: "User token refreshed successfully"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    accessToken:
+                      type: string
+                    refreshToken:
+                      type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      409:
+        description: "Conflict"
+      500:
+        description: "Internal Server Error"
