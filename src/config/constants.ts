@@ -32,14 +32,14 @@ export enum STATUS {
 }
 
 export enum GENDER {
-  male = 'Male',
-  female = 'Female',
-  other = 'Other',
+  male = 'male',
+  female = 'female',
+  other = 'other',
 }
 
 export enum CATEGORY {
-  movie = 'Movie',
-  genre = 'Genre',
+  movie = 'movie',
+  genre = 'genre',
 }
 
 export enum REASON {
@@ -76,12 +76,12 @@ export const categories = [
   'drama',
   'family',
   'fantasy',
-  'history',
+  'historical',
   'horror',
-  'music',
+  'musical',
   'mystery',
   'romance',
-  'science fiction',
+  'science fiction(sci-fi)',
   'thriller',
   'war',
 ];

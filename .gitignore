@@ -73,3 +73,4 @@ build
 /dbBackup
 .yarn
 yarn.lock
+assets

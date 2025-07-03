@@ -1,5 +1,5 @@
-/report/edit:
-  patch:
+/report:
+  put:
     tags: ["Report"]
     summary: "Edit a report"
     parameters:

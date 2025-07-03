@@ -1,4 +1,4 @@
-/report/get:
+/report:
   get:
     description: Get all reports
     tags: [Report]

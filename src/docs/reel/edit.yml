@@ -1,5 +1,5 @@
-/reel/edit:
-  patch:
+/reel:
+  put:
     tags: ["Reel"]
     summary: "Update a reel"
     parameters:

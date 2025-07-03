@@ -27,48 +27,8 @@
               properties:
                 success:
                   type: boolean
-                data:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    reel:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        caption:
-                          type: string
-                        video:
-                          type: string
-                    reason:
-                      type: string
-                    reportedBy:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        profile:
-                          type: string
-                    reviewResultValid:
-                      type: boolean
-                    reviewBy:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        profile:
-                          type: string
-                    createdAt:
-                      type: string
-                      format: date-time
-                    updatedAt:
-                      type: string
-                      format: date-time
+                message:
+                  type: string
       400:
         description: "Bad Request"
       401:

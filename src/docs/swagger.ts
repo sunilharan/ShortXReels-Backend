@@ -29,9 +29,9 @@ const options: Options = {
           required: false,
           schema: {
             type: 'string',
-            enum: ['en', 'hi'],
+            enum: ['en', 'hi','gu'],
           },
-          description: 'Language for localization (en or hi)',
+          description: 'Language for localization (english, hindi, gujrati)',
         },
       },
       schemas: {

@@ -2,6 +2,11 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/config';
 import { AES, enc, mode, pad } from 'crypto-js';
 
+export const generateToken = (id: string, email: string) => {
+  return jwt.sign({ id, email }, config.jwtSecret, {
+    expiresIn: config.otpJwtExpire,
+  } as SignOptions);
+};
 export const generateAccessToken = (id: string, role: string) => {
   return jwt.sign({ id, role }, config.jwtSecret, {
     expiresIn: config.jwtAccessExpire,
@@ -14,7 +19,13 @@ export const generateRefreshToken = (id: string, token: string) => {
 };
 
 export const verifyToken = (token: string) => {
-  return jwt.verify(token, config.jwtSecret);
+  try {
+    return jwt.verify(token, config.jwtSecret);
+  } catch {
+    return {
+      isExpired: true,
+    };
+  }
 };
 
 export const decryptData = (base64String: string) => {
@@ -41,5 +52,3 @@ export const encryptData = (jsonObject: unknown) => {
   });
   return cipher.toString();
 };
-
-

@@ -44,6 +44,8 @@
                       format: date-time
                     status:
                       type: string
+                    profile:
+                      type: string
                     role:
                       type: object
                       properties:
@@ -51,6 +53,15 @@
                           type: string
                         id:
                           type: string
+                    notification:
+                      type: object
+                      properties:
+                        social:
+                          type: boolean
+                        subscription:
+                          type: boolean
+                        recommendation:
+                          type: boolean
                     createdAt:
                       type: string
                       format: date-time

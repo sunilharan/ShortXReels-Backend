@@ -1,4 +1,4 @@
-/category/create:
+/category:
   post:
     tags: ["Category"]
     summary: "Create a new category"
@@ -16,7 +16,7 @@
                 required: true
               type:
                 type: string
-                enum: ["Movie", "Genre"]
+                enum: ["movie", "genre"]
                 required: true
               image:
                 type: string

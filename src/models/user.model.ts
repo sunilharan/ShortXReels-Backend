@@ -1,8 +1,9 @@
 import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
-import {  IRole } from './role.model';
+import { IRole } from './role.model';
 import { GENDER, STATUS } from '../config/constants';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -14,6 +15,11 @@ export interface IUser extends Document {
   status: STATUS;
   role: PopulatedDoc<Document<ObjectId> & IRole>;
   token: string;
+  notification: {
+    social: boolean;
+    subscription: boolean;
+    recommendation: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -31,6 +37,11 @@ export const userSchema = new Schema<IUser>(
     status: { type: String, enum: STATUS, default: STATUS.active },
     role: { type: Schema.Types.ObjectId, ref: 'Role' },
     token: { type: String },
+    notification: {
+      social: { type: Boolean, default: true },
+      subscription: { type: Boolean, default: true },
+      recommendation: { type: Boolean, default: true },
+    },
   },
   {
     timestamps: true,

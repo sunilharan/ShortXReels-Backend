@@ -11,10 +11,10 @@ import {
 const router = Router();
 
 router.use(authenticate);
-router.get('/get', getReports);
-router.post('/create', createReport);
-router.delete('/delete/:id', deleteReport);
-router.patch('/edit', editReport);
+router.get('/', getReports);
+router.post('/', createReport);
+router.delete('/:id', deleteReport);
+router.put('/', editReport);
 router.post('/validate', adminOnly, validateReport);
 
 export default router;

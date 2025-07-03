@@ -1,4 +1,4 @@
-/category/delete/{id}:
+/category/{id}:
   delete:
     tags: ["Category"]
     summary: "Delete a category"

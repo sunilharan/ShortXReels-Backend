@@ -1,4 +1,4 @@
-/category/get:
+/category:
   get:
     tags: ["Category"]
     summary: "Get all categories"
@@ -32,7 +32,7 @@
         required: false
         schema:
           type: string
-          enum: ["Movie", "Genre"]
+          enum: ["movie", "genre"]
       - $ref: "#/components/parameters/AcceptLanguage"
     responses:
       200:

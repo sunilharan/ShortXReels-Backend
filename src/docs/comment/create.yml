@@ -1,9 +1,9 @@
-/comment/create:
+/comment:
   post:
     tags: ["Comment"]
     summary: Create a new comment
     parameters:
-      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: "#/components/parameters/AcceptLanguage"
     requestBody:
       required: true
       content:
@@ -30,9 +30,9 @@
                 data:
                   type: object
                   properties:
-                    reelId:
+                    id:
                       type: string
-                    commentId:
+                    reel:
                       type: string
                     content:
                       type: string
@@ -45,6 +45,52 @@
                           type: string
                         profile:
                           type: string
+                    likedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
+                    replies:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          content:
+                            type: string
+                          repliedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          likedBy:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                profile:
+                                  type: string
+                            createdAt:
+                              type: string
+                              format: date-time
+                            updatedAt:
+                              type: string
+                              format: date-time
                     createdAt:
                       type: string
                       format: date-time

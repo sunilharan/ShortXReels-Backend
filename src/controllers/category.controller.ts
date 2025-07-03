@@ -131,7 +131,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
     if (category.image) {
       await removeFile(category.image, 'uploads/categories');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: t('category_deleted'),
     });
@@ -174,10 +174,9 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
       throw new Error('category_not_found');
     }
     if (oldImage) {
-      console.log(oldImage);
       await removeFile(oldImage, 'uploads/categories');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: category,
     });

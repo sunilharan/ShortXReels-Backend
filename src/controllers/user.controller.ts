@@ -4,6 +4,7 @@ import {
   decryptData,
   generateAccessToken,
   generateRefreshToken,
+  generateToken,
   verifyToken,
 } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
@@ -12,7 +13,7 @@ import { Otp } from '../models/otp.model';
 import { generateOTP } from '../utils/generateOtp';
 import { sendMail } from '../utils/sendMail';
 import { t } from 'i18next';
-
+const isEncrypted = true;
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name, email, password, phone, gender, birthDate } = req.body;
@@ -21,16 +22,15 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('role_not_found');
     }
-    let newPassword = decryptData(password);
-    newPassword = newPassword?.password?.split('-');
-    if (newPassword?.length > 1) {
-      newPassword = newPassword[1];
-    }
-    if (!newPassword) {
-      res.status(400);
-      throw new Error('password_required');
-    }
 
+    let newPassword = password;
+    if (isEncrypted) {
+      newPassword = decryptData(password);
+      newPassword = newPassword?.password?.split('-');
+      if (newPassword?.length > 1) {
+        newPassword = newPassword[1];
+      }
+    }
     let user = await User.create({
       name,
       email,
@@ -69,6 +69,14 @@ export const register = expressAsyncHandler(async (req: any, res) => {
 export const login = expressAsyncHandler(async (req: any, res) => {
   try {
     const { email, password } = req.body;
+    if (!email) {
+      res.status(400);
+      throw new Error('email_required');
+    }
+    if (!password) {
+      res.status(400);
+      throw new Error('password_required');
+    }
     const user = await User.findOne({
       email,
     })
@@ -76,13 +84,17 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       .exec();
     if (!user) {
       res.status(404);
-      throw new Error('user_not_found');
+      throw new Error('invalid_email_or_password');
     }
-    let newPassword = decryptData(password);
-    newPassword = newPassword?.password?.split('-');
-    if (newPassword?.length > 1) {
-      newPassword = newPassword[1];
+    let newPassword = password;
+    if (isEncrypted) {
+      newPassword = decryptData(password);
+      newPassword = newPassword?.password.split('-');
+      if (newPassword.length > 0) {
+        newPassword = newPassword[1];
+      }
     }
+
     if (!newPassword) {
       res.status(400);
       throw new Error('password_required');
@@ -104,8 +116,8 @@ export const login = expressAsyncHandler(async (req: any, res) => {
         },
       });
     } else {
-      res.status(401);
-      throw new Error('user_login_failed');
+      res.status(400);
+      throw new Error('invalid_email_or_password');
     }
   } catch (error: any) {
     res.status(400);
@@ -131,13 +143,13 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
         .exec();
       if (!user) {
         res.status(401);
-        throw new Error('user_not_found');
+        throw new Error('refresh_token_invalid');
       }
       const accessToken = generateAccessToken(user.id, user.role.name);
       const refreshToken = generateRefreshToken(user.id, accessToken);
       user.token = accessToken;
       await User.findByIdAndUpdate(user.id, { token: accessToken });
-      res.status(201).json({
+      res.status(200).json({
         success: true,
         data: {
           accessToken,
@@ -146,7 +158,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
       });
     } else {
       res.status(401);
-      throw new Error('invalid_refresh_token');
+      throw new Error('refresh_token_invalid');
     }
   } catch (error: any) {
     res.status(400);
@@ -157,13 +169,17 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
 export const sendOtp = expressAsyncHandler(async (req: any, res) => {
   try {
     const { email } = req.body;
+    if (!email) {
+      res.status(400);
+      throw new Error('email_required');
+    }
     const user = await User.findOne({
       email,
       $and: [{ status: { $ne: STATUS.deleted } }],
     }).exec();
     if (!user) {
       res.status(404);
-      throw new Error('user_not_found');
+      throw new Error('email_does_not_exist');
     }
     const otpData = await generateOTP();
     let existingOtp = await Otp.findOne({ userId: user.id }).exec();
@@ -175,11 +191,10 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     } else {
       existingOtp = await Otp.create({ userId: user.id, otp: otpData.otp });
     }
-
     // await sendMail(user.email, 'your_otp_code', otpData?.otp?.toString() || '');
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      data: otpData.otp,
+      data: existingOtp.otp,
       message: t('otp_sent_to_email'),
     });
   } catch (error: any) {
@@ -191,6 +206,14 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
 export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
   try {
     const { email, otp } = req.body;
+    if (!email) {
+      res.status(400);
+      throw new Error('email_required');
+    }
+    if (!otp) {
+      res.status(400);
+      throw new Error('otp_required');
+    }
     const user = await User.findOne({
       email,
       $and: [{ status: { $ne: STATUS.deleted } }],
@@ -199,18 +222,17 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
       .exec();
     if (!user) {
       res.status(404);
-      throw new Error('user_not_found');
+      throw new Error('email_does_not_exist');
     }
     const otpData = await Otp.findOne({ userId: user.id, otp }).exec();
     if (!otpData) {
       res.status(404);
       throw new Error('otp_invalid');
     }
-    const accessToken = generateAccessToken(user.id, user.role.name);
-    await User.findByIdAndUpdate(user.id, { token: accessToken });
+    const token = generateToken(user.id, user.role.name);
     res.status(200).json({
       success: true,
-      data: accessToken,
+      data: token,
       message: t('otp_verified'),
     });
   } catch (error: any) {
@@ -220,29 +242,65 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
 });
 export const resetPassword = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { email, accessToken, password } = req.body;
-    const user = await User.findOne({
-      email,
-      token: accessToken,
-      $and: [{ status: { $ne: STATUS.deleted } }],
-    }).exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
-    }
-    
-    const same = await user.matchPassword(password);
-    if (same) {
+    const { token, password } = req.body;
+    if (!token) {
       res.status(400);
-      throw new Error('password_same');
+      throw new Error('access_token_required');
     }
-    user.password = password;
-    await user.save();
-    await Otp.deleteMany({ userId: user.id });
-    res.status(201).json({
-      success: true,
-      message: t('password_changed'),
-    });
+    if (!password) {
+      res.status(400);
+      throw new Error('password_required');
+    }
+    const decoded = verifyToken(token);
+    if (
+      decoded &&
+      typeof decoded === 'object' &&
+      'isExpired' in decoded &&
+      (decoded as any).isExpired
+    ) {
+      res.status(200).json({
+        success: true,
+        isExpired: true,
+      });
+    } else {
+      if (!decoded || typeof decoded !== 'object' || !('id' in decoded)) {
+        res.status(400);
+        throw new Error('invalid_token');
+      }
+      const user = await User.findOne({
+        _id: decoded?.id,
+        $and: [{ status: { $ne: STATUS.deleted } }],
+      }).exec();
+      if (!user) {
+        res.status(404);
+        throw new Error('invalid_email_or_token');
+      }
+      let newPassword = password;
+      if (isEncrypted) {
+        newPassword = decryptData(password);
+        newPassword = newPassword?.password.split('-');
+        if (newPassword?.length > 1) {
+          newPassword = newPassword[1];
+        }
+      }
+      if (!newPassword) {
+        res.status(400);
+        throw new Error('password_required');
+      }
+      const same = await user.matchPassword(newPassword);
+      if (same) {
+        res.status(400);
+        throw new Error('password_same');
+      }
+      user.password = newPassword;
+      await user.save();
+      await Otp.deleteMany({ userId: user.id });
+      res.status(200).json({
+        success: true,
+        isExpired: false,
+        message: t('password_changed'),
+      });
+    }
   } catch (error: any) {
     res.status(400);
     throw new Error(error.message);
@@ -259,7 +317,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('user_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: user,
     });
@@ -279,7 +337,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('user_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: t('user_logged_out'),
     });
@@ -300,7 +358,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('user_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: t('user_deleted'),
     });
@@ -336,6 +394,9 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
         await removeFile(userData.oldProfile, 'uploads/profiles');
       }
     }
+    if (userData.notification) {
+      updateData.notification = JSON.parse(userData.notification);
+    }
     const user = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
     })
@@ -345,7 +406,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('user_not_found');
     }
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: user,
     });
@@ -358,29 +419,51 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
 export const changePassword = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.userId;
-    const { password, oldPassword } = req.body;
+    let passwordData = req.body.password;
+
+    if (!passwordData) {
+      res.status(400);
+      throw new Error('password_required');
+    }
+
+    if (isEncrypted) {
+      passwordData = decryptData(passwordData);
+    }
+
+    const newPassword = passwordData?.password;
+    const oldPassword = passwordData?.oldPassword;
+
+    if (!newPassword) {
+      res.status(400);
+      throw new Error('password_required');
+    }
+    if (!oldPassword) {
+      res.status(400);
+      throw new Error('old_password_required');
+    }
+
     const user = await User.findOne({
       _id: userId,
       $and: [{ status: { $ne: STATUS.deleted } }],
     }).exec();
+
     if (!user) {
       res.status(404);
-      throw new Error('user_not_found');
+      throw new Error('access_token_invalid');
     }
     const isMatch = await user.matchPassword(oldPassword);
     if (!isMatch) {
       res.status(400);
       throw new Error('password_not_match');
     }
-    const same = await user.matchPassword(password);
+    const same = await user.matchPassword(newPassword);
     if (same) {
       res.status(400);
       throw new Error('password_same');
     }
-    user.password = password;
-    user.populate<{ role: IRole }>('role');
+    user.password = newPassword;
     await user.save();
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: t('password_changed'),
     });

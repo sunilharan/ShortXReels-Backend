@@ -1,10 +1,10 @@
 /comment/update:
-  patch:
+  put:
     tags: ["Comment"]
-    summary: Update an existing comment
+    summary: Modify  comment data - like,replies
     description: Modify the content of an existing comment on a reel.
     parameters:
-      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: "#/components/parameters/AcceptLanguage"
     requestBody:
       required: true
       content:
@@ -37,20 +37,69 @@
                 data:
                   type: object
                   properties:
-                    reelId:
-                      type: string
-                    commentId:
+                    id:
                       type: string
                     content:
                       type: string
+                    reel:
+                      type: object
+                      properties:
+
                     commentedBy:
-                      type: string
-                    createdAt:
-                      type: string
-                      format: date-time
-                    updatedAt:
-                      type: string
-                      format: date-time
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
+                    likedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
+                    replies:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          content:
+                            type: string
+                          repliedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          likedBy:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                profile:
+                                  type: string
+                            createdAt:
+                              type: string
+                              format: date-time
+                            updatedAt:
+                              type: string
+                              format: date-time
       400:
         description: "Bad Request"
       401:

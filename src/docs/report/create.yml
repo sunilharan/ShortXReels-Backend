@@ -1,4 +1,4 @@
-/report/create:
+/report:
   post:
     tags: ["Report"]
     summary: Create a new report

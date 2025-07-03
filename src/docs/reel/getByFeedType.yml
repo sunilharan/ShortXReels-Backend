@@ -119,5 +119,5 @@
         description: "Forbidden"
       404:
         description: "Reels not found"
-      500:    
+      500:  
         description: "Internal server error"

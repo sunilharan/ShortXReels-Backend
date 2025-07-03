@@ -1,4 +1,4 @@
-/reel/create:
+/reel:
   post:
     summary: Create a new reel
     tags: ["Reel"]

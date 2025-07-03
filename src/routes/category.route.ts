@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middlewares/auth.middleware';
+import { adminOnly, authenticate } from '../middlewares/auth.middleware';
 import { uploadCategoryImageFile } from '../middlewares/upload.middleware';
 import { createCategory, deleteCategory, getCategories, editCategory } from '../controllers/category.controller';
 
@@ -7,9 +7,10 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/get', getCategories);
-router.post('/create', uploadCategoryImageFile, createCategory);
-router.delete('/delete/:id', deleteCategory);
-router.patch('/edit', uploadCategoryImageFile, editCategory);
+router.get('/', getCategories);
+router.use(adminOnly);
+router.post('/', uploadCategoryImageFile, createCategory);
+router.delete('/:id', deleteCategory);
+router.put('/', uploadCategoryImageFile, editCategory);
 
 export default router;

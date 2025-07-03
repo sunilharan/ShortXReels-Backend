@@ -1,4 +1,4 @@
-/reel/delete/{id}:
+/reel/{id}:
   delete:
     tags: ["Reel"]
     summary: "Delete a reel"

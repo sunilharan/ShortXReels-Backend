@@ -31,6 +31,8 @@
                         properties:
                           id:
                             type: string
+                          reel: 
+                            type: string
                           content:
                             type: string
                           commentedBy:

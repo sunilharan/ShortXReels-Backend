@@ -1,4 +1,4 @@
-/reel/user:
+/reel/userReels:
   get:
     tags: ["Reel"]
     summary: "Get reels by user id"

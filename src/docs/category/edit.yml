@@ -1,5 +1,5 @@
-/category/edit:
-  patch:
+/category:
+  put:
     tags: ["Category"]
     summary: "Edit a category"
     parameters:
@@ -17,7 +17,7 @@
                 type: string
               type:
                 type: string
-                enum: ["Movie", "Genre"]
+                enum: ["movie", "genre"]
               image:
                 type: string
                 format: binary

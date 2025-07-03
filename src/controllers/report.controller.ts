@@ -287,7 +287,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
 
     res.status(200).json({
       success: true,
-      data: report,
+      message : t('report_validated'),
     });
   } catch (error: any) {
     console.error(error);

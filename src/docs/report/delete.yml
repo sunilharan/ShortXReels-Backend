@@ -1,4 +1,4 @@
-/report/delete/{id}:
+/report/{id}:
   delete:
     tags: ["Report"]
     summary: Delete a report

@@ -12,6 +12,7 @@ import reportRouter from './routes/report.route';
 import { config } from './config/config';
 import { errorHandler, notFound } from './middlewares/error.middleware';
 import setupSwaggerDocs from './docs/swagger';
+import { getDecodedData, getEncodeData } from './controllers/common.controller';
 connectDB();
 
 const app = express();
@@ -30,7 +31,7 @@ i18next
   .init(
     {
       fallbackLng: config.defaultLanguage,
-      preload: ['en', 'hi'],
+      preload: ['en', 'hi', 'gu'],
       backend: {
         loadPath: __dirname + '/locales/{{lng}}/translation.json',
       },
@@ -50,6 +51,8 @@ app.use('/api/category', categoryRouter);
 app.use('/api/reel', reelRouter);
 app.use('/api/comment', commentRouter);
 app.use('/api/report', reportRouter);
+app.use("/api/encrypt", getEncodeData)
+app.use("/api/decrypt",getDecodedData)
 app.use('/api/health', (req, res) => {
   res.json({ message: 'Server is running' });
 });

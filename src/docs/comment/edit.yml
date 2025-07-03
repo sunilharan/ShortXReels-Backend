@@ -1,5 +1,5 @@
-/comment/edit:
-  patch:
+/comment:
+  put:
     tags: ["Comment"]
     summary: Update an existing comment
     description: Modify the content of an existing comment on a reel. 
@@ -31,14 +31,67 @@
                 data:
                   type: object
                   properties:
-                    reelId:
+                    id:
                       type: string
-                    commentId:
+                    reel:
                       type: string
                     content:
                       type: string
                     commentedBy:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
+                    likedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
+                    replies:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          content:
+                            type: string
+                          repliedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          likedBy:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                profile:
+                                  type: string
+                            createdAt:
+                              type: string
+                              format: date-time
+                            updatedAt:
+                              type: string
+                              format: date-time
                     createdAt:
                       type: string
                       format: date-time

@@ -10,11 +10,11 @@ router.get("/view/:id", streamReelVideo);
 router.use(authenticate);
 
 router.get("/getByFeedType", feedTypeReels);
-router.get("/user", userReels);
+router.get("/userReels", userReels);
 router.get("/:id", reelById);
-router.post("/create",uploadReelVideo,validateCreateReel, createReel);
-router.delete("/delete/:id", deleteReel);
-router.patch("/edit", uploadReelVideo, validateUpdateReel, editReel);
+router.post("/",uploadReelVideo,validateCreateReel, createReel);
+router.delete("/:id", deleteReel);
+router.put("/", uploadReelVideo, validateUpdateReel, editReel);
 router.post("/likeUnlike",likeUnlikeReel);
 
 

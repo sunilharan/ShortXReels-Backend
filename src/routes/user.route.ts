@@ -11,13 +11,13 @@ router.post('/login', login);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);
 router.post('/verifyOtp', verifyOtp);
-router.post('/resetPassword', resetPassword );
+router.put('/resetPassword', resetPassword );
 
 router.use(authenticate)
 router.get('/currentUser', currentUser);
 router.post('/logout', logout);
 router.delete('/deleteUser', deleteUser);
-router.patch('/updateProfile',uploadProfilePicture, validateUpdateUser, updateUser);
-router.patch('/changePassword', changePassword);
+router.put('/updateProfile',uploadProfilePicture, validateUpdateUser, updateUser);
+router.put('/changePassword', changePassword);
 
 export default router;

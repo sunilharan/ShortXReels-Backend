@@ -1,4 +1,4 @@
-/comment/delete/{id}:
+/comment/{id}:
   delete:
     tags: ["Comment"]
     summary: Delete a comment

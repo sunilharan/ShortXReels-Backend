@@ -1,9 +1,9 @@
 /user/updateProfile:
-  patch:
+  put:
     tags: ["User"]
     summary: "Update user profile"
     parameters:
-      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: "#/components/parameters/AcceptLanguage"
     requestBody:
       required: true
       content:
@@ -27,8 +27,17 @@
                 format: binary
               oldProfile:
                 type: string
+              notification:
+                type: object
+                properties:
+                  social:
+                    type: boolean
+                  subscription:
+                    type: boolean
+                  recommendation:
+                    type: boolean
     responses:
-      "200":
+      200:
         description: "User updated successfully"
         content:
           application/json:
@@ -55,26 +64,37 @@
                       format: date-time
                     status:
                       type: string
+                    profile:
+                      type: string
                     role:
                       type: object
                       properties:
-                        name:
-                          type: string
                         id:
                           type: string
+                        name:
+                          type: string
+                    notification:
+                      type: object
+                      properties:
+                        social:
+                          type: boolean
+                        subscription:
+                          type: boolean
+                        recommendation:
+                          type: boolean
                     createdAt:
                       type: string
                       format: date-time
                     updatedAt:
                       type: string
                       format: date-time
-      "400":
+      400:
         description: "Bad Request"
-      "401":
+      401:
         description: "Unauthorized"
-      "404":
+      404:
         description: "User not found"
-      "409":
+      409:
         description: "Conflict"
-      "500":
+      500:
         description: "Internal Server Error"
