@@ -18,11 +18,8 @@
               caption:
                 type: string
               categories:
-                oneOf:
-                  - type: array
-                    items:
-                      type: string
-                  - type: string
+                type: string
+                example: "[\"653f5b6b6b6b6b6b6b6b6b6b\", \"653f5b6b6b6b6b6b6b6b6b6c\"]"
               video:
                 type: string
                 format: binary
@@ -43,16 +40,43 @@
                     id:
                       type: string
                     createdBy:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
                     caption:
                       type: string
                     categories:
                       type: array
                       items:
-                        type: string
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          image:
+                            type: string
                     video:
                       type: string
-                      format: uri
+                      format: binary
+                    views:
+                      type: number
+                    likedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
                     size:
                       type: number
                     duration:

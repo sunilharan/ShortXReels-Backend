@@ -15,7 +15,7 @@ export const validateCreateReel = expressAsyncHandler(
       const duration = await getVideoDurationInSeconds(
         join(REEL_VIDEO_FOLDER, fileName)
       );
-      const categories = typeof categoriesIds === "string" ? categoriesIds.split(",") : categoriesIds;
+      const categories = JSON.parse(categoriesIds);
       f = fileName;
       if (!caption) {
         res.status(400);
@@ -62,16 +62,16 @@ export const validateCreateReel = expressAsyncHandler(
 export const validateUpdateReel = expressAsyncHandler(
   async (req: any, res, next) => {
     try {
-      const { caption, categories } = req.body;
+      const { caption, categories : categoriesIds } = req.body;
       if (caption && caption.length === 0) {
         res.status(400);
         throw new Error('caption_required');
       }
-      if (categories && categories.length === 0) {
+      if (categoriesIds && JSON.parse(categoriesIds).length === 0) {
         res.status(400);
         throw new Error('categories_required');
       }
-      for (let x of categories) {
+      for (let x of JSON.parse(categoriesIds)) {
         const category = await Category.findById(x).exec();
         if (!category) {
           res.status(404);

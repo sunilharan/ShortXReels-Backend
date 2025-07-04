@@ -16,7 +16,6 @@ import { generateOTP } from '../utils/generateOtp';
 import { sendMail } from '../utils/sendMail';
 import { ICategory } from '../models/category.model';
 
-const isEncrypted = true;
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name, email, password, phone, gender, birthDate } = req.body;
@@ -26,13 +25,10 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       throw new Error('role_not_found');
     }
 
-    let newPassword = password;
-    if (isEncrypted) {
-      newPassword = decryptData(password);
-      newPassword = newPassword?.password?.split('-');
-      if (newPassword?.length > 1) {
-        newPassword = newPassword[1];
-      }
+    let newPassword = decryptData(password);
+    newPassword = newPassword?.password?.split('-');
+    if (newPassword?.length > 1) {
+      newPassword = newPassword[1];
     }
     let user = await User.create({
       name,
@@ -43,27 +39,24 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       birthDate,
       role: role?.id,
     });
-    if (user) {
-      user = await user.populate('role');
-      user = await user.populate('interests');
-      const roleName =
-        typeof user.role === 'object' &&
-        user.role !== null &&
-        'name' in user.role
-          ? (user.role as IRole).name
-          : '';
-      const accessToken = generateAccessToken(user.id, roleName);
-      const refreshToken = generateRefreshToken(user.id, accessToken);
-      user.token = accessToken;
-      await User.findByIdAndUpdate(user.id, { token: accessToken });
-      res.status(201).json({
-        success: true,
-        data: { ...user.toJSON(), accessToken, refreshToken },
-      });
-    } else {
+    if (!user) {
       res.status(400);
       throw new Error('user_register_failed');
     }
+    user = await user.populate('role');
+    user = await user.populate('interests');
+    const roleName =
+      typeof user.role === 'object' && user.role !== null && 'name' in user.role
+        ? (user.role as IRole).name
+        : '';
+    const accessToken = generateAccessToken(user.id, roleName);
+    const refreshToken = generateRefreshToken(user.id, accessToken);
+    user.token = accessToken;
+    await User.findByIdAndUpdate(user.id, { token: accessToken });
+    res.status(201).json({
+      success: true,
+      data: { ...user.toJSON(), accessToken, refreshToken },
+    });
   } catch (error: any) {
     res.status(400);
     throw new Error(error.message);
@@ -85,45 +78,39 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       email,
     })
       .populate<{ role: IRole }>('role')
-      .populate<{ interests: ICategory }>('interests')
+      .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
     if (!user) {
       res.status(404);
       throw new Error('invalid_email_or_password');
     }
-    let newPassword = password;
-    if (isEncrypted) {
-      newPassword = decryptData(password);
-      newPassword = newPassword?.password.split('-');
-      if (newPassword.length > 0) {
-        newPassword = newPassword[1];
-      }
-    }
-
-    if (!newPassword) {
+    if (!password) {
       res.status(400);
       throw new Error('password_required');
     }
+    let newPassword = decryptData(password);
+    newPassword = newPassword?.password?.split('-');
+    if (newPassword?.length > 1) {
+      newPassword = newPassword[1];
+    }
     const isMatch = user && (await user.matchPassword(newPassword));
-
-    if (user && isMatch && user.status === STATUS.active) {
-      const accessToken = generateAccessToken(user.id, user.role.name);
-      const refreshToken = generateRefreshToken(user.id, accessToken);
-      user.token = accessToken;
-      await User.findByIdAndUpdate(user.id, { token: accessToken });
-      const userData = JSON.parse(JSON.stringify(user));
-      res.status(200).json({
-        success: true,
-        data: {
-          ...userData,
-          accessToken,
-          refreshToken,
-        },
-      });
-    } else {
+    if (!isMatch) {
       res.status(400);
       throw new Error('invalid_email_or_password');
     }
+    const accessToken = generateAccessToken(user.id, user.role.name);
+    const refreshToken = generateRefreshToken(user.id, accessToken);
+    user.token = accessToken;
+    await User.findByIdAndUpdate(user.id, { token: accessToken });
+    const userData = JSON.parse(JSON.stringify(user));
+    res.status(200).json({
+      success: true,
+      data: {
+        ...userData,
+        accessToken,
+        refreshToken,
+      },
+    });
   } catch (error: any) {
     res.status(400);
     throw new Error(error.message);
@@ -280,14 +267,12 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
         res.status(404);
         throw new Error('invalid_email_or_token');
       }
-      let newPassword = password;
-      if (isEncrypted) {
-        newPassword = decryptData(password);
-        newPassword = newPassword?.password.split('-');
-        if (newPassword?.length > 1) {
-          newPassword = newPassword[1];
-        }
+      let newPassword = decryptData(password);
+      newPassword = newPassword?.password.split('-');
+      if (newPassword?.length > 1) {
+        newPassword = newPassword[1];
       }
+
       if (!newPassword) {
         res.status(400);
         throw new Error('password_required');
@@ -317,7 +302,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const user = await User.findById(userId)
       .populate<{ role: IRole }>('role')
-      .populate<{ interests: ICategory }>('interests')
+      .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
     if (!user) {
       res.status(404);
@@ -412,7 +397,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
       new: true,
     })
       .populate<{ role: IRole }>('role')
-      .populate<{ interests: ICategory }>('interests')
+      .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
     if (!user) {
       res.status(404);
@@ -431,19 +416,16 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
 export const changePassword = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.userId;
-    let passwordData = req.body.password;
+    let password = req.body.password;
 
-    if (!passwordData) {
+    if (!password) {
       res.status(400);
       throw new Error('password_required');
     }
 
-    if (isEncrypted) {
-      passwordData = decryptData(passwordData);
-    }
-
-    const newPassword = passwordData?.password;
-    const oldPassword = passwordData?.oldPassword;
+    password = decryptData(password);
+    const newPassword = password?.password;
+    const oldPassword = password?.oldPassword;
 
     if (!newPassword) {
       res.status(400);
@@ -478,6 +460,41 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
     res.status(200).json({
       success: true,
       message: t('password_changed'),
+    });
+  } catch (error: any) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
+export const adminRegister = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { name, email, password, phone, gender, birthDate, roleId } =
+      req.body;
+    let newPassword = decryptData(password);
+    newPassword = newPassword?.password?.split('-');
+    if (newPassword?.length > 1) {
+      newPassword = newPassword[1];
+    }
+
+    let user = await User.create({
+      name,
+      email,
+      password: newPassword,
+      phone,
+      gender,
+      birthDate,
+      role: roleId,
+    });
+    if (!user) {
+      res.status(400);
+      throw new Error('user_register_failed');
+    }
+    user = await user.populate('role');
+    user = await user.populate('interests');
+    res.status(200).json({
+      success: true,
+      data: user,
     });
   } catch (error: any) {
     res.status(400);

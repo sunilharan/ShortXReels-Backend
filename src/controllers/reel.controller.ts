@@ -43,10 +43,9 @@ export const feedTypeReels = expressAsyncHandler(async (req: any, res) => {
       .sort(sortQuery)
       .skip(skip)
       .limit(limit)
-      .select('_id caption categories video size duration createdAt updatedAt')
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
-      .populate('likedBy', 'name profile');
+      .populate('likedBy', 'name profile')
     let pagination: any = {};
     if (total) {
       pagination.total = total;
@@ -103,10 +102,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
     }
     if (categoriesFilter) {
       matchQuery.categories = {
-        $in:
-          typeof categoriesFilter === 'string'
-            ? categoriesFilter.split(',').map((id: string) => new ObjectId(id))
-            : categoriesFilter.map((id: string) => new ObjectId(id)),
+        $in: JSON.parse(categoriesFilter).map((id: string) => new ObjectId(id)),
       };
     }
     matchQuery.status = STATUS.active;
@@ -193,10 +189,9 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       join(REEL_VIDEO_FOLDER, fileName)
     );
 
-    const categories =
-      typeof categoryIds === 'string'
-        ? categoryIds.split(',').map((id: string) => new ObjectId(id))
-        : categoryIds.map((id: string) => new ObjectId(id));
+    const categories = JSON.parse(categoryIds).map(
+      (id: string) => new ObjectId(id)
+    );
 
     const reelData: any = {
       createdBy: new ObjectId(userId),
@@ -233,11 +228,7 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     }
     let reel;
     if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
-      reel = await Reel.findByIdAndDelete(id)
-        .populate('createdBy', 'name profile')
-        .populate('categories', 'name image')
-        .populate('likedBy', 'name profile')
-        .exec();
+      reel = await Reel.findByIdAndDelete(id).exec();
     } else {
       reel = await Reel.findOneAndDelete({ createdBy: userId, _id: id }).exec();
     }
@@ -269,7 +260,9 @@ export const editReel = expressAsyncHandler(async (req: any, res) => {
       reelData.caption = caption;
     }
     if (categories) {
-      reelData.categories = categories;
+      reelData.categories = JSON.parse(categories).map(
+        (id: string) => new ObjectId(id)
+      );
     }
     if (file) {
       reelData.video = file.filename;
@@ -285,7 +278,11 @@ export const editReel = expressAsyncHandler(async (req: any, res) => {
       { createdBy: userId, _id: id },
       reelData,
       { new: true }
-    ).exec();
+    )
+      .populate('createdBy', 'name profile')
+      .populate('categories', 'name image')
+      .populate('likedBy', 'name profile')
+      .exec();
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
@@ -362,7 +359,6 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     throw new Error(error.message);
   }
 });
-
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {

@@ -1,10 +1,10 @@
 /comment/update:
   put:
-    tags: ["Comment"]
-    summary: Modify  comment data - like,replies
+    tags: ['Comment']
+    summary: Modify comment data - like, replies
     description: Modify the content of an existing comment on a reel.
     parameters:
-      - $ref: "#/components/parameters/AcceptLanguage"
+      - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
       required: true
       content:
@@ -17,13 +17,55 @@
                 description: The ID of the comment to update.
               action:
                 type: string
-                enum: ["like", "unlike", "create", "edit", "delete"]
+                enum: ['like', 'unlike', 'create', 'edit', 'delete']
               content:
                 type: string
-                description: The new content of the comment.
+                description: The new content of the comment or reply.
               replyId:
                 type: string
                 description: The ID of the reply to update (if applicable).
+          examples:
+            LikeComment:
+              summary: Like a comment
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                action: 'like'
+            UnlikeComment:
+              summary: Unlike a comment
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                action: 'unlike'
+            AddReply:
+              summary: Add a reply to a comment
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                action: 'create'
+                content: 'Thanks for sharing!'
+            EditReply:
+              summary: Edit a reply
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                replyId: '64b3f5adf6e9e81e3b12c4d9'
+                action: 'edit'
+                content: 'Updated reply content'
+            DeleteReply:
+              summary: Delete a reply
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                replyId: '64b3f5adf6e9e81e3b12c4d9'
+                action: 'delete'
+            LikeReply:
+              summary: Like a reply
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                replyId: '64b3f5adf6e9e81e3b12c4d9'
+                action: 'like'
+            UnlikeReply:
+              summary: Unlike a reply
+              value:
+                commentId: '64a1f83bf6b9e3456ad91cfe'
+                replyId: '64b3f5adf6e9e81e3b12c4d9'
+                action: 'unlike'
     responses:
       200:
         description: Successfully updated comment.
@@ -101,12 +143,12 @@
                               type: string
                               format: date-time
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

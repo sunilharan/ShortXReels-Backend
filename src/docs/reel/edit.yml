@@ -16,9 +16,8 @@
               caption:
                 type: string
               categories:
-                type: array
-                items:
-                  type: string
+                type: string
+                example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
               video:
                 type: string
                 format: binary

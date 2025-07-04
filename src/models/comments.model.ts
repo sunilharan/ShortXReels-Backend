@@ -43,7 +43,7 @@ export const commentSchema = new Schema<IComment>(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
-        if (ret.replies > 0) {
+        if (ret.replies.length > 0) {
           ret.replies.forEach((reply: any) => {
             reply.id = reply._id;
             delete reply._id;

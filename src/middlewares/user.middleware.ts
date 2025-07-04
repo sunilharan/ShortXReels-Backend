@@ -2,9 +2,10 @@ import expressAsyncHandler from 'express-async-handler';
 import { User } from '../models/user.model';
 import { STATUS, GENDER, emailRegex, passwordRegex } from '../config/constants';
 import { decryptData } from '../utils/encrypt';
+import { Role } from '../models/role.model';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
-  const { name, email, password, phone, gender, birthDate } = req.body;
+  const { name, email, password, phone, gender, roleId } = req.body;
   res.status(400);
   if (!name) {
     throw new Error('name_required');
@@ -39,6 +40,13 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!passwordRegex.test(newPassword)) {
     throw new Error('password_invalid');
   }
+  if (roleId) {
+    const roleExists = await Role.findById(roleId).exec();
+    if (!roleExists) {
+      res.status(404);
+      throw new Error('role_not_found');
+    }
+  }
   res.status(200);
   const emailExists = await User.findOne({
     email,
@@ -54,7 +62,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     const userId = req.userId;
-    const { name, email, phone, gender, birthDate, interests } = req.body;
+    const { email, gender, interests } = req.body;
     res.status(400);
     if (gender && !Object.values(GENDER).includes(gender)) {
       throw new Error('gender_invalid');
@@ -62,8 +70,8 @@ export const validateUpdateUser = expressAsyncHandler(
     if (email && !emailRegex.test(email)) {
       throw new Error('email_invalid');
     }
-    if(interests){
-      if(!Array.isArray(interests)){
+    if (interests) {
+      if (typeof interests === 'string' && JSON.parse(interests).length <= 0) {
         throw new Error('interests_invalid');
       }
     }
