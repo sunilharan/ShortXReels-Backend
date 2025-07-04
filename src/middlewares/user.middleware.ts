@@ -54,13 +54,18 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     const userId = req.userId;
-    const { name, email, phone, gender, birthDate } = req.body;
+    const { name, email, phone, gender, birthDate, interests } = req.body;
     res.status(400);
     if (gender && !Object.values(GENDER).includes(gender)) {
       throw new Error('gender_invalid');
     }
     if (email && !emailRegex.test(email)) {
       throw new Error('email_invalid');
+    }
+    if(interests){
+      if(!Array.isArray(interests)){
+        throw new Error('interests_invalid');
+      }
     }
     const user = await User.findOne({
       email: email,

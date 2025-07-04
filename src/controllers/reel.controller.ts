@@ -11,7 +11,6 @@ import { Reel } from '../models/reel.model';
 import { ObjectId } from 'mongodb';
 import { t } from 'i18next';
 import { createReadStream, existsSync, statSync } from 'fs';
-import { User } from '../models/user.model';
 
 export const feedTypeReels = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -46,7 +45,7 @@ export const feedTypeReels = expressAsyncHandler(async (req: any, res) => {
       .limit(limit)
       .select('_id caption categories video size duration createdAt updatedAt')
       .populate('createdBy', 'name profile')
-      .populate('categories', 'name type image')
+      .populate('categories', 'name image')
       .populate('likedBy', 'name profile');
     let pagination: any = {};
     if (total) {
@@ -123,7 +122,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
         '_id caption categories video size duration createdAt updatedAt createdBy'
       )
       .populate('createdBy', 'name profile')
-      .populate('categories', 'name type image');
+      .populate('categories', 'name image');
 
     let pagination: any = {};
     if (total) {
@@ -165,7 +164,7 @@ export const reelById = expressAsyncHandler(async (req: any, res) => {
     }
     let reel = await Reel.findById(id)
       .populate('createdBy', 'name profile')
-      .populate('categories', 'name type image')
+      .populate('categories', 'name image')
       .populate('likedBy', 'name profile')
       .exec();
     if (!reel) {
@@ -210,7 +209,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const reel = await Reel.create(reelData);
     const populatedReel = await Reel.findById(reel._id)
       .populate('createdBy', 'name profile')
-      .populate('categories', 'name type image')
+      .populate('categories', 'name image')
       .populate('likedBy', 'name profile');
     res.status(201).json({
       success: true,
@@ -236,7 +235,7 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
       reel = await Reel.findByIdAndDelete(id)
         .populate('createdBy', 'name profile')
-        .populate('categories', 'name type image')
+        .populate('categories', 'name image')
         .populate('likedBy', 'name profile')
         .exec();
     } else {

@@ -1,4 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
+import { t } from 'i18next';
+import { ObjectId } from 'mongodb';
 import { User } from '../models/user.model';
 import {
   decryptData,
@@ -12,7 +14,8 @@ import { UserRole, removeFile, STATUS } from '../config/constants';
 import { Otp } from '../models/otp.model';
 import { generateOTP } from '../utils/generateOtp';
 import { sendMail } from '../utils/sendMail';
-import { t } from 'i18next';
+import { ICategory } from '../models/category.model';
+
 const isEncrypted = true;
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -42,6 +45,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
     });
     if (user) {
       user = await user.populate('role');
+      user = await user.populate('interests');
       const roleName =
         typeof user.role === 'object' &&
         user.role !== null &&
@@ -81,6 +85,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       email,
     })
       .populate<{ role: IRole }>('role')
+      .populate<{ interests: ICategory }>('interests')
       .exec();
     if (!user) {
       res.status(404);
@@ -312,6 +317,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const user = await User.findById(userId)
       .populate<{ role: IRole }>('role')
+      .populate<{ interests: ICategory }>('interests')
       .exec();
     if (!user) {
       res.status(404);
@@ -397,10 +403,16 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
     if (userData.notification) {
       updateData.notification = JSON.parse(userData.notification);
     }
+    if (userData.interests) {
+      updateData.interests = JSON.parse(userData.interests).map(
+        (id: string) => new ObjectId(id)
+      );
+    }
     const user = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
     })
       .populate<{ role: IRole }>('role')
+      .populate<{ interests: ICategory }>('interests')
       .exec();
     if (!user) {
       res.status(404);

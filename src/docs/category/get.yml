@@ -4,35 +4,10 @@
     summary: "Get all categories"
     parameters:
       - in: query
-        name: page
-        required: false
-        schema:
-          type: integer
-          default: 1
-      - in: query
-        name: limit
-        required: false
-        schema:
-          type: integer
-          default: 10
-      - in: query
         name: search
         required: false
         schema:
           type: string
-      - in: query
-        name: categoryIds
-        required: false
-        schema:
-          type: array
-          items:
-            type: string
-      - in: query
-        name: type
-        required: false
-        schema:
-          type: string
-          enum: ["movie", "genre"]
       - $ref: "#/components/parameters/AcceptLanguage"
     responses:
       200:
@@ -45,40 +20,22 @@
                 success:
                   type: boolean
                 data:
-                  type: object
-                  properties:
-                    pagination:
-                      type: object
-                      properties:
-                        total:
-                          type: integer
-                        searchTotal:
-                          type: integer
-                        previousPage:
-                          type: integer
-                        currentPage:
-                          type: integer
-                        nextPage:
-                          type: integer
-                    categories:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          name:
-                            type: string
-                          type:
-                            type: string
-                          image:
-                            type: string
-                          createdAt:
-                            type: string
-                            format: date-time
-                          updatedAt:
-                            type: string
-                            format: date-time
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      image:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
       400:
         description: "Bad Request"
       401:

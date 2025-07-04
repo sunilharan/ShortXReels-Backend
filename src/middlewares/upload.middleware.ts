@@ -10,7 +10,7 @@ import { imageMaxSize, PROFILE_FOLDER, REEL_VIDEO_FOLDER, CATEGORY_FOLDER } from
   }
 });
 
-const getStorage = (destination: string) => {
+const getStorage = (destination: string, useOriginalName = false) => {
   return multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, destination);
@@ -18,8 +18,13 @@ const getStorage = (destination: string) => {
     filename: function (req, file, cb) {
       const ext = path.extname(file.originalname).toLowerCase();
       const baseName = path.basename(file.originalname, ext);
-      const uniqueSuffix = Date.now() + '-' + baseName;
-      cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+
+      if (useOriginalName) {
+        cb(null, baseName + ext);
+      } else {
+        const uniqueSuffix = Date.now() + '-' + baseName;
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+      }
     },
   });
 };
@@ -55,7 +60,7 @@ const uploadProfile = multer({
 });
 
 const uploadCategoryImage = multer({
-  storage: getStorage(CATEGORY_FOLDER),
+  storage: getStorage(CATEGORY_FOLDER, true),
   fileFilter: imageFileFilter,
   limits: { fileSize: imageMaxSize },
 });
@@ -84,6 +89,7 @@ export const uploadProfilePicture = (
     next();
   });
 };
+
 export const uploadCategoryImageFile = (
   req: Request,
   res: Response,

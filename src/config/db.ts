@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { Role } from '../models/role.model';
-import { ROLES } from '../config/constants';
+import { Categories, ROLES } from '../config/constants';
 import { config } from '../config/config';
+import { Category } from '../models/category.model';
 export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(config.databaseUrl);
@@ -20,6 +21,20 @@ const createInitial = async () => {
         ROLES.forEach((role) => {
           Role.create({
             name: role,
+          }).catch();
+        });
+      }
+    })
+    .catch((err) => {
+      console.log('error', err);
+    });
+  Category.estimatedDocumentCount()
+    .then((count) => {
+      if (count === 0) {
+        Categories.forEach((category) => {
+          Category.create({
+            name: category,
+            image: `${category}.jpg`,
           }).catch();
         });
       }

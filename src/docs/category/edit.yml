@@ -15,9 +15,6 @@
                 type: string
               name:
                 type: string
-              type:
-                type: string
-                enum: ["movie", "genre"]
               image:
                 type: string
                 format: binary
@@ -39,8 +36,6 @@
                     id:
                       type: string
                     name:
-                      type: string
-                    type:
                       type: string
                     image:
                       type: string

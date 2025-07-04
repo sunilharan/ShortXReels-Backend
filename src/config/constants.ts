@@ -25,6 +25,33 @@ export const passwordRegex =
   /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?\d)(?=.*?[#?!@$%^&*-]).{8,}$/;
 export const imageMaxSize = 10 * 1024 * 1024;
 export const videoMaxSize = 100 * 1024 * 1024;
+
+export const CategoriesType = {
+  music: 'Music',
+  gaming: 'Gaming',
+  sports: 'Sports',
+  movies: 'Movies',
+  travel: 'Travel',
+  food: 'Food',
+  beauty: 'Beauty',
+  health: 'Health',
+  fitness: 'Fitness',
+  education: 'Education',
+  entertainment: 'Entertainment',
+};
+export const Categories = [
+  CategoriesType.music,
+  CategoriesType.gaming,
+  CategoriesType.sports,
+  CategoriesType.movies,
+  CategoriesType.travel,
+  CategoriesType.food,
+  CategoriesType.beauty,
+  CategoriesType.health,
+  CategoriesType.fitness,
+  CategoriesType.education,
+  CategoriesType.entertainment,
+];
 export enum STATUS {
   active = 'active',
   inactive = 'inactive',
@@ -35,11 +62,6 @@ export enum GENDER {
   male = 'male',
   female = 'female',
   other = 'other',
-}
-
-export enum CATEGORY {
-  movie = 'movie',
-  genre = 'genre',
 }
 
 export enum REASON {
@@ -65,26 +87,6 @@ export enum REASON {
   other = 'Other',
 }
 export const Reasons = Object.values(REASON);
-
-export const categories = [
-  'action',
-  'adventure',
-  'animation',
-  'comedy',
-  'crime',
-  'documentary',
-  'drama',
-  'family',
-  'fantasy',
-  'historical',
-  'horror',
-  'musical',
-  'mystery',
-  'romance',
-  'science fiction(sci-fi)',
-  'thriller',
-  'war',
-];
 
 export const DEFAULT_SUPER_ADMIN = {
   email: 'superadmin@gmail.com',

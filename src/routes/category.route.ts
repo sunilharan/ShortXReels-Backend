@@ -5,9 +5,9 @@ import { createCategory, deleteCategory, getCategories, editCategory } from '../
 
 const router = Router();
 
-router.use(authenticate);
 
 router.get('/', getCategories);
+router.use(authenticate);
 router.use(adminOnly);
 router.post('/', uploadCategoryImageFile, createCategory);
 router.delete('/:id', deleteCategory);

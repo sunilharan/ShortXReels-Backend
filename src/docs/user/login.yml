@@ -62,6 +62,17 @@
                           type: boolean
                         recommendation:
                           type: boolean
+                    interests:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          image:
+                            type: string
                     createdAt:
                       type: string
                       format: date-time

@@ -1,5 +1,6 @@
 import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
 import { IRole } from './role.model';
+import { ICategory } from './category.model';
 import { GENDER, STATUS } from '../config/constants';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
@@ -20,6 +21,7 @@ export interface IUser extends Document {
     subscription: boolean;
     recommendation: boolean;
   };
+  interests: PopulatedDoc<Document<ObjectId> & ICategory>[];
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -42,6 +44,7 @@ export const userSchema = new Schema<IUser>(
       subscription: { type: Boolean, default: true },
       recommendation: { type: Boolean, default: true },
     },
+    interests: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
   },
   {
     timestamps: true,
