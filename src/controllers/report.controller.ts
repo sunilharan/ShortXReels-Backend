@@ -113,30 +113,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       .populate('reviewBy', 'name profile')
       .exec();
 
-    const total = await Report.countDocuments();
-    const searchTotal = await Report.countDocuments(matchQuery);
+    const total = await Report.countDocuments(matchQuery);
 
-    let pagination: any = {};
-    if (total) {
-      pagination.total = total;
-    }
-    if (searchTotal) {
-      pagination.searchTotal = searchTotal;
-    }
-    if (page > 1) {
-      pagination.previousPage = page - 1;
-    }
-    if (page) {
-      pagination.currentPage = page;
-    }
-    if (page < Math.ceil(total / limit)) {
-      pagination.nextPage = page + 1;
-    }
     res.status(200).json({
       success: true,
       data: {
         reports,
-        pagination,
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error: any) {

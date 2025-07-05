@@ -11,63 +11,54 @@ import { Reel } from '../models/reel.model';
 import { ObjectId } from 'mongodb';
 import { t } from 'i18next';
 import { createReadStream, existsSync, statSync } from 'fs';
+import { User } from '../models/user.model';
 
-export const feedTypeReels = expressAsyncHandler(async (req: any, res) => {
+export const getReels = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.userId;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const searchRegex = new RegExp(search, 'i');
     const matchQuery: any = {};
+    const categoriesFilter = req.query.categories || '';
     const feedType = req.query.feedType || '';
     let sortQuery = {};
     if (feedType === 'newHot') {
       sortQuery = { createdAt: -1, views: -1 };
-    }
-    if (feedType === 'popular') {
+    } else if (feedType === 'popular') {
       sortQuery = { views: -1, createdAt: -1 };
-    }
-    if (feedType === 'original') {
+    } else if (feedType === 'original') {
       sortQuery = { createdAt: 1, views: -1 };
+    } else if (feedType === 'userIntrested') {
+      const user = await User.findById(userId);
+      if (user?.interests?.length) {
+        matchQuery.categories = { $in: user.interests };
+      }
+    }
+    if (categoriesFilter) {
+      matchQuery.categories = {
+        $in: JSON.parse(categoriesFilter).map((id: string) => new ObjectId(id)),
+      };    
     }
     if (search) {
-      matchQuery.$or = [
-        { caption: { $regex: searchRegex } },
-        { 'categories.name': { $regex: searchRegex } },
-      ];
+      matchQuery.caption = { $regex: searchRegex };
     }
-    const total = await Reel.countDocuments();
-    const searchTotal = await Reel.countDocuments(matchQuery);
+    const total = await Reel.countDocuments(matchQuery);
     const reels = await Reel.find(matchQuery)
       .sort(sortQuery)
       .skip(skip)
       .limit(limit)
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
-      .populate('likedBy', 'name profile')
-    let pagination: any = {};
-    if (total) {
-      pagination.total = total;
-    }
-    if (searchTotal) {
-      pagination.searchTotal = searchTotal;
-    }
-    if (page > 1) {
-      pagination.previousPage = page - 1;
-    }
-    if (page) {
-      pagination.currentPage = page;
-    }
-    if (page < Math.ceil(total / limit)) {
-      pagination.nextPage = page + 1;
-    }
-
+      .populate('likedBy', 'name profile');
     res.status(200).json({
       success: true,
       data: {
         reels,
-        pagination,
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error: any) {
@@ -85,20 +76,13 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
     const search = req.query.search || '';
     const searchRegex = new RegExp(search, 'i');
     const matchQuery: any = {};
-    const id = req.query.userId || '';
     const userId = req.userId;
     const categoriesFilter = req.query.categories || '';
     if (search) {
-      matchQuery.$or = [
-        { caption: { $regex: searchRegex } },
-        { 'categories.name': { $regex: searchRegex } },
-      ];
+      matchQuery.caption = { $regex: searchRegex };
     }
     if (userId && typeof userId === 'string') {
       matchQuery.createdBy = new ObjectId(userId);
-    }
-    if (id && typeof id === 'string') {
-      matchQuery.createdBy = new ObjectId(id);
     }
     if (categoriesFilter) {
       matchQuery.categories = {
@@ -106,42 +90,20 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
       };
     }
     matchQuery.status = STATUS.active;
-    const total = await Reel.countDocuments({
-      createdBy: matchQuery.createdBy,
-    });
-    const searchTotal = await Reel.countDocuments(matchQuery);
+    const total = await Reel.countDocuments(matchQuery);
     const reels = await Reel.find(matchQuery)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select(
-        '_id caption categories video size duration createdAt updatedAt createdBy'
-      )
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image');
-
-    let pagination: any = {};
-    if (total) {
-      pagination.total = total;
-    }
-    if (searchTotal) {
-      pagination.searchTotal = searchTotal;
-    }
-    if (page > 1) {
-      pagination.previousPage = page - 1;
-    }
-    if (page) {
-      pagination.currentPage = page;
-    }
-    if (page < Math.ceil(total / limit)) {
-      pagination.nextPage = page + 1;
-    }
 
     res.status(200).json({
       success: true,
       data: {
         reels,
-        pagination,
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
       },
     });
   } catch (error: any) {

@@ -129,19 +129,10 @@
                           updatedAt:
                             type: string
                             format: date-time
-                    pagination:
-                      type: object
-                      properties:
-                        total:
-                          type: integer
-                        searchTotal:
-                          type: integer
-                        previousPage:
-                          type: integer
-                        currentPage:
-                          type: integer
-                        nextPage:
-                          type: integer
+                    totalRecords:
+                      type: integer
+                    totalPages:
+                      type: integer
       400:
         description: Bad Request
       401:

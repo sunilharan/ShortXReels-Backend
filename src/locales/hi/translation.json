@@ -8,6 +8,7 @@
   "gender_invalid": "अमान्य लिंग।",
   "email_invalid": "अमान्य ईमेल पता।",
   "password_invalid": "अमान्य पासवर्ड।",
+  "interests_invalid": "अमान्य साथी।",
   "user_register_failed": "उपयोगकर्ता पंजीकरण विफल हुआ।",
   "refresh_token_required": "रिफ्रेश टोकन आवश्यक है।",
   "refresh_token_invalid": "अमान्य रिफ्रेश टोकन।",

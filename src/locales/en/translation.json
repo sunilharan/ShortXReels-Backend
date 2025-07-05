@@ -8,6 +8,7 @@
   "gender_invalid": "Invalid gender.",
   "email_invalid": "Invalid email address.",
   "password_invalid": "Invalid password.",
+  "interests_invalid": "Invalid interests.",
   "user_register_failed": "User registration failed.",
   "refresh_token_required": "Refresh token is required.",
   "refresh_token_invalid": "Invalid refresh token.",

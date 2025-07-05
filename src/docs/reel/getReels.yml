@@ -1,7 +1,7 @@
-/reel/getByFeedType:
+/reel:
   get:
     tags: ["Reel"]
-    summary: "Get reels by feed type"
+    summary: "Get reels"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
@@ -9,7 +9,7 @@
         required: true
         schema:
           type: string
-          enum: ['popular', 'newHot','original']
+          enum: ['popular', 'newHot','original', 'userIntrested']
       - in: query
         name: page
         required: false
@@ -28,6 +28,12 @@
         schema:
           type: string
           description: "Search term for captions or categories"
+      - in: query
+        name: categories
+        required: false
+        schema:
+          type: string
+          example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
     responses:
       200:
         description: "Reels fetched successfully"
@@ -96,19 +102,10 @@
                           updatedAt:
                             type: string  
                             format: date-time
-                    pagination:
-                      type: object
-                      properties:
-                        total:
-                          type: integer
-                        searchTotal:
-                          type: integer
-                        previousPage:
-                          type: integer
-                        currentPage:
-                          type: integer
-                        nextPage:
-                          type: integer
+                    totalRecords:
+                      type: integer
+                    totalPages:
+                      type: integer
       400:
         description: "Bad request"
       401:
