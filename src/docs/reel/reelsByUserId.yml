@@ -1,7 +1,7 @@
 /reel/userReels:
   get:
-    tags: ["Reel"]
-    summary: "Get your own reels"
+    tags: ['Reel']
+    summary: 'Get your own reels'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
@@ -23,9 +23,19 @@
         schema:
           type: string
           example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+      - in: query
+        name: sortType
+        schema:
+          type: string
+          enum: ['createdAt', 'views', 'duration', 'size']
+      - in: query
+        name: sortOrder
+        schema:
+          type: string
+          enum: ['asc', 'desc']
     responses:
       200:
-        description: "Reels fetched successfully"
+        description: 'Reels fetched successfully'
         content:
           application/json:
             schema:

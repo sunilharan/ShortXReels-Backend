@@ -6,7 +6,7 @@ export const config = {
     host: process.env.HOST || "",
     databaseUrl: process.env.DATABASE_URL || "",
     otpExpire: process.env.OTP_EXPIRE_IN_SECONDS || "",
-    otpJwtExpire : process.env.OTP_JWT_EXPIRE || "",
+    jwtOtpExpire : process.env.JWT_OTP_EXPIRE || "",
     jwtAccessExpire: process.env.JWT_ACCESS_EXPIRE || "",
     jwtRefreshExpire: process.env.JWT_REFRESH_EXPIRE || "",
     jwtSecret: process.env.JWT_SECRET || "",

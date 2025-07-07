@@ -90,8 +90,6 @@ const setupSwaggerDocs = (app: Express) => {
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec)
   );
-
-  // JSON endpoint for the OpenAPI spec
   app.get('/api/swagger.json', (req: Request, res: Response) => {
     res.json(swaggerSpec);
   });

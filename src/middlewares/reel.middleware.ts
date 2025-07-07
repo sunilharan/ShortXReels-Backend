@@ -6,17 +6,21 @@ import { Category } from '../models/category.model';
 import { ObjectId } from 'mongodb';
 export const validateCreateReel = expressAsyncHandler(
   async (req: any, res, next) => {
-    let f;
+    let file;
     try {
-      const { caption, categories : categoriesIds } = req.body;
-      const file = req.file;
+      const { caption, categories: categoriesIds } = req.body;
+      file = req.file;
+      if (!file) {
+        res.status(400);
+        throw new Error('video_required');
+      }
+      
       const fileName = file.filename;
       const size = file.size;
       const duration = await getVideoDurationInSeconds(
         join(REEL_VIDEO_FOLDER, fileName)
       );
       const categories = JSON.parse(categoriesIds);
-      f = fileName;
       if (!caption) {
         res.status(400);
         await removeFile(fileName, 'uploads/reels');
@@ -26,11 +30,6 @@ export const validateCreateReel = expressAsyncHandler(
         res.status(400);
         await removeFile(fileName, 'uploads/reels');
         throw new Error('categories_required');
-      }
-      if (!req.file) {
-        res.status(400);
-        await removeFile(fileName, 'uploads/reels');
-        throw new Error('video_required');
       }
       for (let x of categories) {
         const category = await Category.findById(new ObjectId(x)).exec();
@@ -50,19 +49,21 @@ export const validateCreateReel = expressAsyncHandler(
         await removeFile(fileName, 'uploads/reels');
         throw new Error('video_size_exceeded');
       }
+
       next();
     } catch (error: any) {
-      console.error(error);
-      await removeFile(f, 'uploads/reels');
-      res.status(400);
-      throw new Error(error.message);
+      if (file?.filename) await removeFile(file.filename, 'uploads/reels');
+      next(error);
     }
   }
 );
+
 export const validateUpdateReel = expressAsyncHandler(
   async (req: any, res, next) => {
+    let file;
     try {
-      const { caption, categories : categoriesIds } = req.body;
+      const { caption, categories: categoriesIds } = req.body;
+      file = req.file;
       if (caption && caption.length === 0) {
         res.status(400);
         throw new Error('caption_required');
@@ -78,8 +79,7 @@ export const validateUpdateReel = expressAsyncHandler(
           throw new Error('category_not_found');
         }
       }
-      if (req.file) {
-        const file = req.file;
+      if (file) {
         const fileName = file.filename;
         const size = file.size;
         const duration = await getVideoDurationInSeconds(
@@ -96,9 +96,8 @@ export const validateUpdateReel = expressAsyncHandler(
       }
       next();
     } catch (error: any) {
-      console.error(error);
-      res.status(400);
-      throw new Error(error.message);
+      if (file?.filename) await removeFile(file.filename, 'uploads/reels');
+      next(error);
     }
   }
 );

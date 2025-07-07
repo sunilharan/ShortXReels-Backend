@@ -2,19 +2,14 @@ import expressAsyncHandler from 'express-async-handler';
 import { t } from 'i18next';
 import { ObjectId } from 'mongodb';
 import { User } from '../models/user.model';
-import {
-  decryptData,
-  generateAccessToken,
-  generateRefreshToken,
-  generateToken,
-  verifyToken,
-} from '../utils/encrypt';
+import { decryptData, generateToken, verifyToken } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
 import { UserRole, removeFile, STATUS } from '../config/constants';
 import { Otp } from '../models/otp.model';
 import { generateOTP } from '../utils/generateOtp';
 import { sendMail } from '../utils/sendMail';
 import { ICategory } from '../models/category.model';
+import { config } from '../config/config';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -49,8 +44,17 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       typeof user.role === 'object' && user.role !== null && 'name' in user.role
         ? (user.role as IRole).name
         : '';
-    const accessToken = generateAccessToken(user.id, roleName);
-    const refreshToken = generateRefreshToken(user.id, accessToken);
+    const accessToken = generateToken(
+      { id: user.id, role: roleName },
+      config.jwtAccessExpire
+    );
+    const refreshToken = generateToken(
+      {
+        id: user.id,
+        token: accessToken,
+      },
+      config.jwtRefreshExpire
+    );
     user.token = accessToken;
     await User.findByIdAndUpdate(user.id, { token: accessToken });
     res.status(201).json({
@@ -98,8 +102,17 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_email_or_password');
     }
-    const accessToken = generateAccessToken(user.id, user.role.name);
-    const refreshToken = generateRefreshToken(user.id, accessToken);
+    const accessToken = generateToken(
+      { id: user.id, role: user.role.name },
+      config.jwtAccessExpire
+    );
+    const refreshToken = generateToken(
+      {
+        id: user.id,
+        token: accessToken,
+      },
+      config.jwtRefreshExpire
+    );
     user.token = accessToken;
     await User.findByIdAndUpdate(user.id, { token: accessToken });
     const userData = JSON.parse(JSON.stringify(user));
@@ -125,33 +138,41 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
       throw new Error('refresh_token_required');
     }
     const decoded = verifyToken(token);
-    if (decoded && typeof decoded === 'object' && 'id' in decoded) {
-      const user = await User.findOne({
-        _id: decoded?.id,
-        token: decoded?.token,
-        status: STATUS.active,
-      })
-        .populate<{ role: IRole }>('role')
-        .exec();
-      if (!user) {
-        res.status(401);
-        throw new Error('refresh_token_invalid');
-      }
-      const accessToken = generateAccessToken(user.id, user.role.name);
-      const refreshToken = generateRefreshToken(user.id, accessToken);
-      user.token = accessToken;
-      await User.findByIdAndUpdate(user.id, { token: accessToken });
-      res.status(200).json({
-        success: true,
-        data: {
-          accessToken,
-          refreshToken,
-        },
-      });
-    } else {
+    if (!decoded || typeof decoded !== 'object' || !('id' in decoded)) {
       res.status(401);
       throw new Error('refresh_token_invalid');
     }
+    const user = await User.findOne({
+      _id: decoded?.id,
+      token: decoded?.token,
+      status: STATUS.active,
+    })
+      .populate<{ role: IRole }>('role')
+      .exec();
+    if (!user) {
+      res.status(401);
+      throw new Error('refresh_token_invalid');
+    }
+    const accessToken = generateToken(
+      { id: user.id, role: user.role.name },
+      config.jwtAccessExpire
+    );
+    const refreshToken = generateToken(
+      {
+        id: user.id,
+        token: accessToken,
+      },
+      config.jwtRefreshExpire
+    );
+    user.token = accessToken;
+    await User.findByIdAndUpdate(user.id, { token: accessToken });
+    res.status(200).json({
+      success: true,
+      data: {
+        accessToken,
+        refreshToken,
+      },
+    });
   } catch (error: any) {
     res.status(400);
     throw new Error(error.message);
@@ -176,17 +197,17 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     const otpData = await generateOTP();
     let existingOtp = await Otp.findOne({ userId: user.id }).exec();
     if (existingOtp) {
-      await Otp.findByIdAndUpdate(existingOtp.id, {
+      existingOtp = await Otp.findByIdAndUpdate(existingOtp.id, {
         otp: otpData.otp,
         expiresAt: otpData.expiresAt,
-      });
+      }, { new: true });
     } else {
       existingOtp = await Otp.create({ userId: user.id, otp: otpData.otp });
     }
     // await sendMail(user.email, 'your_otp_code', otpData?.otp?.toString() || '');
     res.status(200).json({
       success: true,
-      data: existingOtp.otp,
+      data: existingOtp?.otp,
       message: t('otp_sent_to_email'),
     });
   } catch (error: any) {
@@ -210,7 +231,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
       email,
       $and: [{ status: { $ne: STATUS.deleted } }],
     })
-      .populate<{ role: IRole }>('role')
+      .populate('role')
       .exec();
     if (!user) {
       res.status(404);
@@ -221,7 +242,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('otp_invalid');
     }
-    const token = generateToken(user.id, user.role.name);
+    const token = generateToken({ id: user.id }, config.jwtOtpExpire);
     res.status(200).json({
       success: true,
       data: token,

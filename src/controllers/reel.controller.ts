@@ -78,6 +78,12 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
     const matchQuery: any = {};
     const userId = req.userId;
     const categoriesFilter = req.query.categories || '';
+    const sortType = req.query.sortType || '';
+    const sortOrder = req.query.sortOrder || '';
+    let sortQuery = {};
+    if (sortType && sortOrder) {
+      sortQuery = { [sortType]: sortOrder === 'desc' ? -1 : 1 };
+    }
     if (search) {
       matchQuery.caption = { $regex: searchRegex };
     }
@@ -92,7 +98,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
     matchQuery.status = STATUS.active;
     const total = await Reel.countDocuments(matchQuery);
     const reels = await Reel.find(matchQuery)
-      .sort({ createdAt: -1 })
+      .sort(sortQuery)
       .skip(skip)
       .limit(limit)
       .populate('createdBy', 'name profile')

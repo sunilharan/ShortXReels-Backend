@@ -2,21 +2,15 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/config';
 import { AES, enc, mode, pad } from 'crypto-js';
 
-export const generateToken = (id: string, email: string) => {
-  return jwt.sign({ id, email }, config.jwtSecret, {
-    expiresIn: config.otpJwtExpire,
+export const generateToken = (
+  data: any,
+  expiresIn: string | number = config.jwtAccessExpire
+): string => {
+  return jwt.sign(data, config.jwtSecret, {
+    expiresIn,
   } as SignOptions);
 };
-export const generateAccessToken = (id: string, role: string) => {
-  return jwt.sign({ id, role }, config.jwtSecret, {
-    expiresIn: config.jwtAccessExpire,
-  } as SignOptions);
-};
-export const generateRefreshToken = (id: string, token: string) => {
-  return jwt.sign({ id, token }, config.jwtSecret, {
-    expiresIn: config.jwtRefreshExpire,
-  } as SignOptions);
-};
+
 
 export const verifyToken = (token: string) => {
   try {

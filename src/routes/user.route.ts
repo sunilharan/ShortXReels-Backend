@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { validateRegister, validateUpdateUser } from '../middlewares/user.middleware';
 import { register, login, refreshToken, currentUser, logout, deleteUser, updateUser, sendOtp, verifyOtp,resetPassword, changePassword, adminRegister } from '../controllers/user.controller';
 import { adminOnly, authenticate } from '../middlewares/auth.middleware';
-import { uploadProfilePicture } from '../middlewares/upload.middleware';            
+import { uploadProfile } from '../middlewares/upload.middleware';            
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.use(authenticate)
 router.get('/currentUser', currentUser);
 router.post('/logout', logout);
 router.delete('/deleteUser', deleteUser);
-router.put('/updateProfile',uploadProfilePicture, validateUpdateUser, updateUser);
+router.put('/updateProfile',uploadProfile, validateUpdateUser, updateUser);
 router.put('/changePassword', changePassword);
 router.post('/adminRegister', validateRegister, adminOnly, adminRegister);
 

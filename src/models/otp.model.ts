@@ -33,8 +33,6 @@ export const otpSchema = new Schema<IOtp>(
   }
 );
 
-// Create TTL index on expiresAt field
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
 
 export const Otp = model<IOtp>('Otp', otpSchema);

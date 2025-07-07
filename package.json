@@ -17,6 +17,7 @@
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.6.0",
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",

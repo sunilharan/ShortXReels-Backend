@@ -48,7 +48,9 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.userId;
     const reelId = req.params.id;
-
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
     if (!reelId || !ObjectId.isValid(reelId)) {
       res.status(400);
       throw new Error('invalid_reel_id');
@@ -64,11 +66,17 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
       .populate('replies.repliedBy', 'name profile')
       .populate('replies.likedBy', 'name profile')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .exec();
-
+    const total = await Comment.countDocuments({ reel: reelId });
     res.status(200).json({
       success: true,
-      data: comments,
+      data: {
+        comments,
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error: any) {
     console.error(error);
