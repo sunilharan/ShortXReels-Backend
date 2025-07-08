@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Category } from '../models/category.model';
-import { removeFile } from '../config/constants';
+import {  removeFile } from '../config/constants';
 import { t } from 'i18next';
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {

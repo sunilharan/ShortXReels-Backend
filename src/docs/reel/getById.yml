@@ -46,13 +46,20 @@
                             type: string
                           image:
                             type: string
-                    video:
+                    mediaType:
                       type: string
-                      format: binary
-                    size:
-                      type: number
-                    duration:
-                      type: number
+                      enum: ["video", "image"]
+                    media:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        name:
+                          type: string
+                        duration:
+                          type: number
+                    thumbnail:
+                      type: string
                     views:
                       type: number
                     likedBy:

@@ -1,6 +1,5 @@
-import { Schema, model, PopulatedDoc, Document } from 'mongoose';
+import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
-import { ObjectId } from 'mongodb';
 import moment from 'moment';
 import { config } from '../config/config';
 

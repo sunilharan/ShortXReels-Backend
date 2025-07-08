@@ -1,14 +1,14 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
-import { getVideoDurationInSeconds } from 'get-video-duration';
 import {
-  REEL_VIDEO_FOLDER,
+  MEDIA,
+  REEL_FOLDER,
   removeFile,
   STATUS,
   UserRole,
 } from '../config/constants';
-import { Reel } from '../models/reel.model';
-import { ObjectId } from 'mongodb';
+import { IReel, Reel } from '../models/reel.model';
+import { Types } from 'mongoose';
 import { t } from 'i18next';
 import { createReadStream, existsSync, statSync } from 'fs';
 import { User } from '../models/user.model';
@@ -24,6 +24,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     const matchQuery: any = {};
     const categoriesFilter = req.query.categories || '';
     const feedType = req.query.feedType || '';
+    const mediaType = req.query.mediaType || '';
     let sortQuery = {};
     if (feedType === 'newHot') {
       sortQuery = { createdAt: -1, views: -1 };
@@ -39,12 +40,18 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     }
     if (categoriesFilter) {
       matchQuery.categories = {
-        $in: JSON.parse(categoriesFilter).map((id: string) => new ObjectId(id)),
-      };    
+        $in: JSON.parse(categoriesFilter).map(
+          (id: string) => new Types.ObjectId(id)
+        ),
+      };
     }
     if (search) {
       matchQuery.caption = { $regex: searchRegex };
     }
+    if (mediaType) {
+      matchQuery.mediaType = mediaType;
+    }
+    matchQuery.status = STATUS.active;
     const total = await Reel.countDocuments(matchQuery);
     const reels = await Reel.find(matchQuery)
       .sort(sortQuery)
@@ -80,6 +87,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
     const categoriesFilter = req.query.categories || '';
     const sortType = req.query.sortType || '';
     const sortOrder = req.query.sortOrder || '';
+    const mediaType = req.query.mediaType || '';
     let sortQuery = {};
     if (sortType && sortOrder) {
       sortQuery = { [sortType]: sortOrder === 'desc' ? -1 : 1 };
@@ -88,12 +96,17 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
       matchQuery.caption = { $regex: searchRegex };
     }
     if (userId && typeof userId === 'string') {
-      matchQuery.createdBy = new ObjectId(userId);
+      matchQuery.createdBy = new Types.ObjectId(userId);
     }
     if (categoriesFilter) {
       matchQuery.categories = {
-        $in: JSON.parse(categoriesFilter).map((id: string) => new ObjectId(id)),
+        $in: JSON.parse(categoriesFilter).map(
+          (id: string) => new Types.ObjectId(id)
+        ),
       };
+    }
+    if (mediaType) {
+      matchQuery.mediaType = mediaType;
     }
     matchQuery.status = STATUS.active;
     const total = await Reel.countDocuments(matchQuery);
@@ -122,7 +135,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
 export const reelById = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id } = req.params;
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -147,42 +160,46 @@ export const reelById = expressAsyncHandler(async (req: any, res) => {
 });
 
 export const createReel = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.userId;
-    const { caption, categories: categoryIds } = req.body;
-    const file = req.file;
-    const fileName = file.filename;
-    const size = file.size;
-    const duration = await getVideoDurationInSeconds(
-      join(REEL_VIDEO_FOLDER, fileName)
-    );
+  const userId = req.userId;
+  const { caption, categories: rawCategories, mediaType, duration } = req.body;
+  const categories = JSON.parse(rawCategories).map(
+    (id: string) => new Types.ObjectId(id)
+  );
+  const files = req.files || {};
+  let reelData: Partial<IReel> = {
+    createdBy: new Types.ObjectId(userId),
+    caption,
+    categories,
+    mediaType,
+    views: 0,
+  };
 
-    const categories = JSON.parse(categoryIds).map(
-      (id: string) => new ObjectId(id)
-    );
-
-    const reelData: any = {
-      createdBy: new ObjectId(userId),
-      caption,
-      categories,
-      video: fileName,
-      size,
-      duration,
-    };
-    const reel = await Reel.create(reelData);
-    const populatedReel = await Reel.findById(reel._id)
-      .populate('createdBy', 'name profile')
-      .populate('categories', 'name image')
-      .populate('likedBy', 'name profile');
-    res.status(201).json({
-      success: true,
-      data: populatedReel,
-    });
-  } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+  if (mediaType === MEDIA.video) {
+    const mediaFile = files.media?.[0];
+    if (mediaFile) {
+      reelData.media = {
+        url: mediaFile.filename,
+        name: mediaFile.originalname,
+        duration: parseFloat(duration) || 0,
+      };
+    }
+  } else if (mediaType === MEDIA.image) {
+    const images = files.media?.map((img: any) => img.filename) || [];
+    reelData.media = images.length > 0 ? images : [];
   }
+
+  const thumbnail = files.thumbnail?.[0];
+  if (thumbnail) {
+    reelData.thumbnail = thumbnail.filename;
+  }
+
+  const reel = await Reel.create(reelData);
+  const populatedReel = await Reel.findById(reel._id)
+    .populate('createdBy', 'name profile')
+    .populate('categories', 'name image')
+    .populate('likedBy', 'name profile');
+
+  res.status(201).json({ success: true, data: populatedReel });
 });
 
 export const deleteReel = expressAsyncHandler(async (req: any, res) => {
@@ -190,10 +207,12 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const role = req.role;
     const { id } = req.params;
-    if (!id || !ObjectId.isValid(id)) {
+
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
+
     let reel;
     if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
       reel = await Reel.findByIdAndDelete(id).exec();
@@ -204,60 +223,21 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    if (reel.video) {
-      await removeFile(reel.video, 'uploads/reels');
+    if (reel.media) {
+      if (reel.mediaType === MEDIA.video) {
+        await removeFile(reel.media.url, 'uploads/reels');
+      } else if (reel.mediaType === MEDIA.image) {
+        reel.media.forEach((img: any) => {
+          removeFile(img, 'uploads/reels');
+        });
+      }
+    }
+    if (reel.thumbnail) {
+      await removeFile(reel.thumbnail, 'uploads/reels');
     }
     res.status(200).json({
       success: true,
       message: t('reel_deleted'),
-    });
-  } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
-  }
-});
-
-export const editReel = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.userId;
-    const { id, caption, categories, oldVideo } = req.body;
-    const file = req.file;
-    let reelData: any = {};
-    if (caption) {
-      reelData.caption = caption;
-    }
-    if (categories) {
-      reelData.categories = JSON.parse(categories).map(
-        (id: string) => new ObjectId(id)
-      );
-    }
-    if (file) {
-      reelData.video = file.filename;
-      reelData.size = file.size;
-      reelData.duration = await getVideoDurationInSeconds(
-        join(REEL_VIDEO_FOLDER, file.filename)
-      );
-    }
-    if (oldVideo) {
-      await removeFile(oldVideo, 'uploads/reels');
-    }
-    const reel = await Reel.findOneAndUpdate(
-      { createdBy: userId, _id: id },
-      reelData,
-      { new: true }
-    )
-      .populate('createdBy', 'name profile')
-      .populate('categories', 'name image')
-      .populate('likedBy', 'name profile')
-      .exec();
-    if (!reel) {
-      res.status(404);
-      throw new Error('reel_not_found');
-    }
-    res.status(200).json({
-      success: true,
-      data: reel,
     });
   } catch (error: any) {
     console.error(error);
@@ -271,7 +251,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const { id, action } = req.body;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id || !Types.ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -291,7 +271,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         if (!alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $addToSet: { likedBy: new ObjectId(userId) } },
+            { $addToSet: { likedBy: new Types.ObjectId(userId) } },
             { new: true }
           ).exec();
         } else {
@@ -301,7 +281,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         if (alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $pull: { likedBy: new ObjectId(userId) } },
+            { $pull: { likedBy: new Types.ObjectId(userId) } },
             { new: true }
           ).exec();
         } else {
@@ -331,20 +311,23 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
     console.log(`Streaming video for ID: ${req.params.id}`);
-    const videoId = new ObjectId(req.params.id);
-    if (!videoId || !ObjectId.isValid(videoId)) {
+    const reelId = new Types.ObjectId(req.params.id);
+    if (!reelId || !Types.ObjectId.isValid(reelId)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
-    const reel = await Reel.findById(videoId);
+    const reel = await Reel.findById(reelId);
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
     }
+    if (reel.mediaType !== MEDIA.video || !reel.media?.url) {
+      res.status(404);
+      throw new Error('media_not_found');
+    }
 
-    const videoPath = join(REEL_VIDEO_FOLDER, reel.video);
+    const videoPath = join(REEL_FOLDER, reel.media.url);
     if (!existsSync(videoPath)) {
-      console.error(`Video file not found at path: ${videoPath}`);
       res.status(404);
       throw new Error('video_not_found');
     }
@@ -353,7 +336,7 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const fileSize = stat.size;
     const range = req.headers.range;
 
-    await Reel.findByIdAndUpdate(videoId, {
+    await Reel.findByIdAndUpdate(reelId, {
       $inc: { views: 1 },
     }).exec();
     if (range) {
@@ -389,7 +372,7 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
         'Content-Length': fileSize,
         'Content-Type': 'video/mp4',
         'Content-Disposition': `inline; filename="${reel.caption}${path.extname(
-          reel.video
+          reel.media?.url || ''
         )}"`,
         'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-cache, no-store, must-revalidate',

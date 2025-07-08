@@ -1,5 +1,4 @@
 import { existsSync, unlinkSync } from 'fs';
-import { config } from './config';
 
 export const UserRole = {
   SuperAdmin: 'super_admin',
@@ -10,13 +9,13 @@ export const ROLES = [UserRole.SuperAdmin, UserRole.Admin, UserRole.User];
 
 export const UPLOAD_FOLDER = process.cwd() + '/uploads';
 export const PROFILE_FOLDER = UPLOAD_FOLDER + '/profiles';
-export const REEL_VIDEO_FOLDER = UPLOAD_FOLDER + '/reels';
+export const REEL_FOLDER = UPLOAD_FOLDER + '/reels';
 export const CATEGORY_FOLDER = UPLOAD_FOLDER + '/categories';
 
 export const FOLDER_LIST = [
   UPLOAD_FOLDER,
   PROFILE_FOLDER,
-  REEL_VIDEO_FOLDER,
+  REEL_FOLDER,
   CATEGORY_FOLDER,
 ];
 
@@ -63,7 +62,10 @@ export enum GENDER {
   female = 'female',
   other = 'other',
 }
-
+export enum MEDIA {
+  image = 'image',
+  video = 'video',
+}
 export enum REASON {
   spam = 'Spam or repetitive content',
   fraud = 'Scam or fraudulent content',
@@ -98,20 +100,27 @@ export const DEFAULT_SUPER_ADMIN = {
   birthDate: new Date('1990-01-01'),
 };
 
-export const removeFile = async (filePath: string, folderName: string) => {
+export const removeFile = async (filePath: string | undefined | null, folderName: string) => {
   try {
-    if (!filePath) return;
-    let fileName = filePath;
-    if (filePath.startsWith('http')) {
-      const url = new URL(filePath);
+    if (!filePath || typeof filePath !== 'string') {
+      return;
+    }
+
+    let fileName = filePath.trim();
+    if (fileName.startsWith('http')) {
+      const url = new URL(fileName);
       const pathParts = url.pathname.split('/');
       fileName = pathParts[pathParts.length - 1];
+    }
+    fileName = fileName.replace(/^["\[\]]+|["\[\]]+$/g, '');
+    if (!fileName) {
+      return;
     }
     const fullPath = `${process.cwd()}/${folderName}/${fileName}`;
     if (existsSync(fullPath)) {
       unlinkSync(fullPath);
-    }
+    } 
   } catch (error) {
-    throw error;
+    return
   }
 };

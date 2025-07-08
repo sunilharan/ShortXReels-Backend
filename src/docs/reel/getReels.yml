@@ -34,6 +34,12 @@
         schema:
           type: string
           example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
+      - in: query
+        name: mediaType
+        required: false
+        schema:
+          type: string
+          enum: ["video", "image"]
     responses:
       200:
         description: "Reels fetched successfully"
@@ -76,13 +82,20 @@
                                   type: string
                                 image:
                                   type: string
-                          video:
+                          mediaType:
                             type: string
-                            format: binary
-                          size:
-                            type: number
-                          duration:
-                            type: number
+                            enum: ["video", "image"]
+                          media:
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              name:
+                                type: string
+                              duration:
+                                type: number
+                          thumbnail:
+                            type: string
                           views:
                             type: number
                           likedBy:

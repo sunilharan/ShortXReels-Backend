@@ -1,103 +1,60 @@
 import expressAsyncHandler from 'express-async-handler';
-import getVideoDurationInSeconds from 'get-video-duration';
-import { join } from 'path';
-import { REEL_VIDEO_FOLDER, removeFile } from '../config/constants';
+import {
+  MEDIA,
+} from '../config/constants';
 import { Category } from '../models/category.model';
-import { ObjectId } from 'mongodb';
+import { existsSync, unlinkSync } from 'fs';
+import { Types } from 'mongoose';
+
 export const validateCreateReel = expressAsyncHandler(
   async (req: any, res, next) => {
-    let file;
+    const files = req.files || {};
     try {
-      const { caption, categories: categoriesIds } = req.body;
-      file = req.file;
-      if (!file) {
-        res.status(400);
-        throw new Error('video_required');
+      const {
+        caption,
+        categories: rawCategories,
+        mediaType,
+        duration,
+      } = req.body;
+      if (!caption) throw new Error('caption_required');
+      if (!mediaType || ![MEDIA.video, MEDIA.image].includes(mediaType)) {
+        throw new Error('invalid_media_type');
       }
-      
-      const fileName = file.filename;
-      const size = file.size;
-      const duration = await getVideoDurationInSeconds(
-        join(REEL_VIDEO_FOLDER, fileName)
-      );
-      const categories = JSON.parse(categoriesIds);
-      if (!caption) {
-        res.status(400);
-        await removeFile(fileName, 'uploads/reels');
-        throw new Error('caption_required');
-      }
-      if (!categories || categories.length === 0) {
-        res.status(400);
-        await removeFile(fileName, 'uploads/reels');
+      const categories = JSON.parse(rawCategories || '[]');
+      if (!Array.isArray(categories) || categories.length === 0) {
         throw new Error('categories_required');
       }
-      for (let x of categories) {
-        const category = await Category.findById(new ObjectId(x)).exec();
-        if (!category) {
-          res.status(404);
-          await removeFile(fileName, 'uploads/reels');
-          throw new Error('category_not_found');
-        }
-      }
-      if (duration > 60) {
-        res.status(400);
-        await removeFile(fileName, 'uploads/reels');
-        throw new Error('video_duration_exceeded');
-      }
-      if (size > 100 * 1024 * 1024) {
-        res.status(400);
-        await removeFile(fileName, 'uploads/reels');
-        throw new Error('video_size_exceeded');
+
+      for (const id of categories) {
+        const exists = await Category.exists({ _id: new Types.ObjectId(id) });
+        if (!exists) throw new Error('category_not_found');
       }
 
-      next();
-    } catch (error: any) {
-      if (file?.filename) await removeFile(file.filename, 'uploads/reels');
-      next(error);
-    }
-  }
-);
+      const mediaFiles = files.media;
+      if (!mediaFiles || mediaFiles.length === 0) {
+        throw new Error('media_required');
+      }
 
-export const validateUpdateReel = expressAsyncHandler(
-  async (req: any, res, next) => {
-    let file;
-    try {
-      const { caption, categories: categoriesIds } = req.body;
-      file = req.file;
-      if (caption && caption.length === 0) {
-        res.status(400);
-        throw new Error('caption_required');
-      }
-      if (categoriesIds && JSON.parse(categoriesIds).length === 0) {
-        res.status(400);
-        throw new Error('categories_required');
-      }
-      for (let x of JSON.parse(categoriesIds)) {
-        const category = await Category.findById(x).exec();
-        if (!category) {
-          res.status(404);
-          throw new Error('category_not_found');
+      if (mediaType === MEDIA.video) {
+        const mediaFile = mediaFiles[0];
+        if (!mediaFile.mimetype.startsWith('video/')) {
+          throw new Error('invalid_video_format');
         }
-      }
-      if (file) {
-        const fileName = file.filename;
-        const size = file.size;
-        const duration = await getVideoDurationInSeconds(
-          join(REEL_VIDEO_FOLDER, fileName)
-        );
-        if (duration > 60) {
-          res.status(400);
-          throw new Error('video_duration_exceeded');
+        const durationNum = parseFloat(duration);
+        if (isNaN(durationNum) || durationNum <= 0) {
+          throw new Error('invalid_duration');
         }
-        if (size > 100 * 1024 * 1024) {
-          res.status(400);
-          throw new Error('video_size_exceeded');
+      } else if (mediaType === MEDIA.image) {
+        for (const img of mediaFiles) {
+          if (!img.mimetype.startsWith('image/')) {
+            throw new Error('invalid_image_format');
+          }
         }
       }
       next();
     } catch (error: any) {
-      if (file?.filename) await removeFile(file.filename, 'uploads/reels');
-      next(error);
+      res.status(400);
+      throw new Error(error.message);
     }
   }
 );

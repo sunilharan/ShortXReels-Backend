@@ -4,11 +4,11 @@ import path from 'path';
 import {
   imageMaxSize,
   PROFILE_FOLDER,
-  REEL_VIDEO_FOLDER,
+  REEL_FOLDER,
   CATEGORY_FOLDER,
 } from '../config/constants';
 
-[PROFILE_FOLDER, REEL_VIDEO_FOLDER, CATEGORY_FOLDER].forEach((dir) => {
+[PROFILE_FOLDER, REEL_FOLDER, CATEGORY_FOLDER].forEach((dir) => {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -31,7 +31,6 @@ const getFileFilter =
     if (file.mimetype.startsWith(`${type}/`)) {
       cb(null, true);
     } else {
-      
       cb(new Error(`only_${type}_allowed`));
     }
   };
@@ -50,7 +49,7 @@ const getUploader = (
 const uploaders = {
   profile: getUploader(PROFILE_FOLDER, 'image', imageMaxSize),
   category: getUploader(CATEGORY_FOLDER, 'image', imageMaxSize),
-  reel: getUploader(REEL_VIDEO_FOLDER, 'video', 100 * 1024 * 1024),
+  reelVideo: getUploader(REEL_FOLDER, 'video', 100 * 1024 * 1024),
 };
 
 const handleSingleFileUpload =
@@ -61,7 +60,7 @@ const handleSingleFileUpload =
         if (req.file && req.file.path) {
           unlinkSync(req.file.path);
         }
-        next(err);
+        return next(err);
       }
       next();
     });
@@ -77,7 +76,41 @@ export const uploadCategory = handleSingleFileUpload(
   'image'
 );
 
-export const uploadReel = handleSingleFileUpload(uploaders.reel, 'video');
+const reelUploader = multer({
+  storage: getStorage(REEL_FOLDER),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (
+    _: any,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+  ) => {
+    if (
+      file.mimetype.startsWith('video/') ||
+      file.mimetype.startsWith('image/')
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('only_image_or_video_allowed'));
+    }
+  },
+});
+
+export const uploadReel = (req: any, res: any, next: any) => {
+  reelUploader.fields([
+    { name: 'media', maxCount: 10 },
+    { name: 'thumbnail', maxCount: 1 },
+  ])(req, res, (err: any) => {
+    if (err instanceof multer.MulterError || err) {
+      (req.files?.media || []).forEach((f: any) => f.path && unlinkSync(f.path));
+      (req.files?.thumbnail || []).forEach((f: any) => f.path && unlinkSync(f.path));
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'File upload failed',
+      });
+    }
+    next();
+  });
+};
 
 export const handleFileUploadError = (
   err: any,
