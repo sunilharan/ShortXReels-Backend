@@ -51,7 +51,7 @@
   "invalid_media_type": "Invalid media type.",
   "invalid_duration": "Invalid duration.",
   "invalid_image_format": "Invalid image format.",
-  "only_image_or_video_allowed": "either image or video files are allowed.",
+  "multiple_files_with_video": "Only one video file is allowed.",
   "invalid_action": "Invalid action.",
   "invalid_category_id": "Invalid category ID.",
   "comment_content_required": "Comment content is required.",

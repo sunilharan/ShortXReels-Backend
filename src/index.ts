@@ -19,11 +19,17 @@ import {
   checkHealth,
 } from './controllers/common.controller';
 import { adminOnly } from './middlewares/auth.middleware';
+import { FOLDER_LIST } from './config/constants';
+import { existsSync, mkdirSync } from 'fs';
 connectDB();
 
+FOLDER_LIST.forEach((folder) => {
+  if (!existsSync(folder)) {
+    mkdirSync(folder, { recursive: true });
+  }
+});
 const app = express();
 const port = config.port;
-
 app.use(
   cors({
     origin: '*',
@@ -67,6 +73,7 @@ setupSwaggerDocs(app);
 app.use('/profile', express.static('uploads/profiles'));
 app.use('/category', express.static('uploads/categories'));
 app.use('/reel', express.static('uploads/reels'));
+app.use('/thumbnail', express.static('uploads/thumbnails'));
 app.use(notFound);
 app.use(errorHandler);
 app.listen(port, () => {

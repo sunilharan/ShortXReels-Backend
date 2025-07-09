@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
-import { Types } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import { Reel } from '../models/reel.model';
 import { UserRole } from '../config/constants';
 import { t } from 'i18next';
@@ -10,7 +10,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const { reelId: reel, content } = req.body;
 
-    if (!reel || !Types.ObjectId.isValid(reel)) {
+    if (!reel || !ObjectId.isValid(reel)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -51,7 +51,7 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    if (!reelId || !Types.ObjectId.isValid(reelId)) {
+    if (!reelId || !ObjectId.isValid(reelId)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -89,7 +89,7 @@ export const getById = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const commentId = req.params.id;
 
-    if (!commentId || !Types.ObjectId.isValid(commentId)) {
+    if (!commentId || !ObjectId.isValid(commentId)) {
       res.status(400);
       throw new Error('invalid_comment_id');
     }
@@ -121,7 +121,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const commentId = req.params.id;
 
-    if (!commentId || !Types.ObjectId.isValid(commentId)) {
+    if (!commentId || !ObjectId.isValid(commentId)) {
       res.status(400);
       throw new Error('invalid_comment_id');
     }
@@ -130,8 +130,8 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       comment = await Comment.findByIdAndDelete(commentId);
     } else {
       comment = await Comment.findOneAndDelete({
-        _id: new Types.ObjectId(commentId),
-        commentedBy: new Types.ObjectId(userId),
+        _id: new ObjectId(commentId),
+        commentedBy: new ObjectId(userId),
       });
     }
     if (!comment) {
@@ -153,7 +153,7 @@ export const editComment = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const { commentId, content } = req.body;
 
-    if (!commentId || !Types.ObjectId.isValid(commentId)) {
+    if (!commentId || !ObjectId.isValid(commentId)) {
       res.status(400);
       throw new Error('invalid_comment_id');
     }
@@ -171,8 +171,8 @@ export const editComment = expressAsyncHandler(async (req: any, res) => {
     } else {
       comment = await Comment.findOneAndUpdate(
         {
-          _id: new Types.ObjectId(commentId),
-          commentedBy: new Types.ObjectId(userId),
+          _id: new ObjectId(commentId),
+          commentedBy: new ObjectId(userId),
         },
         { content },
         { new: true }
@@ -200,7 +200,7 @@ export const updateComment = expressAsyncHandler(async (req: any, res) => {
     if (!action || !['like', 'unlike', 'edit', 'create'].includes(action)) {
       throw new Error('invalid_action');
     }
-    if (!commentId || !Types.ObjectId.isValid(commentId)) {
+    if (!commentId || !ObjectId.isValid(commentId)) {
       throw new Error('invalid_comment_id');
     }
 
@@ -210,7 +210,7 @@ export const updateComment = expressAsyncHandler(async (req: any, res) => {
     }
 
     const updateOps: any = {};
-    const userObjectId = new Types.ObjectId(userId);
+    const userObjectId = new ObjectId(userId);
 
     if ((action === 'like' || action === 'unlike') && !replyId) {
       const alreadyLiked = commentDoc.likedBy.some(

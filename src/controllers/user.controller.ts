@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { t } from 'i18next';
-import { Types } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import { User } from '../models/user.model';
 import { decryptData, generateToken, verifyToken } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
@@ -411,7 +411,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
     }
     if (userData.interests) {
       updateData.interests = JSON.parse(userData.interests).map(
-        (id: string) => new Types.ObjectId(id)
+        (id: string) => new ObjectId(id)
       );
     }
     const user = await User.findByIdAndUpdate(userId, updateData, {

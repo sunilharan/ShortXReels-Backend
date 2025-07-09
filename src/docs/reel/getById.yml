@@ -1,7 +1,7 @@
 /reel/{id}:
   get:
-    tags: ["Reel"]
-    summary: "Get a reel by id"
+    tags: ['Reel']
+    summary: 'Get a reel by id'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: path
@@ -11,7 +11,7 @@
           type: string
     responses:
       200:
-        description: "Reel fetched successfully"
+        description: 'Reel fetched successfully'
         content:
           application/json:
             schema:
@@ -48,16 +48,16 @@
                             type: string
                     mediaType:
                       type: string
-                      enum: ["video", "image"]
+                      enum: ['video', 'image']
                     media:
-                      type: object
-                      properties:
-                        url:
-                          type: string
-                        name:
-                          type: string
-                        duration:
-                          type: number
+                      oneOf:
+                        - type: string
+                        - type: array
+                          items:
+                            type: string
+                    duration:
+                      type: number
+                      description: 'if mediaType is video'
                     thumbnail:
                       type: string
                     views:
@@ -80,10 +80,10 @@
                       type: string
                       format: date-time
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

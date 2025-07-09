@@ -22,7 +22,7 @@
         name: categories
         schema:
           type: string
-          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+          example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
       - in: query
         name: sortType
         schema:
@@ -37,7 +37,7 @@
         name: mediaType
         schema:
           type: string
-          enum: ["video", "image"]
+          enum: ['video', 'image']
     responses:
       200:
         description: 'Reels fetched successfully'
@@ -82,16 +82,16 @@
                                   type: string
                           mediaType:
                             type: string
-                            enum: ["video", "image"]
+                            enum: ['video', 'image']
                           media:
-                            type: object
-                            properties:
-                              url:
-                                type: string
-                              name:
-                                type: string
-                              duration:
-                                type: number
+                            oneOf:
+                              - type: string
+                              - type: array
+                                items:
+                                  type: string
+                          duration:
+                            type: number
+                            description: 'if mediaType is video'
                           thumbnail:
                             type: string
                           views:
@@ -118,10 +118,10 @@
                     totalPages:
                       type: number
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

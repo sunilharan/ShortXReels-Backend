@@ -1,7 +1,7 @@
 /reel:
   post:
     summary: Create a new reel
-    tags: ["Reel"]
+    tags: ['Reel']
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -19,10 +19,10 @@
                 type: string
               categories:
                 type: string
-                example: "[\"653f5b6b6b6b6b6b6b6b6b6b\", \"653f5b6b6b6b6b6b6b6b6b6c\"]"
+                example: '["653f5b6b6b6b6b6b6b6b6b6b", "653f5b6b6b6b6b6b6b6b6b6c"]'
               mediaType:
                 type: string
-                enum: ["video", "image"]
+                enum: ['video', 'image']
               duration:
                 type: number
                 description: Required if mediaType is video
@@ -69,16 +69,16 @@
                             type: string
                     mediaType:
                       type: string
-                      enum: ["video", "image"]
+                      enum: ['video', 'image']
                     media:
-                      type: object
-                      properties:
-                        url:
-                          type: string
-                        name:
-                          type: string
-                        duration:
-                          type: number
+                      oneOf:
+                        - type: string
+                        - type: array
+                          items:
+                            type: string
+                    duration:
+                      type: number
+                      description: 'if mediaType is video'
                     thumbnail:
                       type: string
                     views:

@@ -6,128 +6,158 @@ import {
   PROFILE_FOLDER,
   REEL_FOLDER,
   CATEGORY_FOLDER,
+  THUMBNAIL_FOLDER,
+  videoMaxSize,
 } from '../config/constants';
 
-[PROFILE_FOLDER, REEL_FOLDER, CATEGORY_FOLDER].forEach((dir) => {
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+[PROFILE_FOLDER, REEL_FOLDER, CATEGORY_FOLDER, THUMBNAIL_FOLDER].forEach((dir) => {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 });
 
 const getStorage = (destination: string) =>
   multer.diskStorage({
     destination: (_, __, cb) => cb(null, destination),
     filename: (_, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      const baseName = path.basename(file.originalname, ext);
-      const uniqueSuffix = `${Date.now()}-${baseName}`;
-      cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+      const ext = path.extname(file.originalname);
+      cb(null, `${Date.now()}${ext}`);
     },
   });
 
 const getFileFilter =
-  (type: 'image' | 'video') =>
+  (allowedTypes: string[]) =>
   (_: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith(`${type}/`)) {
+    if (allowedTypes.some((type) => file.mimetype.startsWith(`${type}/`))) {
       cb(null, true);
     } else {
-      cb(new Error(`only_${type}_allowed`));
+      cb(new Error(`only_${allowedTypes.join('_or_')}_allowed`));
     }
   };
 
-const getUploader = (
-  destination: string,
-  type: 'image' | 'video',
+const createUploader = (
+  folder: string,
+  types: string[],
   maxSize: number
 ) =>
   multer({
-    storage: getStorage(destination),
-    fileFilter: getFileFilter(type),
+    storage: getStorage(folder),
+    fileFilter: getFileFilter(types),
     limits: { fileSize: maxSize },
   });
 
 const uploaders = {
-  profile: getUploader(PROFILE_FOLDER, 'image', imageMaxSize),
-  category: getUploader(CATEGORY_FOLDER, 'image', imageMaxSize),
-  reelVideo: getUploader(REEL_FOLDER, 'video', 100 * 1024 * 1024),
+  profile: createUploader(PROFILE_FOLDER, ['image'], imageMaxSize),
+  category: createUploader(CATEGORY_FOLDER, ['image'], imageMaxSize),
+  reelVideo: createUploader(REEL_FOLDER, ['video'], videoMaxSize),
+  thumbnail: createUploader(THUMBNAIL_FOLDER, ['image'], imageMaxSize),
 };
 
 const handleSingleFileUpload =
-  (uploader: multer.Multer, fieldName: string) =>
+  (uploader: multer.Multer, field: string) =>
   (req: any, res: any, next: any) => {
-    uploader.single(fieldName)(req, res, (err: any) => {
-      if (err) {
-        if (req.file && req.file.path) {
-          unlinkSync(req.file.path);
-        }
-        return next(err);
-      }
-      next();
+    uploader.single(field)(req, res, (err) => {
+      if (err && req.file?.path) unlinkSync(req.file.path);
+      return err ? next(err) : next();
     });
   };
 
-export const uploadProfile = handleSingleFileUpload(
-  uploaders.profile,
-  'profile'
-);
+export const uploadProfile = handleSingleFileUpload(uploaders.profile, 'profile');
+export const uploadCategory = handleSingleFileUpload(uploaders.category, 'image');
 
-export const uploadCategory = handleSingleFileUpload(
-  uploaders.category,
-  'image'
-);
-
-const reelUploader = multer({
-  storage: getStorage(REEL_FOLDER),
-  limits: { fileSize: 100 * 1024 * 1024 },
-  fileFilter: (
-    _: any,
-    file: Express.Multer.File,
-    cb: multer.FileFilterCallback
-  ) => {
-    if (
-      file.mimetype.startsWith('video/') ||
-      file.mimetype.startsWith('image/')
-    ) {
-      cb(null, true);
-    } else {
-      cb(new Error('only_image_or_video_allowed'));
+const cleanUpFiles = (files: any[]) =>
+  (files || []).forEach((f) => {
+    if (f?.path && existsSync(f.path)) {
+      try {
+        unlinkSync(f.path);
+      } catch (err) {}
     }
-  },
-});
+  });
+
+const validateMediaFiles = (files: any[]) => {
+  if (!files?.length) return { valid: false, error: 'media_required' };
+
+  const hasVideo = files.some((f) => f.mimetype.startsWith('video/'));
+  const hasImage = files.some((f) => f.mimetype.startsWith('image/'));
+
+  if (hasVideo && files.length > 1) {
+    return { valid: false, error: 'multiple_files_with_video' };
+  }
+  if (hasVideo && hasImage) {
+    return { valid: false, error: 'mix_video_image_files' };
+  }
+
+  return { valid: true };
+};
 
 export const uploadReel = (req: any, res: any, next: any) => {
-  reelUploader.fields([
+  const upload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        let dir = '';
+        if (file.fieldname === 'media') {
+          dir = REEL_FOLDER;
+        } else if (file.fieldname === 'thumbnail') {
+          dir = THUMBNAIL_FOLDER;
+        } else {
+          return cb(new Error(`Unexpected field: ${file.fieldname}`), '');
+        }
+      
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+      },
+      filename: (_, file, cb) => cb(null, `${Date.now()}${path.extname(file.originalname)}`),
+    }),
+    fileFilter: (req, file, cb) => {
+      const { fieldname, mimetype } = file;
+      if (
+        (fieldname === 'media' && (mimetype.startsWith('video/') || mimetype.startsWith('image/'))) ||
+        (fieldname === 'thumbnail' && mimetype.startsWith('image/'))
+      ) {
+        return cb(null, true);
+      }
+      cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', fieldname));
+    },
+    limits: { fileSize: videoMaxSize },
+  }).fields([
     { name: 'media', maxCount: 10 },
     { name: 'thumbnail', maxCount: 1 },
-  ])(req, res, (err: any) => {
-    if (err instanceof multer.MulterError || err) {
-      (req.files?.media || []).forEach((f: any) => f.path && unlinkSync(f.path));
-      (req.files?.thumbnail || []).forEach((f: any) => f.path && unlinkSync(f.path));
-      return res.status(400).json({
-        success: false,
-        error: err.message || 'File upload failed',
-      });
+  ]);
+
+  upload(req, res, (err) => {
+    const mediaFiles = Array.isArray(req.files?.media) ? req.files.media : [];
+    const thumbnailFile = Array.isArray(req.files?.thumbnail) ? req.files.thumbnail[0] : null;
+
+    if (err) {
+      cleanUpFiles([...mediaFiles, thumbnailFile].filter(Boolean));
+      throw new Error(err.message);
     }
+
+    const validation = validateMediaFiles(mediaFiles);
+    if (!validation.valid) {
+      cleanUpFiles([...mediaFiles, thumbnailFile].filter(Boolean));
+      throw new Error(validation.error);
+    }
+
+    if (!mediaFiles.length) {
+      cleanUpFiles([thumbnailFile]);
+      throw new Error('media_required');
+    }
+
+    const isVideo = mediaFiles[0].mimetype.startsWith('video/');
+    if (isVideo && mediaFiles.length > 1) {
+      cleanUpFiles([...mediaFiles, thumbnailFile].filter(Boolean));
+      throw new Error('multiple_files_with_video');
+    }
+
+    req.mediaType = isVideo ? 'video' : 'image';
+    if (thumbnailFile) req.thumbnailFile = thumbnailFile;
+
     next();
   });
 };
 
-export const handleFileUploadError = (
-  err: any,
-  req: any,
-  res: any,
-  next: any
-) => {
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({
-      success: false,
-      error: err.message,
-    });
-  } else if (err) {
-    return res.status(500).json({
-      success: false,
-      error: 'Error uploading file',
-    });
+export const handleFileUploadError = (err: any, req: any, res: any, next: any) => {
+  if (err) {
+    throw new Error(err.message);
   }
   next();
 };

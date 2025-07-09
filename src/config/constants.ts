@@ -11,12 +11,14 @@ export const UPLOAD_FOLDER = process.cwd() + '/uploads';
 export const PROFILE_FOLDER = UPLOAD_FOLDER + '/profiles';
 export const REEL_FOLDER = UPLOAD_FOLDER + '/reels';
 export const CATEGORY_FOLDER = UPLOAD_FOLDER + '/categories';
+export const THUMBNAIL_FOLDER = UPLOAD_FOLDER + '/thumbnails';
 
 export const FOLDER_LIST = [
   UPLOAD_FOLDER,
   PROFILE_FOLDER,
   REEL_FOLDER,
   CATEGORY_FOLDER,
+  THUMBNAIL_FOLDER,
 ];
 
 export const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;

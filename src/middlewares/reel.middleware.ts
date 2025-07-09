@@ -3,8 +3,7 @@ import {
   MEDIA,
 } from '../config/constants';
 import { Category } from '../models/category.model';
-import { existsSync, unlinkSync } from 'fs';
-import { Types } from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 export const validateCreateReel = expressAsyncHandler(
   async (req: any, res, next) => {
@@ -26,7 +25,7 @@ export const validateCreateReel = expressAsyncHandler(
       }
 
       for (const id of categories) {
-        const exists = await Category.exists({ _id: new Types.ObjectId(id) });
+        const exists = await Category.exists({ _id: new ObjectId(id) });
         if (!exists) throw new Error('category_not_found');
       }
 

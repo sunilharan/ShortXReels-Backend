@@ -1,15 +1,9 @@
 /reel:
   get:
-    tags: ["Reel"]
-    summary: "Get reels"
+    tags: ['Reel']
+    summary: 'Get reels'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
-      - in: query
-        name: feedType
-        required: true
-        schema:
-          type: string
-          enum: ['popular', 'newHot','original', 'userIntrested']
       - in: query
         name: page
         required: false
@@ -23,26 +17,19 @@
           type: integer
           default: 10
       - in: query
-        name: search
+        name: category
         required: false
         schema:
           type: string
-          description: "Search term for captions or categories"
       - in: query
-        name: categories
+        name: reels
         required: false
         schema:
           type: string
-          example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
-      - in: query
-        name: mediaType
-        required: false
-        schema:
-          type: string
-          enum: ["video", "image"]
+          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
     responses:
       200:
-        description: "Reels fetched successfully"
+        description: 'Reels fetched successfully'
         content:
           application/json:
             schema:
@@ -84,16 +71,16 @@
                                   type: string
                           mediaType:
                             type: string
-                            enum: ["video", "image"]
+                            enum: ['video', 'image']
                           media:
-                            type: object
-                            properties:
-                              url:
-                                type: string
-                              name:
-                                type: string
-                              duration:
-                                type: number
+                            oneOf:
+                              - type: string
+                              - type: array
+                                items:
+                                  type: string
+                          duration:
+                            type: number
+                            description: 'if mediaType is video'
                           thumbnail:
                             type: string
                           views:
@@ -113,19 +100,19 @@
                             type: string
                             format: date-time
                           updatedAt:
-                            type: string  
+                            type: string
                             format: date-time
                     totalRecords:
                       type: integer
                     totalPages:
                       type: integer
       400:
-        description: "Bad request"
+        description: 'Bad request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Reels not found"
-      500:  
-        description: "Internal server error"
+        description: 'Reels not found'
+      500:
+        description: 'Internal server error'

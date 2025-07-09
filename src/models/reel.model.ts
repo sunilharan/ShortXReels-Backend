@@ -1,4 +1,4 @@
-import { Schema, model, Document, PopulatedDoc } from 'mongoose';
+import mongoose, { Schema, model, Document, PopulatedDoc } from 'mongoose';
 import { IUser } from './user.model';
 import { ICategory } from './category.model';
 import { MEDIA, STATUS } from '../config/constants';
@@ -8,7 +8,8 @@ export interface IReel extends Document {
   createdBy: PopulatedDoc<IUser & Document>;
   caption: string;
   thumbnail?: string;
-  media?: any;
+  media?: string | string[];
+  duration?: number;
   mediaType: MEDIA;
   views: number;
   likedBy: PopulatedDoc<IUser & Document>[];
@@ -25,6 +26,7 @@ const reelSchema = new Schema<IReel>(
     thumbnail: { type: String },
     media: Schema.Types.Mixed,
     mediaType: { type: String, enum: Object.values(MEDIA), required: true },
+    duration: { type: Number },
     views: { type: Number, default: 0 },
     likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     categories: [
@@ -43,17 +45,15 @@ const reelSchema = new Schema<IReel>(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
-        if (ret?.media) {
-          if (ret.mediaType === MEDIA.video) {
-            ret.media.url = `${config.host}/api/reel/view/${ret.id}`;
-          } else if (ret.mediaType === MEDIA.image) {
-            ret.media = ret.media.map(
-              (img: any) => `${config.host}/reel/${img}`
-            );
-          }
+        if (ret.media && ret.mediaType === MEDIA.video) {
+          ret.media = `${config.host}/api/reel/view/${ret.id}`;
+        } else if (ret.mediaType === MEDIA.image && ret.media) {
+          ret.media = ret.media.map(
+            (img: any) => `${config.host}/reel/${img}`
+          );
         }
         if (ret?.thumbnail) {
-          ret.thumbnail = `${config.host}/reel/${ret.thumbnail}`;
+          ret.thumbnail = `${config.host}/thumbnail/${ret.thumbnail}`;
         }
       },
     },

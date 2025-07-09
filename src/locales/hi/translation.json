@@ -51,7 +51,7 @@
   "invalid_media_type": "अमान्य मीडिया टाइप।",
   "invalid_duration": "अमान्य समयमर्याद।",
   "invalid_image_format": "अमान्य ईमाज फॉर्मैट।",
-  "only_image_or_video_allowed": "केवल ईमाज अथवा वीडियो फ़ाइलें अनुमत हैं।",
+  "multiple_files_with_video": "एक वीडियो फाइल मान्य है।",
   "invalid_action": "अमान्य क्रिया।",
   "invalid_category_id": "अमान्य श्रेणी आईडी।",
   "comment_content_required": "टिप्पणी सामग्री आवश्यक है।",

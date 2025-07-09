@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
-import { Types } from 'mongoose';
+import { ObjectId } from 'mongodb';
 import { UserRole, Reasons, STATUS } from '../config/constants';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
@@ -10,7 +10,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const { reelId: reel, reason, description } = req.body;
 
-    if (!reel || !Types.ObjectId.isValid(reel)) {
+    if (!reel || !ObjectId.isValid(reel)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -37,8 +37,8 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       throw new Error('reel_not_found');
     }
     const report = await Report.create({
-      reportedBy: new Types.ObjectId(userId),
-      reel: new Types.ObjectId(reel),
+      reportedBy: new ObjectId(userId),
+      reel: new ObjectId(reel),
       reason,
       description,
     });
@@ -136,7 +136,7 @@ export const editReport = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id, reason, description } = req.body;
     const updateData: any = {};
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_report_id');
     }
@@ -165,8 +165,8 @@ export const editReport = expressAsyncHandler(async (req: any, res) => {
     } else {
       report = await Report.findOneAndUpdate(
         {
-          _id: new Types.ObjectId(id),
-          reportedBy: new Types.ObjectId(userId),
+          _id: new ObjectId(id),
+          reportedBy: new ObjectId(userId),
           status: { $ne: STATUS.deleted },
         },
         { ...updateData },
@@ -196,7 +196,7 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id } = req.params;
 
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_report_id');
     }
@@ -208,8 +208,8 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
     } else {
       report = await Report.findOneAndUpdate(
         {
-          _id: new Types.ObjectId(id),
-          reportedBy: new Types.ObjectId(userId),
+          _id: new ObjectId(id),
+          reportedBy: new ObjectId(userId),
           status: { $ne: STATUS.deleted },
         },
         {
@@ -239,7 +239,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id, reviewResultValid } = req.body;
 
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_report_id');
     }
@@ -251,7 +251,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     const report = await Report.findByIdAndUpdate(
       id,
       {
-        reviewBy: new Types.ObjectId(userId),
+        reviewBy: new ObjectId(userId),
         reviewResultValid: reviewResultValid,
         reviewDate: new Date(),
       },

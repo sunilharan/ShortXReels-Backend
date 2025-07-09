@@ -8,10 +8,12 @@ import {
   UserRole,
 } from '../config/constants';
 import { IReel, Reel } from '../models/reel.model';
-import { Types } from 'mongoose';
 import { t } from 'i18next';
-import { createReadStream, existsSync, statSync } from 'fs';
+import { ObjectId } from 'mongodb';
+import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
 import { User } from '../models/user.model';
+import { Category } from '../models/category.model';
+import { config } from '../config/config';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -19,37 +21,15 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const search = req.query.search || '';
-    const searchRegex = new RegExp(search, 'i');
     const matchQuery: any = {};
-    const categoriesFilter = req.query.categories || '';
-    const feedType = req.query.feedType || '';
-    const mediaType = req.query.mediaType || '';
+    const category = req.query.category || '';
+    const removeReels = JSON.parse(req.query.reels || '[]');
     let sortQuery = {};
-    if (feedType === 'newHot') {
-      sortQuery = { createdAt: -1, views: -1 };
-    } else if (feedType === 'popular') {
-      sortQuery = { views: -1, createdAt: -1 };
-    } else if (feedType === 'original') {
-      sortQuery = { createdAt: 1, views: -1 };
-    } else if (feedType === 'userIntrested') {
-      const user = await User.findById(userId);
-      if (user?.interests?.length) {
-        matchQuery.categories = { $in: user.interests };
-      }
+    if (category) {
+      matchQuery.categories = { $in: [new ObjectId(category)] };
     }
-    if (categoriesFilter) {
-      matchQuery.categories = {
-        $in: JSON.parse(categoriesFilter).map(
-          (id: string) => new Types.ObjectId(id)
-        ),
-      };
-    }
-    if (search) {
-      matchQuery.caption = { $regex: searchRegex };
-    }
-    if (mediaType) {
-      matchQuery.mediaType = mediaType;
+    if (removeReels.length) {
+      matchQuery._id = { $nin: removeReels.map((id: string) => new ObjectId(id)) };
     }
     matchQuery.status = STATUS.active;
     const total = await Reel.countDocuments(matchQuery);
@@ -74,6 +54,200 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     throw new Error(error.message);
   }
 });
+export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userId = req.userId;
+    const size = 5;
+    const search = req.query.search || '';
+    const searchRegex = new RegExp(search, 'i');
+
+    const user = await User.findById(userId);
+    const interestIds = user?.interests?.map((i: any) => new ObjectId(i.id)) || [];
+
+    const result = await Reel.aggregate([
+      {
+        $facet: {
+          interestCategoryReels: [
+            {
+              $match: {
+                status: STATUS.active,
+                categories: { $in: interestIds },
+                caption: { $regex: searchRegex },
+              },
+            },
+            {
+              $addFields: {
+                matchedCategories: {
+                  $filter: {
+                    input: "$categories",
+                    cond: { $in: ["$$this", interestIds] },
+                  },
+                },
+              },
+            },
+            {
+              $addFields: {
+                chosenCategory: { $arrayElemAt: ["$matchedCategories", 0] },
+              },
+            },
+            {
+              $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "createdBy",
+              },
+            },
+            { $unwind: "$createdBy" },
+            {
+              $project: {
+                _id: 0,
+                id: "$_id",
+                caption: 1,
+                media: {
+                  $cond: {
+                    if: { $isArray: "$media" },
+                    then: {
+                      $map: {
+                        input: "$media",
+                        as: "img",
+                        in: { $concat: [config.host + "/reel/", "$$img"] },
+                      },
+                    },
+                    else: {
+                      $concat: [config.host + "/api/reel/view/", { $toString: "$_id" }],
+                    },
+                  },
+                },
+                duration: 1,
+                thumbnail: {
+                  $concat: [config.host + "/thumbnail/", "$thumbnail"],
+                },
+                views: 1,
+                categoryId: "$chosenCategory",
+                createdBy: {
+                  name: "$createdBy.name",
+                  profile: {
+                    $concat: [config.host + "/profile/", "$createdBy.profile"],
+                  },
+                  id: "$createdBy._id",
+                },
+              },
+            },
+            {
+              $group: {
+                _id: "$categoryId",
+                reels: { $addToSet: "$$ROOT" },
+              },
+            },
+            {
+              $lookup: {
+                from: "categories",
+                localField: "_id",
+                foreignField: "_id",
+                as: "category",
+              },
+            },
+            { $unwind: "$category" },
+            {
+              $project: {
+                _id: 0,
+                category: {
+                  id: "$category._id",
+                  name: "$category.name",
+                  image: {
+                    $concat: [config.host + "/category/", "$category.image"],
+                  },
+                },
+                reels: { $slice: ["$reels", size] },
+              },
+            },
+          ],
+          allReels: [
+            {
+              $match: {
+                status: STATUS.active,
+                caption: { $regex: searchRegex },
+                categories: { $not: { $elemMatch: { $in: interestIds } } },
+              },
+            },
+            { $sort: { createdAt: -1 } },
+            {
+              $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "createdBy",
+              },
+            },
+            { $unwind: "$createdBy" },
+            {
+              $project: {
+                _id: 0,
+                id: "$_id",
+                caption: 1,
+                media: {
+                  $cond: {
+                    if: { $isArray: "$media" },
+                    then: {
+                      $map: {
+                        input: "$media",
+                        as: "img",
+                        in: { $concat: [config.host + "/reel/", "$$img"] },
+                      },
+                    },
+                    else: {
+                      $concat: [config.host + "/api/reel/view/", { $toString: "$_id" }],
+                    },
+                  },
+                },
+                duration: 1,
+                thumbnail: {
+                  $concat: [config.host + "/thumbnail/", "$thumbnail"],
+                },
+                views: 1,
+                createdBy: {
+                  name: "$createdBy.name",
+                  profile: {
+                    $concat: [config.host + "/profile/", "$createdBy.profile"],
+                  },
+                  id: "$createdBy._id",
+                },
+              },
+            },
+            { $limit: size },
+          ],
+        },
+      },
+    ]);
+
+    const { interestCategoryReels, allReels } = result[0];
+
+    const usedReelIds = new Set(
+      interestCategoryReels.flatMap((cat: any) =>
+        cat.reels.map((r: any) => r.id.toString())
+      )
+    );
+
+    const recommendedReels = allReels.filter((r: any) => !usedReelIds.has(r.id.toString()));
+
+    if (recommendedReels.length) {
+      interestCategoryReels.push({
+        category: {
+          id: "recommended",
+          name: "Recommended",
+          image: `${config.host}/category/default.jpg`,
+        },
+        reels: recommendedReels,
+      });
+    }
+
+    res.status(200).json({ success: true, data: interestCategoryReels });
+  } catch (error: any) {
+    console.error("Error in dashboardReels:", error.message);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
 
 export const userReels = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -96,12 +270,12 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
       matchQuery.caption = { $regex: searchRegex };
     }
     if (userId && typeof userId === 'string') {
-      matchQuery.createdBy = new Types.ObjectId(userId);
+      matchQuery.createdBy = new ObjectId(userId);
     }
     if (categoriesFilter) {
       matchQuery.categories = {
         $in: JSON.parse(categoriesFilter).map(
-          (id: string) => new Types.ObjectId(id)
+          (id: string) => new ObjectId(id)
         ),
       };
     }
@@ -135,7 +309,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
 export const reelById = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id } = req.params;
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -163,11 +337,12 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
   const userId = req.userId;
   const { caption, categories: rawCategories, mediaType, duration } = req.body;
   const categories = JSON.parse(rawCategories).map(
-    (id: string) => new Types.ObjectId(id)
+    (id: string) => new ObjectId(id)
   );
+
   const files = req.files || {};
   let reelData: Partial<IReel> = {
-    createdBy: new Types.ObjectId(userId),
+    createdBy: new ObjectId(userId),
     caption,
     categories,
     mediaType,
@@ -177,29 +352,55 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
   if (mediaType === MEDIA.video) {
     const mediaFile = files.media?.[0];
     if (mediaFile) {
-      reelData.media = {
-        url: mediaFile.filename,
-        name: mediaFile.originalname,
-        duration: parseFloat(duration) || 0,
-      };
+
+      reelData.media = mediaFile.filename;
+      reelData.duration = parseFloat(duration) || 0;
+    } else {
+
     }
   } else if (mediaType === MEDIA.image) {
     const images = files.media?.map((img: any) => img.filename) || [];
+
     reelData.media = images.length > 0 ? images : [];
+  } else {
+
   }
 
   const thumbnail = files.thumbnail?.[0];
   if (thumbnail) {
+
     reelData.thumbnail = thumbnail.filename;
+  } else {
+
   }
 
-  const reel = await Reel.create(reelData);
-  const populatedReel = await Reel.findById(reel._id)
-    .populate('createdBy', 'name profile')
-    .populate('categories', 'name image')
-    .populate('likedBy', 'name profile');
+  try {
+    const reel = await Reel.create(reelData);
 
-  res.status(201).json({ success: true, data: populatedReel });
+
+    const populatedReel = await Reel.findById(reel._id)
+      .populate('createdBy', 'name profile')
+      .populate('categories', 'name image')
+      .populate('likedBy', 'name profile');
+
+
+    res.status(201).json({ success: true, data: populatedReel });
+  } catch (error) {
+    console.error('Error creating reel');
+    // Clean up uploaded files if database operation fails
+    if (files.media) {
+      files.media.forEach((file: any) => {
+        try {
+          if (file.path && existsSync(file.path)) {
+            unlinkSync(file.path);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up file:', cleanupErr);
+        }
+      });
+    }
+    throw error; // This will be caught by express-async-handler
+  }
 });
 
 export const deleteReel = expressAsyncHandler(async (req: any, res) => {
@@ -208,7 +409,7 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id } = req.params;
 
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -225,15 +426,19 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     }
     if (reel.media) {
       if (reel.mediaType === MEDIA.video) {
-        await removeFile(reel.media.url, 'uploads/reels');
+        await removeFile(reel?.media as string, 'uploads/reels');
       } else if (reel.mediaType === MEDIA.image) {
-        reel.media.forEach((img: any) => {
-          removeFile(img, 'uploads/reels');
-        });
+        if (Array.isArray(reel.media)) {
+          reel.media.forEach((img: any) => {
+            removeFile(img, 'uploads/reels');
+          });
+        } else {
+          removeFile(reel.media, 'uploads/reels');
+        }
       }
     }
     if (reel.thumbnail) {
-      await removeFile(reel.thumbnail, 'uploads/reels');
+      await removeFile(reel.thumbnail, 'uploads/thumbnails');
     }
     res.status(200).json({
       success: true,
@@ -251,7 +456,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.userId;
     const { id, action } = req.body;
 
-    if (!id || !Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -271,7 +476,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         if (!alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $addToSet: { likedBy: new Types.ObjectId(userId) } },
+            { $addToSet: { likedBy: new ObjectId(userId) } },
             { new: true }
           ).exec();
         } else {
@@ -281,7 +486,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         if (alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $pull: { likedBy: new Types.ObjectId(userId) } },
+            { $pull: { likedBy: new ObjectId(userId) } },
             { new: true }
           ).exec();
         } else {
@@ -311,8 +516,8 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
     console.log(`Streaming video for ID: ${req.params.id}`);
-    const reelId = new Types.ObjectId(req.params.id);
-    if (!reelId || !Types.ObjectId.isValid(reelId)) {
+    const reelId = new ObjectId(req.params.id);
+    if (!reelId || !ObjectId.isValid(reelId)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
@@ -321,12 +526,12 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    if (reel.mediaType !== MEDIA.video || !reel.media?.url) {
+    if (reel.mediaType !== MEDIA.video || !reel.media) {
       res.status(404);
       throw new Error('media_not_found');
     }
 
-    const videoPath = join(REEL_FOLDER, reel.media.url);
+    const videoPath = join(REEL_FOLDER, reel.media as string);
     if (!existsSync(videoPath)) {
       res.status(404);
       throw new Error('video_not_found');
@@ -372,7 +577,7 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
         'Content-Length': fileSize,
         'Content-Type': 'video/mp4',
         'Content-Disposition': `inline; filename="${reel.caption}${path.extname(
-          reel.media?.url || ''
+          (reel.media as string) || ''
         )}"`,
         'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
