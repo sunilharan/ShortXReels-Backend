@@ -8,21 +8,21 @@
         name: page
         required: false
         schema:
-          type: integer
+          type: number
           default: 1
       - in: query
         name: limit
         required: false
         schema:
-          type: integer
+          type: number
           default: 10
       - in: query
-        name: category
+        name: categoryId
         required: false
         schema:
           type: string
       - in: query
-        name: reels
+        name: reelIds
         required: false
         schema:
           type: string
@@ -76,11 +76,11 @@
                             type: string
                             example: "active"
                           totalLikes:
-                            type: integer
+                            type: number
                           totalComments:
-                            type: integer
+                            type: number
                           totalViews:
-                            type: integer
+                            type: number
                           isLiked:
                             type: boolean
                           createdAt:
@@ -91,9 +91,9 @@
                             format: date-time
                             nullable: true
                     totalRecords:
-                      type: integer
+                      type: number
                     totalPages:
-                      type: integer
+                      type: number
       400:
         description: 'Bad request'
       401:

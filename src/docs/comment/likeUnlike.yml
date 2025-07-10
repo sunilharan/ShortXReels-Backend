@@ -1,0 +1,44 @@
+/comment/likeUnlike:
+  post:
+    tags: ["Comment"]
+    summary: Like or unlike a comment
+    parameters:
+      - $ref: "#/components/parameters/AcceptLanguage"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              commentId:
+                type: string
+                required: true
+              action:
+                type: string
+                enum: ["like", "unlike"]
+                example: "like"
+                required: true
+              replyId:
+                type: string
+    responses:
+      200:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

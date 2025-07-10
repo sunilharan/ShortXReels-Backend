@@ -66,11 +66,11 @@
                               type: string
                               enum: ['video', 'image']
                             totalViews:
-                              type: integer
+                              type: number
                             totalLikes:
-                              type: integer
+                              type: number
                             totalComments:
-                              type: integer
+                              type: number
                             createdAt:
                               type: string
                               format: date-time

@@ -13,25 +13,25 @@ import { t } from 'i18next';
 import { ObjectId } from 'mongodb';
 import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
 import { User } from '../models/user.model';
-import { Category } from '../models/category.model';
 import { config } from '../config/config';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.userId;
-    const page = parseInt(req.query.page) || 1;
+    // const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    const removeReels = JSON.parse(req.query.reels || '[]');
+    const removeReels = JSON.parse(req.query.reelIds || '[]');
     const matchQuery: any = { status: STATUS.active };
-
+    const categoryId = req.query.categoryId || '';
+    if (categoryId && categoryId !== 'recommended') {
+      matchQuery.categories = { $in: [new ObjectId(categoryId)] };
+    }
+    const total = await Reel.countDocuments(matchQuery);
     if (removeReels.length) {
       matchQuery._id = {
         $nin: removeReels.map((id: string) => new ObjectId(id)),
       };
     }
-
-    const total = await Reel.countDocuments(matchQuery);
     const reels = await Reel.aggregate([
       { $match: matchQuery },
       {
@@ -56,7 +56,20 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       },
       {
         $addFields: {
-          totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
+          totalViews: {
+            $cond: {
+              if: { $isArray: '$viewedBy' },
+              then: { $size: '$viewedBy' },
+              else: 0,
+            },
+          },
+          totalLikes: {
+            $cond: {
+              if: { $isArray: '$likedBy' },
+              then: { $size: '$likedBy' },
+              else: 0,
+            },
+          },
           totalComments: {
             $cond: [
               { $gt: [{ $size: '$commentStats' }, 0] },
@@ -64,7 +77,6 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
               0,
             ],
           },
-          totalViews: { $ifNull: ['$views', 0] },
         },
       },
       {
@@ -91,7 +103,18 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
             $concat: [config.host + '/thumbnail/', '$thumbnail'],
           },
           'createdBy.profile': {
-            $concat: [config.host + '/profile/', '$createdBy.profile'],
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$createdBy.profile', ''] },
+                  { $eq: ['$createdBy.profile', null] },
+                ],
+              },
+              then: '',
+              else: {
+                $concat: [config.host + '/profile/', '$createdBy.profile'],
+              },
+            },
           },
         },
       },
@@ -111,13 +134,26 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
           createdAt: 1,
           createdBy: {
             name: '$createdBy.name',
-            profile: '$createdBy.profile',
+            profile: {
+              $cond: {
+                if: {
+                  $or: [
+                    { $eq: ['$createdBy.profile', null] },
+                    { $eq: ['$createdBy.profile', ''] },
+                    { $not: ['$createdBy.profile'] },
+                  ],
+                },
+                then: '$$REMOVE',
+                else: {
+                  $concat: [config.host + '/profile/', '$createdBy.profile'],
+                },
+              },
+            },
             id: '$createdBy._id',
           },
         },
       },
       { $sort: { createdAt: -1 } },
-      { $skip: skip },
       { $limit: limit },
     ]);
 
@@ -130,7 +166,6 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       },
     });
   } catch (error: any) {
-    console.error(error);
     res.status(400).json({ success: false, message: error.message });
   }
 });
@@ -193,6 +228,20 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
             },
             {
               $addFields: {
+                totalViews: {
+                  $cond: {
+                    if: { $isArray: '$viewedBy' },
+                    then: { $size: '$viewedBy' },
+                    else: 0,
+                  },
+                },
+                totalLikes: {
+                  $cond: {
+                    if: { $isArray: '$likedBy' },
+                    then: { $size: '$likedBy' },
+                    else: 0,
+                  },
+                },
                 totalComments: {
                   $cond: [
                     { $gt: [{ $size: '$commentStats' }, 0] },
@@ -229,17 +278,32 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
                 thumbnail: {
                   $concat: [config.host + '/thumbnail/', '$thumbnail'],
                 },
-                totalViews: '$views',
                 mediaType: 1,
                 isLiked: { $in: [new ObjectId(userId), '$likedBy'] },
-                totalLikes: { $size: '$likedBy' },
-                categoryId: '$chosenCategory',
+                totalViews: 1,
+                totalLikes: 1,
                 totalComments: 1,
+                categoryId: '$chosenCategory',
                 createdAt: 1,
                 createdBy: {
                   name: '$createdBy.name',
                   profile: {
-                    $concat: [config.host + '/profile/', '$createdBy.profile'],
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$createdBy.profile', null] },
+                          { $eq: ['$createdBy.profile', ''] },
+                          { $not: ['$createdBy.profile'] },
+                        ],
+                      },
+                      then: '$$REMOVE',
+                      else: {
+                        $concat: [
+                          config.host + '/profile/',
+                          '$createdBy.profile',
+                        ],
+                      },
+                    },
                   },
                   id: '$createdBy._id',
                 },
@@ -324,6 +388,20 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
             },
             {
               $addFields: {
+                totalViews: {
+                  $cond: {
+                    if: { $isArray: '$viewedBy' },
+                    then: { $size: '$viewedBy' },
+                    else: 0,
+                  },
+                },
+                totalLikes: {
+                  $cond: {
+                    if: { $isArray: '$likedBy' },
+                    then: { $size: '$likedBy' },
+                    else: 0,
+                  },
+                },
                 totalComments: {
                   $cond: [
                     { $gt: [{ $size: '$commentStats' }, 0] },
@@ -360,16 +438,31 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
                 thumbnail: {
                   $concat: [config.host + '/thumbnail/', '$thumbnail'],
                 },
-                totalViews: '$views',
                 mediaType: 1,
-                totalLikes: { $size: '$likedBy' },
+                totalViews: 1,
+                totalLikes: 1,
                 totalComments: 1,
                 createdAt: 1,
                 isLiked: { $in: [new ObjectId(userId), '$likedBy'] },
                 createdBy: {
                   name: '$createdBy.name',
                   profile: {
-                    $concat: [config.host + '/profile/', '$createdBy.profile'],
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$createdBy.profile', null] },
+                          { $eq: ['$createdBy.profile', ''] },
+                          { $not: ['$createdBy.profile'] },
+                        ],
+                      },
+                      then: '$$REMOVE',
+                      else: {
+                        $concat: [
+                          config.host + '/profile/',
+                          '$createdBy.profile',
+                        ],
+                      },
+                    },
                   },
                   id: '$createdBy._id',
                 },
@@ -406,8 +499,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
 
     res.status(200).json({ success: true, data: interestCategoryReels });
   } catch (error: any) {
-    console.error('Error in dashboardReels:', error.message);
-    res.status(400).json({ success: false, message: error.message });
+    throw error;
   }
 });
 
@@ -460,9 +552,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
       },
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -477,6 +567,7 @@ export const reelById = expressAsyncHandler(async (req: any, res) => {
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
       .populate('likedBy', 'name profile')
+      .populate('viewedBy', 'name profile')
       .exec();
     if (!reel) {
       res.status(404);
@@ -487,9 +578,7 @@ export const reelById = expressAsyncHandler(async (req: any, res) => {
       data: reel,
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -512,7 +601,6 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       caption,
       categories,
       mediaType,
-      views: 0,
     };
 
     if (mediaType === MEDIA.video) {
@@ -535,12 +623,11 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const populatedReel = await Reel.findById(reel._id)
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
-      .populate('likedBy', 'name profile');
+      .populate('likedBy', 'name profile')
+      .populate('viewedBy', 'name profile');
     res.status(201).json({ success: true, data: populatedReel });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -586,9 +673,7 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       message: t('reel_deleted'),
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -641,18 +726,16 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     }
     res.status(200).json({
       success: true,
-      message: 'like_unlike_success',
+      message: t('like_unlike_success'),
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
-    console.log(`Streaming video for ID: ${req.params.id}`);
+    // console.log(`Streaming video for ID: ${req.params.id}`);
     const reelId = new ObjectId(req.params.id);
     if (!reelId || !ObjectId.isValid(reelId)) {
       res.status(400);
@@ -677,10 +760,10 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const stat = statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
-
-    await Reel.findByIdAndUpdate(reelId, {
-      $inc: { views: 1 },
-    }).exec();
+    // const userId = req.userId;
+    // await Reel.findByIdAndUpdate(reelId, {
+    //   $push: { viewedBy: new ObjectId(userId) },
+    // }).exec();
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
@@ -726,7 +809,6 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
       file.pipe(res);
     }
   } catch (error) {
-    console.error('Video stream error:', error);
-    res.status(500).json({ message: 'internal_server_error' });
+    throw error;
   }
 });

@@ -55,10 +55,7 @@ i18next
     }
   );
 app.use(i18nextMiddleware.handle(i18next));
-app.use((req, res, next) => {
-  i18next.changeLanguage(req.headers['accept-language']);
-  next();
-});
+
 app.use('/api/user', userRouter);
 app.use('/api/category', categoryRouter);
 app.use('/api/reel', reelRouter);

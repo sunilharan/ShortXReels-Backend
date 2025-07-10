@@ -11,7 +11,7 @@ export interface IReel extends Document {
   media?: string | string[];
   duration?: number;
   mediaType: MEDIA;
-  views: number;
+  viewedBy: PopulatedDoc<IUser & Document>[];
   likedBy: PopulatedDoc<IUser & Document>[];
   categories: PopulatedDoc<ICategory & Document>[];
   status: STATUS;
@@ -27,7 +27,7 @@ const reelSchema = new Schema<IReel>(
     media: Schema.Types.Mixed,
     mediaType: { type: String, enum: Object.values(MEDIA), required: true },
     duration: { type: Number },
-    views: { type: Number, default: 0 },
+    viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     categories: [
       { type: Schema.Types.ObjectId, ref: 'Category', required: true },

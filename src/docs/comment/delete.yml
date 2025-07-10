@@ -1,15 +1,20 @@
-/comment/{id}:
+/comment:
   delete:
     tags: ["Comment"]
     summary: Delete a comment
     description: Remove a comment from a reel.
     parameters:
-      - in: path
-        name: id
+      - in: query
+        name: commentId
         required: true
         schema:
           type: string
         description: The ID of the comment to delete.
+      - in: query
+        name: replyId
+        schema:
+          type: string
+        description: The ID of the reply to delete.
       - $ref: '#/components/parameters/AcceptLanguage'
     responses:
       200:
@@ -23,6 +28,8 @@
                   type: boolean
                 message:
                   type: string
+                data:
+                  type: number
       400:
         description: "Bad Request"
       401:

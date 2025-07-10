@@ -7,11 +7,11 @@
       - in: query
         name: page
         schema:
-          type: integer
+          type: number
       - in: query
         name: limit
         schema:
-          type: integer
+          type: number
       - in: query
         name: search
         schema:
@@ -130,9 +130,9 @@
                             type: string
                             format: date-time
                     totalRecords:
-                      type: integer
+                      type: number
                     totalPages:
-                      type: integer
+                      type: number
       400:
         description: Bad Request
       401:

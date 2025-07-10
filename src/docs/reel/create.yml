@@ -81,8 +81,17 @@
                       description: 'if mediaType is video'
                     thumbnail:
                       type: string
-                    views:
-                      type: number
+                    viewedBy:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          profile:
+                            type: string
                     likedBy:
                       type: array
                       items:

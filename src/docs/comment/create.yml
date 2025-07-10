@@ -1,9 +1,9 @@
 /comment:
   post:
-    tags: ["Comment"]
+    tags: ['Comment']
     summary: Create a new comment
     parameters:
-      - $ref: "#/components/parameters/AcceptLanguage"
+      - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
       required: true
       content:
@@ -17,6 +17,9 @@
               content:
                 type: string
                 description: The content of the comment.
+              commentId:
+                type: string
+                description: The ID of the comment to reply to.
     responses:
       201:
         description: Successfully created comment.
@@ -30,82 +33,65 @@
                 data:
                   type: object
                   properties:
-                    id:
-                      type: string
-                    reel:
-                      type: string
-                    content:
-                      type: string
-                    commentedBy:
+                    comment:
                       type: object
                       properties:
                         id:
                           type: string
-                        name:
+                        reel:
                           type: string
-                        profile:
+                        content:
                           type: string
-                    likedBy:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          name:
-                            type: string
-                          profile:
-                            type: string
-                    replies:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          content:
-                            type: string
-                          repliedBy:
+                        commentedBy:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                        replies:
+                          type: array
+                          items:
                             type: object
                             properties:
                               id:
                                 type: string
-                              name:
+                              content:
                                 type: string
-                              profile:
+                              createdAt:
                                 type: string
-                          likedBy:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                profile:
-                                  type: string
-                            createdAt:
-                              type: string
-                              format: date-time
-                            updatedAt:
-                              type: string
-                              format: date-time
-                    createdAt:
-                      type: string
-                      format: date-time
-                    updatedAt:
-                      type: string
-                      format: date-time
+                                format: date-time
+                              isLiked:
+                                type: boolean
+                              totalLikes:
+                                type: number
+                              repliedBy:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  profile:
+                                    type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        isLiked:
+                          type: boolean
+                        totalLikes:
+                          type: number
+                    totalComments:
+                      type: number
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       409:
-        description: "Conflict"
+        description: 'Conflict'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

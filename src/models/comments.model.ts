@@ -7,7 +7,6 @@ export interface IReply extends Document {
   content: string;
   likedBy: PopulatedDoc<Document<ObjectId> & IUser>[];
   createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface IComment extends Document {
@@ -31,8 +30,7 @@ export const commentSchema = new Schema<IComment>(
         repliedBy: { type: Schema.Types.ObjectId, ref: 'User' },
         content: { type: String },
         likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-        createdAt: { type: Date },
-        updatedAt: { type: Date },
+        createdAt: { type: Date, default: Date.now },
       },
     ],
   },

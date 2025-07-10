@@ -62,8 +62,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       data: { ...user.toJSON(), accessToken, refreshToken },
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -125,8 +124,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       },
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -174,8 +172,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
       },
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -211,8 +208,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
       message: t('otp_sent_to_email'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -249,8 +245,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
       message: t('otp_verified'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 export const resetPassword = expressAsyncHandler(async (req: any, res) => {
@@ -313,8 +308,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
       });
     }
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -334,8 +328,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
       data: user,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -354,8 +347,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
       message: t('user_logged_out'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -375,8 +367,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
       message: t('user_deleted'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -429,8 +420,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
       data: user,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -483,8 +473,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       message: t('password_changed'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -518,7 +507,6 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       data: user,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });

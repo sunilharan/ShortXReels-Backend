@@ -48,9 +48,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       data: report,
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -99,7 +97,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     }
     if (status) {
       matchQuery.status = status;
-    }else {
+    } else {
       matchQuery.status = { $ne: STATUS.deleted };
     }
     const reports = await Report.find(matchQuery)
@@ -124,9 +122,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       },
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -184,9 +180,7 @@ export const editReport = expressAsyncHandler(async (req: any, res) => {
       data: report,
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -227,9 +221,7 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
       message: t('report_deleted'),
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -271,11 +263,9 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
 
     res.status(200).json({
       success: true,
-      message : t('report_validated'),
+      message: t('report_validated'),
     });
   } catch (error: any) {
-    console.error(error);
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });

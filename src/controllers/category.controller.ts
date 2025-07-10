@@ -1,20 +1,18 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Category } from '../models/category.model';
-import {  removeFile } from '../config/constants';
+import { removeFile } from '../config/constants';
 import { t } from 'i18next';
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {
   try {
-    const categories = await Category.find()
-      .sort({ createdAt: -1 });
+    const categories = await Category.find().sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       data: categories,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -48,20 +46,17 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       data: category,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
 export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id } = req.params;
-
     if (!id) {
       res.status(400);
       throw new Error('invalid_category_id');
     }
-
     const category = await Category.findByIdAndDelete(id).exec();
     if (!category) {
       res.status(404);
@@ -75,8 +70,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
       message: t('category_deleted'),
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -91,7 +85,6 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     ) {
       image = req.file.filename;
     }
-
     const existingCategory = await Category.findOne({ name }).exec();
     if (existingCategory && existingCategory?.id.toString() !== id) {
       res.status(409);
@@ -102,7 +95,6 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     if (name) {
       categoryData.name = name;
     }
-
     if (image) {
       categoryData.image = image;
     }
@@ -122,7 +114,6 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
       data: category,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });

@@ -14,12 +14,12 @@
       - in: query
         name: page
         schema:
-          type: integer
+          type: number
           default: 1
       - in: query
         name: limit
         schema:
-          type: integer
+          type: number
           default: 10
     responses:
       200:
@@ -41,7 +41,7 @@
                         properties:
                           id:
                             type: string
-                          reel: 
+                          reel:
                             type: string
                           content:
                             type: string
@@ -52,19 +52,6 @@
                                 type: string
                               name:
                                 type: string
-                              profile:
-                                type: string
-                          likedBy:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                profile:
-                                  type: string
                           replies:
                             type: array
                             items:
@@ -74,6 +61,13 @@
                                   type: string
                                 content:
                                   type: string
+                                createdAt:
+                                  type: string
+                                  format: date-time
+                                isLiked:
+                                  type: boolean
+                                totalLikes:
+                                  type: number
                                 repliedBy:
                                   type: object
                                   properties:
@@ -83,33 +77,17 @@
                                       type: string
                                     profile:
                                       type: string
-                                likedBy:
-                                  type: array
-                                  items:
-                                    type: object
-                                    properties:
-                                      id:
-                                        type: string
-                                      name:
-                                        type: string
-                                      profile:
-                                        type: string
-                                  createdAt:
-                                    type: string
-                                    format: date-time
-                                  updatedAt:
-                                    type: string
-                                    format: date-time
                           createdAt:
                             type: string
                             format: date-time
-                          updatedAt:
-                            type: string
-                            format: date-time
+                          isLiked:
+                            type: boolean
+                          totalLikes:
+                            type: number
                     totalRecords:
-                      type: integer
+                      type: number
                     totalPages:
-                      type: integer
+                      type: number
       400:
         description: "Bad Request"
       401:

@@ -39,8 +39,7 @@ export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
       message: '',
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
@@ -52,8 +51,7 @@ export const getRoles = expressAsyncHandler(async (req: any, res) => {
       data: roles,
     });
   } catch (error: any) {
-    res.status(400);
-    throw new Error(error.message);
+    throw error;
   }
 });
 
