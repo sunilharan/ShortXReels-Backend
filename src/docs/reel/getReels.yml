@@ -58,17 +58,6 @@
                                 type: string
                           caption:
                             type: string
-                          categories:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                image:
-                                  type: string
                           mediaType:
                             type: string
                             enum: ['video', 'image']
@@ -78,30 +67,29 @@
                               - type: array
                                 items:
                                   type: string
-                          duration:
-                            type: number
-                            description: 'if mediaType is video'
                           thumbnail:
                             type: string
-                          views:
+                          duration:
                             type: number
-                          likedBy:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                profile:
-                                  type: string
+                            description: 'Duration in seconds (only for videos)'
+                          status:
+                            type: string
+                            example: "active"
+                          totalLikes:
+                            type: integer
+                          totalComments:
+                            type: integer
+                          totalViews:
+                            type: integer
+                          isLiked:
+                            type: boolean
                           createdAt:
                             type: string
                             format: date-time
                           updatedAt:
                             type: string
                             format: date-time
+                            nullable: true
                     totalRecords:
                       type: integer
                     totalPages:

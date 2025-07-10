@@ -58,6 +58,7 @@
   "reply_not_found": "Reply not found.",
   "invalid_content": "Invalid content.",
   "description_required": "Description is required.",
+  "like_unlike_success": "Like/Unlike successful.",
   "video_not_found": "Video not found.",
   "reason_required": "Reason is required.",
   "invalid_report_id": "Invalid report ID.",

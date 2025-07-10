@@ -54,12 +54,28 @@
                             thumbnail:
                               type: string
                             media:
-                              type: string
+                              oneOf:
+                                - type: string
+                                - type: array
+                                  items:
+                                    type: string
                             duration:
                               type: number
                               nullable: true
-                            views:
+                            mediaType:
+                              type: string
+                              enum: ['video', 'image']
+                            totalViews:
                               type: integer
+                            totalLikes:
+                              type: integer
+                            totalComments:
+                              type: integer
+                            createdAt:
+                              type: string
+                              format: date-time
+                            isLiked:
+                              type: boolean
       400:
         description: 'Bad Request'
       401:

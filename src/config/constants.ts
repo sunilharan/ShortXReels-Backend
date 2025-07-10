@@ -68,6 +68,10 @@ export enum MEDIA {
   image = 'image',
   video = 'video',
 }
+export enum LIKE {
+  like = 'like',
+  unlike = 'unlike',
+}
 export enum REASON {
   spam = 'Spam or repetitive content',
   fraud = 'Scam or fraudulent content',
