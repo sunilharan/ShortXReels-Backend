@@ -1,0 +1,95 @@
+/reel/getByUser:
+  get:
+    tags: ["Reel"]
+    summary: Get your own reels
+    description: Retrieve all reels created by the authenticated user.
+    parameters:
+      - $ref: "#/components/parameters/AcceptLanguage"
+      - in: query
+        name: page
+        schema:
+          type: number
+          default: 1
+      - in: query
+        name: limit
+        schema:
+          type: number
+          default: 10
+      - in: query
+        name: userId
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Success
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    reels:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          createdBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          caption:
+                            type: string
+                          mediaType:
+                            type: string
+                            enum: ['video', 'image']
+                          media:
+                            oneOf:
+                              - type: string
+                              - type: array
+                                items:
+                                  type: string
+                          thumbnail:
+                            type: string
+                          duration:
+                            type: number
+                            description: 'Duration in seconds (only for videos)'
+                          status:
+                            type: string
+                            example: "active"
+                          totalLikes:
+                            type: number
+                          totalComments:
+                            type: number
+                          totalViews:
+                            type: number
+                          isLiked:
+                            type: boolean
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                            nullable: true
+                    totalRecords:
+                      type: number
+                      example: 10
+                    totalPages:
+                      type: number
+                      example: 1
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '500':
+        $ref: '#/components/responses/Server'

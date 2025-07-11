@@ -2,13 +2,14 @@ import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
 import { ObjectId } from 'mongodb';
 import { Reel } from '../models/reel.model';
-import { LIKE, UserRole } from '../config/constants';
+import { COMMENT, LIKE, UserRole } from '../config/constants';
 import { t } from 'i18next';
 import { config } from '../config/config';
+import WebSocket from '../websocket/WebSocket';
 
 export const createComment = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { reelId: reel, content, commentId } = req.body;
 
     if (!reel || !ObjectId.isValid(reel)) {
@@ -64,6 +65,16 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       reel: new ObjectId(reel),
     }).exec();
 
+    const io = WebSocket.getInstance();
+    io.of('reel')
+      .to(reel.toString())
+      .emit('newComment', {
+        type: commentId ? COMMENT.reply : COMMENT.comment,
+        reelId: reel,
+        comment: commentData[0],
+        totalComments: totalcomments,
+      });
+
     res.status(201).json({
       success: true,
       data: {
@@ -81,7 +92,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
 
 export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const reelId = req.params.id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -119,7 +130,7 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
 
 export const getById = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const commentId = req.params.id;
 
     if (!commentId || !ObjectId.isValid(commentId)) {
@@ -149,7 +160,7 @@ export const getById = expressAsyncHandler(async (req: any, res) => {
 
 export const deleteComment = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const commentId = req.query.commentId;
     const replyId = req.query.replyId;
 
@@ -212,6 +223,18 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     const totalComments = await Comment.countDocuments({
       reel: new ObjectId(reel?.id),
     });
+    const io = WebSocket.getInstance();
+
+    io.of('reel')
+      .to(reel.id.toString())
+      .emit('commentDeleted', {
+        type: replyId ? COMMENT.reply : COMMENT.comment,
+        commentId,
+        replyId: replyId || null,
+        reelId: reel.id,
+        totalComments,
+      });
+
     res.status(200).json({
       success: true,
       data: totalComments,
@@ -224,7 +247,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
 
 export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { commentId, replyId, action } = req.body;
 
     if (!action || (action !== LIKE.like && action !== LIKE.unlike)) {
@@ -235,7 +258,6 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_comment_id');
     }
-
     if (replyId && !ObjectId.isValid(replyId)) {
       res.status(400);
       throw new Error('invalid_reply_id');
@@ -246,7 +268,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
     if (replyId) {
       const commentDoc = await Comment.findOne(
         { _id: commentId, 'replies._id': replyId },
-        { 'replies.$': 1 }
+        { 'replies.$': 1, reel: 1 }
       ).exec();
 
       if (!commentDoc || !commentDoc.replies?.length) {
@@ -273,6 +295,29 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
         ).exec();
       }
 
+      const updatedDoc = await Comment.findOne(
+        { _id: commentId, 'replies._id': replyId },
+        { 'replies.$': 1, reel: 1 }
+      ).exec();
+
+      const updatedReply = updatedDoc?.replies?.[0];
+      const isNowLiked = updatedReply?.likedBy?.some(
+        (uid: any) => uid.toString() === userId
+      );
+      const totalLikes = updatedReply?.likedBy?.length || 0;
+
+      const io = WebSocket.getInstance();
+      io.of('reel')
+        .to(updatedDoc?.reel?.toString() || 'reel')
+        .emit('likeUnlikeComment', {
+          type: COMMENT.reply,
+          commentId,
+          replyId,
+          userId,
+          isLiked: isNowLiked,
+          totalLikes,
+        });
+
       res.status(200).json({
         success: true,
         message: t('like_unlike_success'),
@@ -298,6 +343,24 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       if (Object.keys(updateQuery).length > 0) {
         await Comment.findByIdAndUpdate(commentId, updateQuery).exec();
       }
+
+      const updatedComment = await Comment.findById(commentId).exec();
+      const isNowLiked = updatedComment?.likedBy?.some(
+        (uid: any) => uid.toString() === userId
+      );
+      const totalLikes = updatedComment?.likedBy?.length || 0;
+
+      const io = WebSocket.getInstance();
+      io.of('reel')
+        .to(updatedComment?.reel?.toString() || 'reel')
+        .emit('likeUnlikeComment', {
+          type: COMMENT.comment,
+          commentId,
+          replyId: null,
+          userId,
+          isLiked: isNowLiked,
+          totalLikes,
+        });
 
       res.status(200).json({
         success: true,

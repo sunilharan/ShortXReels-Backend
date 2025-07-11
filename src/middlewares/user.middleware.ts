@@ -61,7 +61,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
 
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { email, gender, interests } = req.body;
     res.status(400);
     if (gender && !Object.values(GENDER).includes(gender)) {

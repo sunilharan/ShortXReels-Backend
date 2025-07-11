@@ -21,6 +21,9 @@ import {
 import { adminOnly } from './middlewares/auth.middleware';
 import { FOLDER_LIST } from './config/constants';
 import { existsSync, mkdirSync } from 'fs';
+import { createServer } from 'http';
+import WebSocket from './websocket/WebSocket';
+import ReelSocket from './websocket/ReelSocket';
 connectDB();
 
 FOLDER_LIST.forEach((folder) => {
@@ -71,6 +74,18 @@ app.use('/profile', express.static('uploads/profiles'));
 app.use('/category', express.static('uploads/categories'));
 app.use('/reel', express.static('uploads/reels'));
 app.use('/thumbnail', express.static('uploads/thumbnails'));
+
+const httpServer = createServer(app);
+const SOCKET_PORT: any = config.socketPort || 5003;
+httpServer.listen(SOCKET_PORT, () =>
+  console.log(`Socket server is running on port ${SOCKET_PORT}.`)
+);
+
+const io = WebSocket.getInstance(httpServer);
+io.initializeHandlers([
+  { path: '/reel', handler: new ReelSocket() },
+]);
+
 app.use(notFound);
 app.use(errorHandler);
 app.listen(port, () => {

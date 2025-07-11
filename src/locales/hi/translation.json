@@ -37,6 +37,7 @@
   "reel_not_found": "रील नहीं मिली।",
   "reel_deleted": "रील सफलतापूर्वक हटाई गई।",
   "invalid_reel_id": "अमान्य रील आईडी।",
+  "invalid_user_id": "अमान्य यूजर ID।",
   "comment_not_found": "टिप्पणी नहीं मिली।",
   "invalid_comment_id": "अमान्य टिप्पणी आईडी।",
   "comment_creation_failed": "टिप्पणी बनाना विफल रहा।",

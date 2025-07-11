@@ -45,6 +45,7 @@
   "caption_required": "Caption is required.",
   "categories_required": "Categories are required.",
   "media_not_found": "Media not found.",
+  "invalid_user_id": "Invalid user ID.",
   "invalid_video_format": "Invalid video format.",
   "media_required": "Media is required.",
   "invalid_media_type": "Invalid media type.",

@@ -72,6 +72,10 @@ export enum LIKE {
   like = 'like',
   unlike = 'unlike',
 }
+export enum COMMENT {
+  comment = 'comment',
+  reply = 'reply',
+}
 export enum REASON {
   spam = 'Spam or repetitive content',
   fraud = 'Scam or fraudulent content',

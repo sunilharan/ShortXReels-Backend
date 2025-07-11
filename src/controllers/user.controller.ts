@@ -84,7 +84,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
     if (!user) {
-      res.status(404);
+      res.status(400);
       throw new Error('invalid_email_or_password');
     }
     if (!password) {
@@ -188,7 +188,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
       $and: [{ status: { $ne: STATUS.deleted } }],
     }).exec();
     if (!user) {
-      res.status(404);
+      res.status(400);
       throw new Error('email_does_not_exist');
     }
     const otpData = await generateOTP();
@@ -235,7 +235,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const otpData = await Otp.findOne({ userId: user.id, otp }).exec();
     if (!otpData) {
-      res.status(404);
+      res.status(400);
       throw new Error('otp_invalid');
     }
     const token = generateToken({ id: user.id }, config.jwtOtpExpire);
@@ -280,7 +280,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
         $and: [{ status: { $ne: STATUS.deleted } }],
       }).exec();
       if (!user) {
-        res.status(404);
+        res.status(400);
         throw new Error('invalid_email_or_token');
       }
       let newPassword = decryptData(password);
@@ -314,7 +314,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
 
 export const currentUser = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const user = await User.findById(userId)
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')
@@ -334,7 +334,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
 
 export const logout = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const user = await User.findByIdAndUpdate(userId, { token: null })
       .populate<{ role: IRole }>('role')
       .exec();
@@ -353,7 +353,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
 
 export const deleteUser = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const user = await User.findByIdAndUpdate(userId, {
       status: STATUS.deleted,
       token: null,
@@ -373,7 +373,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
 
 export const updateUser = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const userData = req.body;
     let updateData: any = {};
     if (userData.name) {
@@ -426,7 +426,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
 
 export const changePassword = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     let password = req.body.password;
 
     if (!password) {
@@ -453,7 +453,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
     }).exec();
 
     if (!user) {
-      res.status(404);
+      res.status(400);
       throw new Error('access_token_invalid');
     }
     const isMatch = await user.matchPassword(oldPassword);

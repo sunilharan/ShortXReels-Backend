@@ -27,7 +27,7 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
       res.status(401);
       throw new Error('unauthorized');
     }
-    req.userId = user.id;
+    req.user = user;
     req.role = user.role.name;
   }
   if (!token) {

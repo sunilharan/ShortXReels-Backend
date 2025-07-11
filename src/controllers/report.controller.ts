@@ -7,7 +7,7 @@ import { t } from 'i18next';
 
 export const createReport = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const { reelId: reel, reason, description } = req.body;
 
     if (!reel || !ObjectId.isValid(reel)) {
@@ -54,7 +54,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
 
 export const getReports = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const role = req.role;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -128,7 +128,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
 
 export const editReport = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const role = req.role;
     const { id, reason, description } = req.body;
     const updateData: any = {};
@@ -186,7 +186,7 @@ export const editReport = expressAsyncHandler(async (req: any, res) => {
 
 export const deleteReport = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const role = req.role;
     const { id } = req.params;
 
@@ -227,7 +227,7 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
 
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.user.id;
     const role = req.role;
     const { id, reviewResultValid } = req.body;
 
@@ -260,7 +260,11 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('report_not_found');
     }
-
+    if (report.reviewResultValid) {
+      await Reel.findByIdAndUpdate(report.reel, {
+        status: STATUS.inactive,
+      }).exec();
+    }
     res.status(200).json({
       success: true,
       message: t('report_validated'),
