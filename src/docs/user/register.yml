@@ -25,6 +25,10 @@
               birthDate:
                 type: string
                 format: date-time
+              displayName:
+                type: string
+              description:
+                type: string
     responses:
       201:
         description: "User registered successfully"
@@ -54,6 +58,10 @@
                     status:
                       type: string
                     profile:
+                      type: string
+                    displayName:
+                      type: string
+                    description:
                       type: string
                     role:
                       type: object

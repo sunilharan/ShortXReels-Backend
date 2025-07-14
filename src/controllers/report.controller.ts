@@ -1,51 +1,86 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import { ObjectId } from 'mongodb';
-import { UserRole, Reasons, STATUS } from '../config/constants';
+import { UserRole, STATUS } from '../config/constants';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
+import { Comment } from '../models/comments.model';
+import { config } from '../config/config';
 
 export const createReport = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { reelId: reel, reason, description } = req.body;
-
+    const {
+      reelId: reel,
+      commentId: comment,
+      replyId: reply,
+      reason,
+      reportType,
+    } = req.body;
+    let createData: any = {};
     if (!reel || !ObjectId.isValid(reel)) {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
-    if (
-      !reason ||
-      typeof reason !== 'string' ||
-      reason.trim() === '' ||
-      !Reasons.includes(reason as (typeof Reasons)[number])
-    ) {
+    if (!reason || typeof reason !== 'string' || reason.trim() === '') {
       res.status(400);
       throw new Error('reason_required');
     }
-    if (
-      !description ||
-      typeof description !== 'string' ||
-      description.trim() === ''
-    ) {
+    if (comment && !ObjectId.isValid(comment)) {
       res.status(400);
-      throw new Error('description_required');
+      throw new Error('invalid_comment_id');
+    }
+    if (reply && !ObjectId.isValid(reply)) {
+      res.status(400);
+      throw new Error('invalid_reply_id');
     }
     const reelExists = await Reel.findById(reel).exec();
     if (!reelExists) {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    const report = await Report.create({
+    if (comment) {
+      const commentExists = await Comment.findById(comment).exec();
+      if (!commentExists) {
+        res.status(404);
+        throw new Error('comment_not_found');
+      }
+    }
+    if (reply) {
+      const replyExists = await Comment.findOne({
+        _id: comment,
+        replies: { $elemMatch: { _id: reply } },
+      }).exec();
+      if (!replyExists) {
+        res.status(404);
+        throw new Error('reply_not_found');
+      }
+    }
+    createData.reportedBy = new ObjectId(userId);
+    createData.reel = new ObjectId(reel);
+    createData.reason = reason;
+    createData.reportType = reportType;
+    if (comment) {
+      createData.comment = new ObjectId(comment);
+    }
+    if (reply) {
+      createData.reply = new ObjectId(reply);
+    }
+    const alreadyReported = await Report.findOne({
       reportedBy: new ObjectId(userId),
       reel: new ObjectId(reel),
-      reason,
-      description,
-    });
-
+      comment: new ObjectId(comment),
+      reply: new ObjectId(reply),
+      reason: reason,
+      reportType: reportType,
+    }).exec();
+    if (!alreadyReported) {
+      const report = await Report.create(createData);
+    }
     res.status(201).json({
       success: true,
-      data: report,
+      data: true,
+      message: t('report_created'),
     });
   } catch (error: any) {
     throw error;
@@ -61,37 +96,21 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const skip = (page - 1) * limit;
 
     const search = (req.query.search as string) || '';
-    const sortBy = (req.query.sortBy as string) || 'createdAt';
-    const sortOrder = (req.query.sortOrder as string) || 'desc';
-    const reason = req.query.reason as string;
     const reviewBy = req.query.reviewBy as string;
     const reviewResultValid = req.query.reviewResultValid;
-    const reel = req.query.reelId as string;
     const status = req.query.status as string;
+    const reportType = req.query.reportType as string;
 
     const matchQuery: any = {};
-
     if (role === UserRole.User) {
-      matchQuery.reportedBy = userId;
+      matchQuery.reportedBy = new ObjectId(userId);
     }
-
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      matchQuery.$or = [{ description: searchRegex }, { reason: searchRegex }];
+      matchQuery.$or = [{ reason: searchRegex }];
     }
-
-    if (reason) {
-      matchQuery.reason = reason;
-    }
-
-    if (reel) {
-      matchQuery.reel = reel;
-    }
-
-    if (reviewBy) {
-      matchQuery.reviewBy = reviewBy;
-    }
-
+    if (reportType) matchQuery.reportType = reportType;
+    if (reviewBy) matchQuery.reviewBy = new ObjectId(reviewBy);
     if (reviewResultValid !== undefined) {
       matchQuery.reviewResultValid = reviewResultValid === 'true';
     }
@@ -100,84 +119,199 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     } else {
       matchQuery.status = { $ne: STATUS.deleted };
     }
-    const reports = await Report.find(matchQuery)
-      .skip(skip)
-      .limit(limit)
-      .sort({
-        [sortBy]: sortOrder === 'asc' ? 1 : -1,
-      })
-      .populate('reportedBy', 'name profile')
-      .populate('reel', 'caption video')
-      .populate('reviewBy', 'name profile')
-      .exec();
+
+    const reportsAggregate = await Report.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'reportedBy',
+          foreignField: '_id',
+          as: 'reportedBy',
+        },
+      },
+      { $unwind: { path: '$reportedBy', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'reviewBy',
+          foreignField: '_id',
+          as: 'reviewBy',
+        },
+      },
+      { $unwind: { path: '$reviewBy', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'reels',
+          localField: 'reel',
+          foreignField: '_id',
+          as: 'reel',
+        },
+      },
+      { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'comments',
+          localField: 'comment',
+          foreignField: '_id',
+          as: 'comment',
+        },
+      },
+      { $unwind: { path: '$comment', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'comments',
+          localField: 'reply',
+          foreignField: 'replies._id',
+          as: 'replyData',
+        },
+      },
+      {
+        $addFields: {
+          replyObj: {
+            $first: {
+              $map: {
+                input: '$replyData',
+                as: 'item',
+                in: {
+                  $arrayElemAt: ['$$item.replies', 0],
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: '$_id',
+          reel: {
+            $cond: [
+              { $eq: ['$reportType', 'reel'] },
+              {
+                id: '$reel._id',
+                caption: '$reel.caption',
+                media: {
+                  $cond: [
+                    { $eq: ['$reel.mediaType', 'image'] },
+                    {
+                      $map: {
+                        input: '$reel.media',
+                        as: 'img',
+                        in: { $concat: [config.host + '/reel/', '$$img'] },
+                      },
+                    },
+                    {
+                      $concat: [
+                        config.host + '/api/reel/view/',
+                        { $toString: '$reel._id' },
+                      ],
+                    },
+                  ],
+                },
+                mediaType: '$reel.mediaType',
+                thumbnail: {
+                  $cond: [
+                    { $ifNull: ['$reel.thumbnail', false] },
+                    {
+                      $concat: [config.host + '/thumbnail/', '$reel.thumbnail'],
+                    },
+                    '$$REMOVE',
+                  ],
+                },
+              },
+              '$$REMOVE',
+            ],
+          },
+          comment: {
+            $cond: [
+              { $eq: ['$reportType', 'comment'] },
+              {
+                id: '$comment._id',
+                content: '$comment.content',
+              },
+              '$$REMOVE',
+            ],
+          },
+          reply: {
+            $cond: [
+              { $eq: ['$reportType', 'reply'] },
+              {
+                id: '$replyObj._id',
+                content: '$replyObj.content',
+              },
+              '$$REMOVE',
+            ],
+          },
+          reportedBy: {
+            id: '$reportedBy._id',
+            name: '$reportedBy.name',
+            profile: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$reportedBy.profile', null] },
+                    { $ne: ['$reportedBy.profile', ''] },
+                    { $ifNull: ['$reportedBy.profile', false] }
+                  ]
+                },
+                { $concat: [config.host + '/profile/', '$reportedBy.profile'] },
+                '$$REMOVE'
+              ]
+            }
+          },                   
+          reason: 1,
+          reportType: 1,
+          status: 1,
+          reviewBy: {
+            $cond: [
+              { $ifNull: ['$reviewDate', false] },
+              {
+                id: '$reviewBy._id',
+                name: '$reviewBy.name',
+                profile: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ne: ['$reviewBy.profile', null] },
+                        { $ne: ['$reviewBy.profile', ''] },
+                        { $ifNull: ['$reviewBy.profile', false] }
+                      ]
+                    },
+                    { $concat: [config.host + '/profile/', '$reviewBy.profile'] },
+                    '$$REMOVE'
+                  ]
+                },
+              },
+              '$$REMOVE',
+            ],
+          },
+          reviewDate: {
+            $cond: [
+              { $ifNull: ['$reviewDate', false] },
+              '$reviewDate',
+              '$$REMOVE',
+            ],
+          },
+          reviewResultValid: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
 
     const total = await Report.countDocuments(matchQuery);
 
     res.status(200).json({
       success: true,
       data: {
-        reports,
+        reports: reportsAggregate,
         totalRecords: total,
         totalPages: Math.ceil(total / limit),
       },
-    });
-  } catch (error: any) {
-    throw error;
-  }
-});
-
-export const editReport = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const role = req.role;
-    const { id, reason, description } = req.body;
-    const updateData: any = {};
-    if (!id || !ObjectId.isValid(id)) {
-      res.status(400);
-      throw new Error('invalid_report_id');
-    }
-    if (
-      reason &&
-      typeof reason === 'string' &&
-      reason.trim() !== '' &&
-      Reasons.includes(reason as (typeof Reasons)[number])
-    ) {
-      updateData.reason = reason;
-    }
-    if (
-      description &&
-      typeof description === 'string' &&
-      description.trim() !== ''
-    ) {
-      updateData.description = description;
-    }
-    let report;
-    if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
-      report = await Report.findByIdAndUpdate(
-        id,
-        { ...updateData },
-        { new: true }
-      ).exec();
-    } else {
-      report = await Report.findOneAndUpdate(
-        {
-          _id: new ObjectId(id),
-          reportedBy: new ObjectId(userId),
-          status: { $ne: STATUS.deleted },
-        },
-        { ...updateData },
-        { new: true }
-      ).exec();
-    }
-
-    if (!report) {
-      res.status(404);
-      throw new Error('report_not_found');
-    }
-
-    res.status(200).json({
-      success: true,
-      data: report,
     });
   } catch (error: any) {
     throw error;

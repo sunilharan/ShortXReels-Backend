@@ -1,0 +1,37 @@
+/user/nameExist/{name}:
+  get:
+    tags:
+      - User
+    summary: Check if a name exists
+    parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+        description: The name to check
+    security: []
+    responses:
+      200:
+        description: Name exists
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  description: Indicates if the operation was successful
+                data:
+                  type: boolean
+                  description: Whether the name exists or not
+      400:
+        description: Bad Request
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Not Found
+      500:
+        description: Internal Server Error

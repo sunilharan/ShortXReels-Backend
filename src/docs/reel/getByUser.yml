@@ -1,7 +1,7 @@
 /reel/getByUser:
   get:
     tags: ["Reel"]
-    summary: Get your own reels
+    summary: Get reels by user
     description: Retrieve all reels created by the authenticated user.
     parameters:
       - $ref: "#/components/parameters/AcceptLanguage"
@@ -19,6 +19,11 @@
         name: userId
         schema:
           type: string
+      - in: query
+        name: sortType
+        schema:
+          type: string
+          enum: ["popular", "latest", "oldest"]
     responses:
       '200':
         description: Success
@@ -33,6 +38,27 @@
                 data:
                   type: object
                   properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    phone:
+                      type: string
+                    gender:
+                      type: string
+                    birthDate:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    profile:
+                      type: string
+                    displayName:
+                      type: string
+                    description:
+                      type: string
                     reels:
                       type: array
                       items:
@@ -41,7 +67,7 @@
                           id:
                             type: string
                           createdBy:
-                            type: object
+                            type: string
                             properties:
                               id:
                                 type: string
@@ -65,9 +91,6 @@
                           duration:
                             type: number
                             description: 'Duration in seconds (only for videos)'
-                          status:
-                            type: string
-                            example: "active"
                           totalLikes:
                             type: number
                           totalComments:
@@ -79,17 +102,17 @@
                           createdAt:
                             type: string
                             format: date-time
-                          updatedAt:
-                            type: string
-                            format: date-time
-                            nullable: true
                     totalRecords:
                       type: number
                       example: 10
                     totalPages:
                       type: number
                       example: 1
-      '401':
-        $ref: '#/components/responses/Unauthorized'
-      '500':
-        $ref: '#/components/responses/Server'
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

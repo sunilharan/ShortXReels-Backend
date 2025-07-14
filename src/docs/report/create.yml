@@ -17,9 +17,15 @@
               reason:
                 type: string
                 description: The reason for reporting the reel.
-              description:
+              reportType:
                 type: string
-                description: Additional details about the report.
+                description: The type of report.
+              commentId:
+                type: string
+                description: The ID of the comment to report.
+              replyId:
+                type: string
+                description: The ID of the reply to report.
     responses:
       201:
         description: Successfully created report.
@@ -31,29 +37,9 @@
                 success:
                   type: boolean
                 data:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    reelId:
-                      type: string
-                    reason:
-                      type: string
-                    reportedBy:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        profile:
-                          type: string
-                    createdAt:
-                      type: string
-                      format: date-time
-                    updatedAt:
-                      type: string
-                      format: date-time
+                  type: boolean
+                message:
+                  type: string
       400:
         description: "Bad Request"
       401:

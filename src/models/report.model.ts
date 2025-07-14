@@ -1,13 +1,16 @@
 import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
 import { IReel } from './reel.model';
-import { REASON, STATUS } from '../config/constants';
+import {  REPORT, STATUS } from '../config/constants';
+import { IComment, IReply } from './comments.model';
 
 export interface IReport extends Document {
   reel: PopulatedDoc<Document<ObjectId> & IReel>;
+  comment: PopulatedDoc<Document<ObjectId> & IComment>;
+  reply: PopulatedDoc<Document<ObjectId> & IReply>;
   reportedBy: PopulatedDoc<Document<ObjectId> & IUser>;
-  reason: REASON;
-  description: string;
+  reason: string;
+  reportType: REPORT;
   status: STATUS;
   reviewBy: PopulatedDoc<Document<ObjectId> & IUser>;
   reviewResultValid: boolean;
@@ -19,9 +22,11 @@ export interface IReport extends Document {
 export const reportSchema = new Schema<IReport>(
   {
     reel: { type: Schema.Types.ObjectId, ref: 'Reel' },
+    comment: { type: Schema.Types.ObjectId, ref: 'Comment' },
+    reply: { type: Schema.Types.ObjectId, ref: 'Reply' },
     reportedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-    reason: { type: String, enum: REASON },
-    description: { type: String },
+    reason: { type: String },
+    reportType: { type: String, enum: REPORT },
     status: { type: String, enum: STATUS, default: STATUS.active },
     reviewBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewResultValid: { type: Boolean, default: false },

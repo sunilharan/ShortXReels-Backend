@@ -13,7 +13,16 @@ import { config } from '../config/config';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { name, email, password, phone, gender, birthDate } = req.body;
+    const {
+      name,
+      email,
+      password,
+      phone,
+      gender,
+      birthDate,
+      displayName,
+      description,
+    } = req.body;
     const role = await Role.findOne({ name: UserRole.User }).exec();
     if (!role) {
       res.status(400);
@@ -25,15 +34,20 @@ export const register = expressAsyncHandler(async (req: any, res) => {
     if (newPassword?.length > 1) {
       newPassword = newPassword[1];
     }
-    let user = await User.create({
+    let createData: any = {
       name,
+      displayName,
       email,
       password: newPassword,
       phone,
       gender,
       birthDate,
       role: role?.id,
-    });
+    };
+    if (description) {
+      createData.description = description;
+    }
+    let user = await User.create(createData);
     if (!user) {
       res.status(400);
       throw new Error('user_register_failed');
@@ -60,6 +74,29 @@ export const register = expressAsyncHandler(async (req: any, res) => {
     res.status(201).json({
       success: true,
       data: { ...user.toJSON(), accessToken, refreshToken },
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const nameExist = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { name } = req.params;
+
+    let user = await User.findOne({
+      name : name,
+      $and: [{ status: { $ne: STATUS.deleted } }],
+    });
+    if (!user) {
+      res.status(200).json({
+        success: true,
+        data: false,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: true,
     });
   } catch (error: any) {
     throw error;
@@ -194,10 +231,14 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     const otpData = await generateOTP();
     let existingOtp = await Otp.findOne({ userId: user.id }).exec();
     if (existingOtp) {
-      existingOtp = await Otp.findByIdAndUpdate(existingOtp.id, {
-        otp: otpData.otp,
-        expiresAt: otpData.expiresAt,
-      }, { new: true });
+      existingOtp = await Otp.findByIdAndUpdate(
+        existingOtp.id,
+        {
+          otp: otpData.otp,
+          expiresAt: otpData.expiresAt,
+        },
+        { new: true }
+      );
     } else {
       existingOtp = await Otp.create({ userId: user.id, otp: otpData.otp });
     }
@@ -404,6 +445,12 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
       updateData.interests = JSON.parse(userData.interests).map(
         (id: string) => new ObjectId(id)
       );
+    }
+    if (userData.displayName) {
+      updateData.displayName = userData.displayName;
+    }
+    if (userData.description) {
+      updateData.description = userData.description;
     }
     const user = await User.findByIdAndUpdate(userId, updateData, {
       new: true,

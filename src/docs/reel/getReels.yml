@@ -22,11 +22,22 @@
         schema:
           type: string
       - in: query
-        name: reelIds
+        name: removeReelIds
         required: false
         schema:
           type: string
           example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+      - in: query
+        name: addReelIds
+        required: false
+        schema:
+          type: string
+          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+      - in: query
+        name: profileUserId
+        required: false
+        schema:
+          type: string
     responses:
       200:
         description: 'Reels fetched successfully'
@@ -72,9 +83,6 @@
                           duration:
                             type: number
                             description: 'Duration in seconds (only for videos)'
-                          status:
-                            type: string
-                            example: "active"
                           totalLikes:
                             type: number
                           totalComments:
@@ -86,10 +94,6 @@
                           createdAt:
                             type: string
                             format: date-time
-                          updatedAt:
-                            type: string
-                            format: date-time
-                            nullable: true
                     totalRecords:
                       type: number
                     totalPages:

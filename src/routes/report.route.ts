@@ -4,7 +4,6 @@ import {
   createReport,
   deleteReport,
   getReports,
-  editReport,
   validateReport,
 } from '../controllers/report.controller';
 
@@ -14,7 +13,6 @@ router.use(authenticate);
 router.get('/', getReports);
 router.post('/', createReport);
 router.delete('/:id', deleteReport);
-router.put('/', editReport);
 router.post('/validate', adminOnly, validateReport);
 
 export default router;

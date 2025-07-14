@@ -7,6 +7,8 @@ import { config } from '../config/config';
 
 export interface IUser extends Document {
   name: string;
+  displayName: string;
+  description: string;
   email: string;
   password: string;
   phone: string;
@@ -30,6 +32,8 @@ export interface IUser extends Document {
 export const userSchema = new Schema<IUser>(
   {
     name: { type: String },
+    displayName: { type: String },
+    description: { type: String },
     email: { type: String },
     password: { type: String },
     phone: { type: String },

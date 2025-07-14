@@ -5,7 +5,7 @@ import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
-  const { name, email, password, phone, gender, roleId } = req.body;
+  const { name, email, password, phone, gender, roleId ,displayName} = req.body;
   res.status(400);
   if (!name) {
     throw new Error('name_required');
@@ -21,6 +21,9 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   }
   if (!gender) {
     throw new Error('gender_required');
+  }
+  if (!displayName) {
+    throw new Error('display_name_required');
   }
   if (gender && !Object.values(GENDER).includes(gender)) {
     throw new Error('gender_invalid');
@@ -47,7 +50,6 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
       throw new Error('role_not_found');
     }
   }
-  res.status(200);
   const emailExists = await User.findOne({
     email,
     $and: [{ status: { $ne: STATUS.deleted } }],
@@ -56,13 +58,22 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     res.status(409);
     throw new Error('email_exist');
   }
+  const nameExists = await User.findOne({
+    name,
+    $and: [{ status: { $ne: STATUS.deleted } }],
+  }).exec();
+  if (nameExists) {
+    res.status(409);
+    throw new Error('name_exist');
+  }
+  res.status(200);
   next();
 });
 
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     const userId = req.user.id;
-    const { email, gender, interests } = req.body;
+    const { email, gender, interests, displayName, name } = req.body;
     res.status(400);
     if (gender && !Object.values(GENDER).includes(gender)) {
       throw new Error('gender_invalid');
@@ -75,6 +86,11 @@ export const validateUpdateUser = expressAsyncHandler(
         throw new Error('interests_invalid');
       }
     }
+    if (displayName) {
+      if (typeof displayName !== 'string' || displayName.trim().length === 0) {
+        throw new Error('display_name_invalid');
+      }
+    }
     const user = await User.findOne({
       email: email,
       $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS.deleted } }],
@@ -82,6 +98,14 @@ export const validateUpdateUser = expressAsyncHandler(
     if (user) {
       res.status(409);
       throw new Error('email_exist');
+    }
+    const nameExists = await User.findOne({
+      name,
+      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS.deleted } }],
+    }).exec();
+    if (nameExists) {
+      res.status(409);
+      throw new Error('name_exist');
     }
     next();
   }

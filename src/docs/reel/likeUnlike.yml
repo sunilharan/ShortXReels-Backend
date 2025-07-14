@@ -28,24 +28,8 @@
                 success:
                   type: boolean
                   example: true
-                data:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    likesCount:
-                      type: number
-                    likedBy:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          id:
-                            type: string
-                          name:
-                            type: string
-                          profile:
-                            type: string
+                message:
+                  type: string
       400:
         description: "Bad Request"
       401:

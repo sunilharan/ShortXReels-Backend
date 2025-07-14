@@ -23,6 +23,14 @@
                 type: string
               roleId:
                 type: string
+              displayName:
+                type: string
+              interests:
+                type: array
+                items:
+                  type: string
+              description:
+                type: string
     responses:
       200:
         description: "User registered successfully"
@@ -52,6 +60,10 @@
                     status:
                       type: string
                     profile:
+                      type: string
+                    description:
+                      type: string
+                    displayName:
                       type: string
                     role:
                       type: object

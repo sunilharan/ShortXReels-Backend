@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { validateRegister, validateUpdateUser } from '../middlewares/user.middleware';
-import { register, login, refreshToken, currentUser, logout, deleteUser, updateUser, sendOtp, verifyOtp,resetPassword, changePassword, adminRegister } from '../controllers/user.controller';
+import { register, login, refreshToken, currentUser, logout, deleteUser, updateUser, sendOtp, verifyOtp,resetPassword, changePassword, adminRegister, nameExist } from '../controllers/user.controller';
 import { adminOnly, authenticate } from '../middlewares/auth.middleware';
 import { uploadProfile } from '../middlewares/upload.middleware';            
 
 const router = Router();
 
 router.post('/register', validateRegister, register);
+router.get('/nameExist/:name', nameExist);
 router.post('/login', login);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);

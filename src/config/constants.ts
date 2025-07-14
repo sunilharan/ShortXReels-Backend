@@ -76,29 +76,16 @@ export enum COMMENT {
   comment = 'comment',
   reply = 'reply',
 }
-export enum REASON {
-  spam = 'Spam or repetitive content',
-  fraud = 'Scam or fraudulent content',
-  harassment = 'Harassment or bullying',
-  misleading_information = 'Misleading title or thumbnail',
-  harmful_content = 'Harmful or dangerous acts',
-  age_restriction_violation = 'Age-restricted content shown without warning',
-  nudity = 'Nudity (unrated or inappropriate)',
-  sexual_activity = 'Sexual activity (unrated or inappropriate)',
-  violence = 'Excessive violence (unrated or inappropriate)',
-  hate_speech = 'Hate speech or abusive language',
-  incorrect_movie_info = 'Incorrect movie information',
-  fake_scene = 'Fake or AI-generated scene',
-  out_of_context = 'Out-of-context movie clip',
-  spoiler = 'Spoiler without warning',
-  copyright = 'Copyright infringement',
-  pirated_content = 'Pirated or leaked content',
-  irrelevant = 'Irrelevant or not movie-related',
-  poor_quality = 'Low quality or broken video',
-  offensive_subtitles = 'Offensive captions or subtitles',
-  other = 'Other',
+export enum REPORT {
+  reel = 'reel',
+  comment = 'comment',
+  reply = 'reply',
 }
-export const Reasons = Object.values(REASON);
+export enum SORT_TYPE {
+  popular = 'popular',
+  latest = 'latest',
+  oldest = 'oldest',
+}
 
 export const DEFAULT_SUPER_ADMIN = {
   email: 'superadmin@gmail.com',

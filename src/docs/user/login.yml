@@ -46,6 +46,10 @@
                       type: string
                     profile:
                       type: string
+                    displayName:
+                      type: string
+                    description:
+                      type: string
                     role:
                       type: object
                       properties:
