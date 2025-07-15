@@ -28,7 +28,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   const categoryId = req.query.categoryId || '';
   const addReels = JSON.parse(req.query.addReelIds || '[]');
 
-  const matchQuery: any = { status: STATUS_TYPE.active };
+  const matchQuery: any = { status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } };
   if (removeReels.length && !profileUserId) {
     matchQuery._id = {
       $nin: removeReels.map((id: string) => new ObjectId(id)),
@@ -75,7 +75,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       savedReels
     );
     reels = [...reels, ...primaryReels];
-    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active });
+    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } });
 
     if (reels.length < limit) {
       const fallbackQuery = {
@@ -98,7 +98,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
     ];
-    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active });
+    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } });
   }
 
   const reelsMap = new Map<string, any>();
@@ -189,6 +189,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
       {
         $match: {
           status: STATUS_TYPE.active,
+          createdBy: { $ne: userId },
           categories: { $in: interestIds },
         },
       },
