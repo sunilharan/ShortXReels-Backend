@@ -76,6 +76,8 @@
                               format: date-time
                             isLiked:
                               type: boolean
+                            isSaved:
+                              type: boolean
       400:
         description: 'Bad Request'
       401:

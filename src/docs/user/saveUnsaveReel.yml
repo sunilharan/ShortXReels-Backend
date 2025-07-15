@@ -1,0 +1,38 @@
+/user/saveUnsaveReel:
+  post:
+    tags: ["User"]
+    summary: "Save/Unsave reel"
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reelId:
+                type: string
+              action:
+                type: string
+                enum: ['save', 'unsave']
+    responses:
+      200:
+        description: "Reel saved/unsaved successfully"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

@@ -1,7 +1,7 @@
 import mongoose, { Schema, model, Document, PopulatedDoc } from 'mongoose';
 import { IUser } from './user.model';
 import { ICategory } from './category.model';
-import { MEDIA, STATUS } from '../config/constants';
+import { MEDIA_TYPE, STATUS_TYPE } from '../config/constants';
 import { config } from '../config/config';
 
 export interface IReel extends Document {
@@ -10,11 +10,11 @@ export interface IReel extends Document {
   thumbnail?: string;
   media?: string | string[];
   duration?: number;
-  mediaType: MEDIA;
+  mediaType: MEDIA_TYPE;
   viewedBy: PopulatedDoc<IUser & Document>[];
   likedBy: PopulatedDoc<IUser & Document>[];
   categories: PopulatedDoc<ICategory & Document>[];
-  status: STATUS;
+  status: STATUS_TYPE;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +25,7 @@ const reelSchema = new Schema<IReel>(
     caption: { type: String, required: true },
     thumbnail: { type: String },
     media: Schema.Types.Mixed,
-    mediaType: { type: String, enum: Object.values(MEDIA), required: true },
+    mediaType: { type: String, enum: Object.values(MEDIA_TYPE), required: true },
     duration: { type: Number },
     viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
@@ -34,8 +34,8 @@ const reelSchema = new Schema<IReel>(
     ],
     status: {
       type: String,
-      enum: Object.values(STATUS),
-      default: STATUS.active,
+      enum: Object.values(STATUS_TYPE),
+      default: STATUS_TYPE.active,
     },
   },
   {
@@ -45,9 +45,9 @@ const reelSchema = new Schema<IReel>(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
-        if (ret.media && ret.mediaType === MEDIA.video) {
+        if (ret.media && ret.mediaType === MEDIA_TYPE.video) {
           ret.media = `${config.host}/api/reel/view/${ret.id}`;
-        } else if (ret.mediaType === MEDIA.image && ret.media) {
+        } else if (ret.mediaType === MEDIA_TYPE.image && ret.media) {
           ret.media = ret.media.map(
             (img: any) => `${config.host}/reel/${img}`
           );

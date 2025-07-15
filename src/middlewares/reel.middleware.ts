@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import {
-  MEDIA,
+  MEDIA_TYPE,
 } from '../config/constants';
 import { Category } from '../models/category.model';
 import { ObjectId } from 'mongodb';
@@ -16,7 +16,7 @@ export const validateCreateReel = expressAsyncHandler(
         duration,
       } = req.body;
       if (!caption) throw new Error('caption_required');
-      if (!mediaType || ![MEDIA.video, MEDIA.image].includes(mediaType)) {
+      if (!mediaType || ![MEDIA_TYPE.video, MEDIA_TYPE.image].includes(mediaType)) {
         throw new Error('invalid_media_type');
       }
       const categories = JSON.parse(rawCategories || '[]');
@@ -34,7 +34,7 @@ export const validateCreateReel = expressAsyncHandler(
         throw new Error('media_required');
       }
 
-      if (mediaType === MEDIA.video) {
+      if (mediaType === MEDIA_TYPE.video) {
         const mediaFile = mediaFiles[0];
         if (!mediaFile.mimetype.startsWith('video/')) {
           throw new Error('invalid_video_format');
@@ -43,7 +43,7 @@ export const validateCreateReel = expressAsyncHandler(
         if (isNaN(durationNum) || durationNum <= 0) {
           throw new Error('invalid_duration');
         }
-      } else if (mediaType === MEDIA.image) {
+      } else if (mediaType === MEDIA_TYPE.image) {
         for (const img of mediaFiles) {
           if (!img.mimetype.startsWith('image/')) {
             throw new Error('invalid_image_format');

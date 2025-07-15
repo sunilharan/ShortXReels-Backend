@@ -1,7 +1,7 @@
 import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
 import { IReel } from './reel.model';
-import {  REPORT, STATUS } from '../config/constants';
+import {  REPORT_TYPE, STATUS_TYPE } from '../config/constants';
 import { IComment, IReply } from './comments.model';
 
 export interface IReport extends Document {
@@ -10,8 +10,8 @@ export interface IReport extends Document {
   reply: PopulatedDoc<Document<ObjectId> & IReply>;
   reportedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   reason: string;
-  reportType: REPORT;
-  status: STATUS;
+  reportType: REPORT_TYPE;
+  status: STATUS_TYPE;
   reviewBy: PopulatedDoc<Document<ObjectId> & IUser>;
   reviewResultValid: boolean;
   reviewDate: Date;
@@ -26,8 +26,8 @@ export const reportSchema = new Schema<IReport>(
     reply: { type: Schema.Types.ObjectId, ref: 'Reply' },
     reportedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reason: { type: String },
-    reportType: { type: String, enum: REPORT },
-    status: { type: String, enum: STATUS, default: STATUS.active },
+    reportType: { type: String, enum: REPORT_TYPE },
+    status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
     reviewBy: { type: Schema.Types.ObjectId, ref: 'User' },
     reviewResultValid: { type: Boolean, default: false },
     reviewDate: { type: Date },

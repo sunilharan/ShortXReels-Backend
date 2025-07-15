@@ -2,7 +2,7 @@ import expressAsyncHandler from 'express-async-handler';
 import { verifyToken } from '../utils/encrypt';
 import { User } from '../models/user.model';
 import { JwtPayload } from 'jsonwebtoken';
-import { STATUS, UserRole } from '../config/constants';
+import { STATUS_TYPE, UserRole } from '../config/constants';
 import { IRole } from '../models/role.model';
 export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
   let token;
@@ -19,7 +19,7 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
     const user = await User.findOne({
       _id: decoded.id,
       token: token,
-      status: STATUS.active,
+      status: STATUS_TYPE.active,
     })
       .populate<{ role: IRole }>('role')
       .exec();

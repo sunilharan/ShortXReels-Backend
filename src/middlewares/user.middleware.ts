@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { User } from '../models/user.model';
-import { STATUS, GENDER, emailRegex, passwordRegex } from '../config/constants';
+import { STATUS_TYPE, GENDER_TYPE, emailRegex, passwordRegex } from '../config/constants';
 import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
 
@@ -25,7 +25,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!displayName) {
     throw new Error('display_name_required');
   }
-  if (gender && !Object.values(GENDER).includes(gender)) {
+  if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
     throw new Error('gender_invalid');
   }
   if (!emailRegex.test(email)) {
@@ -52,7 +52,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   }
   const emailExists = await User.findOne({
     email,
-    $and: [{ status: { $ne: STATUS.deleted } }],
+    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
   }).exec();
   if (emailExists) {
     res.status(409);
@@ -60,7 +60,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   }
   const nameExists = await User.findOne({
     name,
-    $and: [{ status: { $ne: STATUS.deleted } }],
+    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
   }).exec();
   if (nameExists) {
     res.status(409);
@@ -75,7 +75,7 @@ export const validateUpdateUser = expressAsyncHandler(
     const userId = req.user.id;
     const { email, gender, interests, displayName, name } = req.body;
     res.status(400);
-    if (gender && !Object.values(GENDER).includes(gender)) {
+    if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
       throw new Error('gender_invalid');
     }
     if (email && !emailRegex.test(email)) {
@@ -93,7 +93,7 @@ export const validateUpdateUser = expressAsyncHandler(
     }
     const user = await User.findOne({
       email: email,
-      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS.deleted } }],
+      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS_TYPE.deleted } }],
     });
     if (user) {
       res.status(409);
@@ -101,7 +101,7 @@ export const validateUpdateUser = expressAsyncHandler(
     }
     const nameExists = await User.findOne({
       name,
-      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS.deleted } }],
+      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS_TYPE.deleted } }],
     }).exec();
     if (nameExists) {
       res.status(409);

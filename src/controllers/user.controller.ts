@@ -4,12 +4,19 @@ import { ObjectId } from 'mongodb';
 import { User } from '../models/user.model';
 import { decryptData, generateToken, verifyToken } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
-import { UserRole, removeFile, STATUS } from '../config/constants';
+import {
+  UserRole,
+  removeFile,
+  STATUS_TYPE,
+  SAVE_TYPE,
+} from '../config/constants';
 import { Otp } from '../models/otp.model';
 import { generateOTP } from '../utils/generateOtp';
 import { sendMail } from '../utils/sendMail';
 import { ICategory } from '../models/category.model';
 import { config } from '../config/config';
+import { Reel } from '../models/reel.model';
+import { fetchReels } from './reel.controller';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -85,19 +92,20 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
     const { name } = req.params;
 
     let user = await User.findOne({
-      name : name,
-      $and: [{ status: { $ne: STATUS.deleted } }],
+      name: name,
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
     });
     if (!user) {
       res.status(200).json({
         success: true,
         data: false,
       });
+    } else {
+      res.status(200).json({
+        success: true,
+        data: true,
+      });
     }
-    res.status(200).json({
-      success: true,
-      data: true,
-    });
   } catch (error: any) {
     throw error;
   }
@@ -105,24 +113,24 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
 
 export const login = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email) {
+    const { userName, password } = req.body;
+    if (!userName) {
       res.status(400);
-      throw new Error('email_required');
+      throw new Error('username_required');
     }
     if (!password) {
       res.status(400);
       throw new Error('password_required');
     }
     const user = await User.findOne({
-      email,
+      $or: [{ email : userName }, { name: userName }],
     })
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
     if (!user) {
       res.status(400);
-      throw new Error('invalid_email_or_password');
+      throw new Error('invalid_username_or_password');
     }
     if (!password) {
       res.status(400);
@@ -136,7 +144,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
     const isMatch = user && (await user.matchPassword(newPassword));
     if (!isMatch) {
       res.status(400);
-      throw new Error('invalid_email_or_password');
+      throw new Error('invalid_username_or_password');
     }
     const accessToken = generateToken(
       { id: user.id, role: user.role.name },
@@ -180,7 +188,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
     const user = await User.findOne({
       _id: decoded?.id,
       token: decoded?.token,
-      status: STATUS.active,
+      status: STATUS_TYPE.active,
     })
       .populate<{ role: IRole }>('role')
       .exec();
@@ -222,7 +230,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $ne: STATUS.deleted } }],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
     }).exec();
     if (!user) {
       res.status(400);
@@ -266,7 +274,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $ne: STATUS.deleted } }],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
     })
       .populate('role')
       .exec();
@@ -318,7 +326,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
       }
       const user = await User.findOne({
         _id: decoded?.id,
-        $and: [{ status: { $ne: STATUS.deleted } }],
+        $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
       }).exec();
       if (!user) {
         res.status(400);
@@ -396,7 +404,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findByIdAndUpdate(userId, {
-      status: STATUS.deleted,
+      status: STATUS_TYPE.deleted,
       token: null,
     });
     if (!user) {
@@ -496,7 +504,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
     const user = await User.findOne({
       _id: userId,
-      $and: [{ status: { $ne: STATUS.deleted } }],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
     }).exec();
 
     if (!user) {
@@ -520,6 +528,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       message: t('password_changed'),
     });
   } catch (error: any) {
+    console.log('updateUser');
     throw error;
   }
 });
@@ -552,6 +561,80 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
     res.status(200).json({
       success: true,
       data: user,
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const { reelId, action } = req.body;
+    if (!reelId || !ObjectId.isValid(reelId)) {
+      res.status(400);
+      throw new Error('invalid_reel_id');
+    }
+    let reel = await Reel.findById(reelId).exec();
+    if (!reel) {
+      res.status(404);
+      throw new Error('reel_not_found');
+    }
+    let user = await User.findById(userId).exec();
+    if (!user) {
+      res.status(404);
+      throw new Error('user_not_found');
+    }
+    const alreadySaved = user.savedReels.some(
+      (uid: any) => uid.toString() === reelId
+    );
+    if (action === SAVE_TYPE.save && !alreadySaved) {
+      user = await User.findByIdAndUpdate(
+        userId,
+        { $addToSet: { savedReels: new ObjectId(reelId) } },
+        { new: true }
+      ).exec();
+    } else if (action === SAVE_TYPE.unsave && alreadySaved) {
+      user = await User.findByIdAndUpdate(
+        userId,
+        { $pull: { savedReels: new ObjectId(reelId) } },
+        { new: true }
+      ).exec();
+    }
+    res.status(200).json({
+      success: true,
+      message: t('save_unsave_reel'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const user = req.user;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const matchQuery = {
+      _id: { $in: user.savedReels },
+      status: STATUS_TYPE.active,
+    };
+    const reels = await fetchReels(
+      user.id,
+      matchQuery,
+      { skip, limit },
+      user.savedReels
+    );
+    const totalRecords = await Reel.countDocuments(matchQuery);
+    const totalPages = Math.ceil(totalRecords / limit);
+    res.status(200).json({
+      success: true,
+      data: {
+        reels,
+        totalRecords,
+        totalPages,
+      },
     });
   } catch (error: any) {
     throw error;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateRegister, validateUpdateUser } from '../middlewares/user.middleware';
-import { register, login, refreshToken, currentUser, logout, deleteUser, updateUser, sendOtp, verifyOtp,resetPassword, changePassword, adminRegister, nameExist } from '../controllers/user.controller';
+import { register, login, refreshToken, currentUser, logout, deleteUser, updateUser, sendOtp, verifyOtp,resetPassword, changePassword, adminRegister, nameExist, getSavedReels, saveUnsaveReel } from '../controllers/user.controller';
 import { adminOnly, authenticate } from '../middlewares/auth.middleware';
 import { uploadProfile } from '../middlewares/upload.middleware';            
 
@@ -21,5 +21,6 @@ router.delete('/deleteUser', deleteUser);
 router.put('/updateProfile',uploadProfile, validateUpdateUser, updateUser);
 router.put('/changePassword', changePassword);
 router.post('/adminRegister', validateRegister, adminOnly, adminRegister);
-
+router.get('/getSavedReels', getSavedReels);
+router.post('/saveUnsaveReel', saveUnsaveReel);
 export default router;

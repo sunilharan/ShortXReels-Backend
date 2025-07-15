@@ -1,9 +1,10 @@
 import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
 import { IRole } from './role.model';
 import { ICategory } from './category.model';
-import { GENDER, STATUS } from '../config/constants';
+import { GENDER_TYPE, STATUS_TYPE } from '../config/constants';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
+import { IReel } from './reel.model';
 
 export interface IUser extends Document {
   name: string;
@@ -12,10 +13,10 @@ export interface IUser extends Document {
   email: string;
   password: string;
   phone: string;
-  gender: GENDER;
+  gender: GENDER_TYPE;
   profile: string;
   birthDate: Date;
-  status: STATUS;
+  status: STATUS_TYPE;
   role: PopulatedDoc<Document<ObjectId> & IRole>;
   token: string;
   notification: {
@@ -24,6 +25,7 @@ export interface IUser extends Document {
     recommendation: boolean;
   };
   interests: PopulatedDoc<Document<ObjectId> & ICategory>[];
+  savedReels: PopulatedDoc<Document<ObjectId> & IReel>[];
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -37,10 +39,10 @@ export const userSchema = new Schema<IUser>(
     email: { type: String },
     password: { type: String },
     phone: { type: String },
-    gender: { type: String, enum: GENDER, default: GENDER.male },
+    gender: { type: String, enum: GENDER_TYPE, default: GENDER_TYPE.male },
     profile: { type: String },
     birthDate: { type: Date },
-    status: { type: String, enum: STATUS, default: STATUS.active },
+    status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
     role: { type: Schema.Types.ObjectId, ref: 'Role' },
     token: { type: String },
     notification: {
@@ -49,6 +51,7 @@ export const userSchema = new Schema<IUser>(
       recommendation: { type: Boolean, default: true },
     },
     interests: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
+    savedReels: [{ type: Schema.Types.ObjectId, ref: 'Reel' }],
   },
   {
     timestamps: true,
@@ -64,6 +67,7 @@ export const userSchema = new Schema<IUser>(
         delete ret.password;
         delete ret.token;
         delete ret.__v;
+        delete ret.savedReels;
       },
     },
   }

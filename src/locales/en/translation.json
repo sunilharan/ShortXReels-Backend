@@ -13,6 +13,7 @@
   "interests_invalid": "Invalid interests.",
   "display_name_invalid": "Invalid display name.",
   "user_register_failed": "User registration failed.",
+  "username_required": "username is required.",
   "refresh_token_required": "Refresh token is required.",
   "refresh_token_invalid": "Invalid refresh token.",
   "access_token_required": "Access token is required.",
@@ -23,7 +24,7 @@
   "user_logged_out": "User logged out successfully.",
   "user_not_found": "User not found.",
   "email_does_not_exist": "This email is not registered with us.",
-  "invalid_email_or_password": "Invalid or incorrect email or password.",
+  "invalid_username_or_password": "Invalid or incorrect username or password.",
   "invalid_email_or_token": "Invalid or incorrect email or token.",
   "unauthorized": "Unauthorized access.",
   "otp_invalid": "The OTP you entered is either incorrect or has expired.",
@@ -70,5 +71,6 @@
   "report_deleted": "Report deleted successfully.",
   "report_validated": "Report validated successfully.",
   "invalid_review_validated": "Invalid review validation.",
-  "forbidden": "Access forbidden."
+  "forbidden": "Access forbidden.",
+  "save_unsave_reel": "Reel saved/unsaved successfully."
 }

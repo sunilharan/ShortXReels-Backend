@@ -1,7 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import { ObjectId } from 'mongodb';
-import { UserRole, STATUS } from '../config/constants';
+import { UserRole, STATUS_TYPE } from '../config/constants';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import { Comment } from '../models/comments.model';
@@ -117,7 +117,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     if (status) {
       matchQuery.status = status;
     } else {
-      matchQuery.status = { $ne: STATUS.deleted };
+      matchQuery.status = { $ne: STATUS_TYPE.deleted };
     }
 
     const reportsAggregate = await Report.aggregate([
@@ -331,17 +331,17 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
     let report;
     if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
       report = await Report.findByIdAndUpdate(id, {
-        status: STATUS.deleted,
+        status: STATUS_TYPE.deleted,
       }).exec();
     } else {
       report = await Report.findOneAndUpdate(
         {
           _id: new ObjectId(id),
           reportedBy: new ObjectId(userId),
-          status: { $ne: STATUS.deleted },
+          status: { $ne: STATUS_TYPE.deleted },
         },
         {
-          status: STATUS.deleted,
+          status: STATUS_TYPE.deleted,
         }
       ).exec();
     }
@@ -396,7 +396,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     }
     if (report.reviewResultValid) {
       await Reel.findByIdAndUpdate(report.reel, {
-        status: STATUS.inactive,
+        status: STATUS_TYPE.inactive,
       }).exec();
     }
     res.status(200).json({

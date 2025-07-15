@@ -1,12 +1,12 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
 import {
-  LIKE,
-  MEDIA,
+  LIKE_TYPE,
+  MEDIA_TYPE,
   REEL_FOLDER,
   removeFile,
   SORT_TYPE,
-  STATUS,
+  STATUS_TYPE,
   UserRole,
 } from '../config/constants';
 import { IReel, Reel } from '../models/reel.model';
@@ -15,93 +15,109 @@ import { ObjectId } from 'mongodb';
 import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
-import { Category } from '../models/category.model';
-import { PipelineStage } from 'mongoose';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
+  const savedReels = req.user.savedReels;
   const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page) || 1;
+  const skip = (page - 1) * limit;
 
   const profileUserId = req.query.profileUserId || '';
   const removeReels = JSON.parse(req.query.removeReelIds || '[]');
   const categoryId = req.query.categoryId || '';
   const addReels = JSON.parse(req.query.addReelIds || '[]');
 
-  const matchQuery: any = { status: STATUS.active };
-  let addedReels: any[] = [];
+  const matchQuery: any = { status: STATUS_TYPE.active };
+  if (removeReels.length && !profileUserId) {
+    matchQuery._id = {
+      $nin: removeReels.map((id: string) => new ObjectId(id)),
+    };
+  }
+
+  let reels: any[] = [];
+  let totalRecords = 0;
+
+  if (addReels.length) {
+    const addReelQuery = {
+      _id: { $in: addReels.map((id: string) => new ObjectId(id)) },
+    };
+    reels = await fetchReels(
+      userId,
+      addReelQuery,
+      { skip: 0, limit: addReels.length },
+      savedReels
+    );
+  }
 
   if (profileUserId) {
     matchQuery.createdBy = new ObjectId(profileUserId);
+    reels = [
+      ...reels,
+      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+    ];
+    totalRecords = await Reel.countDocuments(matchQuery);
+  } else if (categoryId === 'recommended') {
+    reels = [
+      ...reels,
+      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+    ];
+    totalRecords = await Reel.countDocuments(matchQuery);
+  } else if (categoryId) {
+    const primaryQuery = {
+      ...matchQuery,
+      categories: { $in: [new ObjectId(categoryId)] },
+    };
+    const primaryReels = await fetchReels(
+      userId,
+      primaryQuery,
+      { skip, limit },
+      savedReels
+    );
+    reels = [...reels, ...primaryReels];
+    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active });
 
-    const mainReels = await fetchReels(userId, matchQuery, { limit });
-
-    if (addReels.length) {
-      const addReelQuery = {
-        _id: { $in: addReels.map((id: string) => new ObjectId(id)) },
+    if (reels.length < limit) {
+      const fallbackQuery = {
+        ...matchQuery,
+        categories: { $nin: [new ObjectId(categoryId)] },
       };
-      addedReels = await fetchReels(userId, addReelQuery, {
-        limit: addReels.length,
-      });
+      const fallbackLimit = limit - reels.length;
+      reels = [
+        ...reels,
+        ...(await fetchReels(
+          userId,
+          fallbackQuery,
+          { skip: 0, limit: fallbackLimit },
+          savedReels
+        )),
+      ];
     }
-
-    const reelsMap = new Map<string, any>();
-    addedReels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
-    mainReels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
-
-    const finalReels = Array.from(reelsMap.values()).slice(0, limit);
-    const totalRecords = await Reel.countDocuments(matchQuery);
-    const totalPages = Math.ceil(totalRecords / limit);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        reels: finalReels,
-        totalRecords,
-        totalPages,
-      },
-    });
   } else {
-    if (categoryId && categoryId !== 'recommended') {
-      matchQuery.categories = { $in: [new ObjectId(categoryId)] };
-    }
-    if (removeReels.length) {
-      matchQuery._id = {
-        $nin: removeReels.map((id: string) => new ObjectId(id)),
-      };
-    }
-
-    const mainReels = await fetchReels(userId, matchQuery, { limit });
-
-    if (addReels.length) {
-      const addReelQuery = {
-        _id: { $in: addReels.map((id: string) => new ObjectId(id)) },
-      };
-      addedReels = await fetchReels(userId, addReelQuery, {
-        limit: addReels.length,
-      });
-    }
-
-    const reelsMap = new Map<string, any>();
-    addedReels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
-    mainReels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
-
-    const finalReels = Array.from(reelsMap.values()).slice(0, limit);
-    const totalRecords = await Reel.countDocuments(matchQuery);
-    const totalPages = Math.ceil(totalRecords / limit);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        reels: finalReels,
-        totalRecords,
-        totalPages,
-      },
-    });
+    reels = [
+      ...reels,
+      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+    ];
+    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active });
   }
+
+  const reelsMap = new Map<string, any>();
+  reels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
+  const finalReels = Array.from(reelsMap.values()).slice(0, limit);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      reels: finalReels,
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limit),
+    },
+  });
 });
 
 export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
+  const savedReels = req.user.savedReels;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -133,13 +149,21 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
     res.status(404);
     throw new Error('user_not_found');
   }
-  const matchQuery = { createdBy: new ObjectId(user.id) };
+  const matchQuery = {
+    createdBy: new ObjectId(user.id),
+    status: STATUS_TYPE.active,
+  };
   const total = await Reel.countDocuments(matchQuery);
-  const reels = await fetchReels(userId, matchQuery, {
-    skip,
-    limit,
-    sortQuery,
-  });
+  const reels = await fetchReels(
+    userId,
+    matchQuery,
+    {
+      skip,
+      limit,
+      sortQuery,
+    },
+    savedReels
+  );
 
   res.status(200).json({
     success: true,
@@ -156,12 +180,18 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
 export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = new ObjectId(req.user.id);
+    const savedReels = req.user.savedReels;
     const user = await User.findById(userId).select('interests').lean();
     const interestIds =
       user?.interests.map((i: any) => new ObjectId(i.id)) || [];
 
     const interestReels = await Reel.aggregate([
-      { $match: { status: 'active', categories: { $in: interestIds } } },
+      {
+        $match: {
+          status: STATUS_TYPE.active,
+          categories: { $in: interestIds },
+        },
+      },
       { $sort: { createdAt: -1 } },
       { $unwind: '$categories' },
       { $match: { categories: { $in: interestIds } } },
@@ -237,6 +267,9 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           },
           thumbnail: { $concat: [config.host + '/thumbnail/', '$thumbnail'] },
           isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
+          isSaved: {
+            $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+          },
         },
       },
       {
@@ -257,6 +290,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
               totalComments: '$totalComments',
               createdAt: '$createdAt',
               isLiked: '$isLiked',
+              isSaved: '$isSaved',
               createdBy: {
                 id: '$creator._id',
                 name: '$creator.name',
@@ -360,6 +394,9 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           },
           thumbnail: { $concat: [config.host + '/thumbnail/', '$thumbnail'] },
           isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
+          isSaved: {
+            $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+          },
         },
       },
       { $limit: 5 },
@@ -377,6 +414,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           totalComments: 1,
           createdAt: 1,
           isLiked: 1,
+          isSaved: 1,
           createdBy: {
             id: '$creator._id',
             name: '$creator.name',
@@ -412,30 +450,31 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
     }
     const uniqueReelIds = new Set();
 
-    const finalReels = interestReels.map((bucket: any) => {
-      const uniqueReels: any[] = [];
+    const finalReels = interestReels
+      .map((bucket: any) => {
+        const uniqueReels: any[] = [];
 
-      for (const reel of bucket.reels) {
-        const reelId = reel.id.toString();
-        if (!uniqueReelIds.has(reelId)) {
-          uniqueReelIds.add(reelId);
-          uniqueReels.push(reel);
+        for (const reel of bucket.reels) {
+          const reelId = reel.id.toString();
+          if (!uniqueReelIds.has(reelId)) {
+            uniqueReelIds.add(reelId);
+            uniqueReels.push(reel);
+          }
+          if (uniqueReels.length >= 5) {
+            break;
+          }
         }
-        if (uniqueReels.length >= 5) {
-          break;
-        }
-      }
 
-      return {
-        ...bucket,
-        reels: uniqueReels,
-      };
-    });
+        return {
+          ...bucket,
+          reels: uniqueReels,
+        };
+      })
+      .filter((bucket: any) => bucket.reels.length > 0);
 
     res.json({ success: true, data: finalReels });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+  } catch (error) {
+    throw error;
   }
 });
 
@@ -486,13 +525,13 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       mediaType,
     };
 
-    if (mediaType === MEDIA.video) {
+    if (mediaType === MEDIA_TYPE.video) {
       const mediaFile = files.media?.[0];
       if (mediaFile) {
         reelData.media = mediaFile.filename;
         reelData.duration = parseFloat(duration) || 0;
       }
-    } else if (mediaType === MEDIA.image) {
+    } else if (mediaType === MEDIA_TYPE.image) {
       const images = files.media?.map((img: any) => img.filename) || [];
       reelData.media = images.length > 0 ? images : [];
     }
@@ -536,9 +575,9 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       throw new Error('reel_not_found');
     }
     if (reel.media) {
-      if (reel.mediaType === MEDIA.video) {
+      if (reel.mediaType === MEDIA_TYPE.video) {
         await removeFile(reel?.media as string, 'uploads/reels');
-      } else if (reel.mediaType === MEDIA.image) {
+      } else if (reel.mediaType === MEDIA_TYPE.image) {
         if (Array.isArray(reel.media)) {
           reel.media.forEach((img: any) => {
             removeFile(img, 'uploads/reels');
@@ -569,7 +608,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_reel_id');
     }
-    if (!action || (action !== LIKE.like && action !== LIKE.unlike)) {
+    if (!action || (action !== LIKE_TYPE.like && action !== LIKE_TYPE.unlike)) {
       res.status(400);
       throw new Error('invalid_action');
     }
@@ -581,7 +620,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
       const alreadyLiked = reelDoc.likedBy.some(
         (uid: any) => uid.toString() === userId
       );
-      if (action === LIKE.like) {
+      if (action === LIKE_TYPE.like) {
         if (!alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
@@ -591,7 +630,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         } else {
           reel = reelDoc;
         }
-      } else if (action === LIKE.unlike) {
+      } else if (action === LIKE_TYPE.unlike) {
         if (alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
@@ -629,7 +668,7 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    if (reel.mediaType !== MEDIA.video || !reel.media) {
+    if (reel.mediaType !== MEDIA_TYPE.video || !reel.media) {
       res.status(404);
       throw new Error('media_not_found');
     }
@@ -699,7 +738,8 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
 export const fetchReels = async (
   userId: string,
   matchQuery: any,
-  options: { skip?: number; limit?: number; sortQuery?: any } = {}
+  options: { skip?: number; limit?: number; sortQuery?: any } = {},
+  savedReels: any = []
 ) => {
   const { skip = 0, limit = 10, sortQuery = { createdAt: -1 } } = options;
   const results = await Reel.aggregate([
@@ -780,6 +820,9 @@ export const fetchReels = async (
         totalLikes: 1,
         totalComments: 1,
         isLiked: { $in: [new ObjectId(userId), '$likedBy'] },
+        isSaved: {
+          $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+        },
         createdAt: 1,
         createdBy: {
           name: '$createdBy.name',

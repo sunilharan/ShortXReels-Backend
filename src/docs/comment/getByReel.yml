@@ -66,6 +66,8 @@
                                   format: date-time
                                 isLiked:
                                   type: boolean
+                                isSaved:
+                                  type: boolean
                                 totalLikes:
                                   type: number
                                 repliedBy:

@@ -13,6 +13,7 @@
   "interests_invalid": "अमान्य साथी।",
   "display_name_invalid": "अमान्य दशाखा नाम।",
   "user_register_failed": "उपयोगकर्ता पंजीकरण विफल हुआ।",
+  "username_required": "उपयोगकर्ता नाम आवश्यक है।",
   "refresh_token_required": "रिफ्रेश टोकन आवश्यक है।",
   "refresh_token_invalid": "अमान्य रिफ्रेश टोकन।",
   "access_token_required": "एक्सेस टोकन आवश्यक है।",
@@ -23,7 +24,7 @@
   "user_logged_out": "उपयोगकर्ता सफलतापूर्वक लॉग आउट हुआ।",
   "user_not_found": "उपयोगकर्ता नहीं मिला।",
   "email_does_not_exist": "यह ईमेल हमारे पास पंजीकृत नहीं है।",
-  "invalid_email_or_password": "अमान्य ईमेल या पासवर्ड।",
+  "invalid_username_or_password": "अमान्य नाम या पासवर्ड।",
   "invalid_email_or_token": "अमान्य ईमेल या टोकन।",
   "unauthorized": "अनधिकृत पहुँच।",
   "otp_invalid": "अमान्य ओटीपी।",
@@ -70,5 +71,6 @@
   "report_deleted": "रिपोर्ट सफलतापूर्वक हटाई गई।",
   "report_validated": "रिपोर्ट सत्यापित हुई।",
   "invalid_review_validated": "अमान्य समीक्षा सत्यापन।",
-  "forbidden": "पहुंच निषिद्ध है।"
+  "forbidden": "पहुंच निषिद्ध है।",
+  "save_unsave_reel": "रील सफलतापूर्वक साथी/अलिक करवामां आवै।"
 }

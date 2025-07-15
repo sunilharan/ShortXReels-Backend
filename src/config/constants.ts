@@ -53,30 +53,30 @@ export const Categories = [
   CategoriesType.education,
   CategoriesType.entertainment,
 ];
-export enum STATUS {
+export enum STATUS_TYPE {
   active = 'active',
   inactive = 'inactive',
   deleted = 'deleted',
 }
 
-export enum GENDER {
+export enum GENDER_TYPE {
   male = 'male',
   female = 'female',
   other = 'other',
 }
-export enum MEDIA {
+export enum MEDIA_TYPE {
   image = 'image',
   video = 'video',
 }
-export enum LIKE {
+export enum LIKE_TYPE {
   like = 'like',
   unlike = 'unlike',
 }
-export enum COMMENT {
+export enum COMMENT_TYPE {
   comment = 'comment',
   reply = 'reply',
 }
-export enum REPORT {
+export enum REPORT_TYPE {
   reel = 'reel',
   comment = 'comment',
   reply = 'reply',
@@ -86,14 +86,17 @@ export enum SORT_TYPE {
   latest = 'latest',
   oldest = 'oldest',
 }
-
+export enum SAVE_TYPE {
+  save = 'save',
+  unsave = 'unsave',
+}
 export const DEFAULT_SUPER_ADMIN = {
   email: 'superadmin@gmail.com',
   password: 'Admin12@',
   name: 'superadmin',
   role: UserRole.SuperAdmin,
-  status: STATUS.active,
-  gender: GENDER.male,
+  status: STATUS_TYPE.active,
+  gender: GENDER_TYPE.male,
   birthDate: new Date('1990-01-01'),
 };
 

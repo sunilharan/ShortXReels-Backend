@@ -1,46 +1,22 @@
-/reel:
+/user/getSavedReels:
   get:
-    tags: ['Reel']
-    summary: 'Get reels'
+    tags: ['User']
+    summary: 'Get saved reels'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
         name: page
-        required: false
         schema:
           type: number
           default: 1
       - in: query
         name: limit
-        required: false
         schema:
           type: number
           default: 10
-      - in: query
-        name: categoryId
-        required: false
-        schema:
-          type: string
-      - in: query
-        name: removeReelIds
-        required: false
-        schema:
-          type: string
-          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
-      - in: query
-        name: addReelIds
-        required: false
-        schema:
-          type: string
-          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
-      - in: query
-        name: profileUserId
-        required: false
-        schema:
-          type: string
     responses:
       200:
-        description: 'Reels fetched successfully'
+        description: 'Success'
         content:
           application/json:
             schema:
@@ -101,12 +77,14 @@
                     totalPages:
                       type: number
       400:
-        description: 'Bad request'
+        description: 'Bad Request'
       401:
         description: 'Unauthorized'
       403:
         description: 'Forbidden'
       404:
-        description: 'Reels not found'
+        description: 'Not Found'
+      409:
+        description: 'Conflict'
       500:
-        description: 'Internal server error'
+        description: 'Internal Server Error'

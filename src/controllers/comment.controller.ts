@@ -2,7 +2,7 @@ import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
 import { ObjectId } from 'mongodb';
 import { Reel } from '../models/reel.model';
-import { COMMENT, LIKE, UserRole } from '../config/constants';
+import { COMMENT_TYPE, LIKE_TYPE, UserRole } from '../config/constants';
 import { t } from 'i18next';
 import { config } from '../config/config';
 import WebSocket from '../websocket/WebSocket';
@@ -69,7 +69,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
     io.of('reel')
       .to(reel.toString())
       .emit('newComment', {
-        type: commentId ? COMMENT.reply : COMMENT.comment,
+        type: commentId ? COMMENT_TYPE.reply : COMMENT_TYPE.comment,
         reelId: reel,
         comment: commentData[0],
         totalComments: totalcomments,
@@ -228,7 +228,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     io.of('reel')
       .to(reel.id.toString())
       .emit('commentDeleted', {
-        type: replyId ? COMMENT.reply : COMMENT.comment,
+        type: replyId ? COMMENT_TYPE.reply : COMMENT_TYPE.comment,
         commentId,
         replyId: replyId || null,
         reelId: reel.id,
@@ -250,7 +250,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const { commentId, replyId, action } = req.body;
 
-    if (!action || (action !== LIKE.like && action !== LIKE.unlike)) {
+    if (!action || (action !== LIKE_TYPE.like && action !== LIKE_TYPE.unlike)) {
       res.status(400);
       throw new Error('invalid_action');
     }
@@ -282,9 +282,9 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       );
 
       let updateQuery: any = {};
-      if (action === LIKE.like && !alreadyLiked) {
+      if (action === LIKE_TYPE.like && !alreadyLiked) {
         updateQuery = { $addToSet: { 'replies.$.likedBy': userObjectId } };
-      } else if (action === LIKE.unlike && alreadyLiked) {
+      } else if (action === LIKE_TYPE.unlike && alreadyLiked) {
         updateQuery = { $pull: { 'replies.$.likedBy': userObjectId } };
       }
 
@@ -310,7 +310,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       io.of('reel')
         .to(updatedDoc?.reel?.toString() || 'reel')
         .emit('likeUnlikeComment', {
-          type: COMMENT.reply,
+          type: COMMENT_TYPE.reply,
           commentId,
           replyId,
           userId,
@@ -334,9 +334,9 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       );
 
       let updateQuery: any = {};
-      if (action === LIKE.like && !alreadyLiked) {
+      if (action === LIKE_TYPE.like && !alreadyLiked) {
         updateQuery = { $addToSet: { likedBy: userObjectId } };
-      } else if (action === LIKE.unlike && alreadyLiked) {
+      } else if (action === LIKE_TYPE.unlike && alreadyLiked) {
         updateQuery = { $pull: { likedBy: userObjectId } };
       }
 
@@ -354,7 +354,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       io.of('reel')
         .to(updatedComment?.reel?.toString() || 'reel')
         .emit('likeUnlikeComment', {
-          type: COMMENT.comment,
+          type: COMMENT_TYPE.comment,
           commentId,
           replyId: null,
           userId,

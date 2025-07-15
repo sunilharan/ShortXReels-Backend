@@ -13,6 +13,7 @@
   "interests_invalid": "અમાન્ય સાથીઓ.",
   "display_name_invalid": "અમાન્ય દશાખા નામ.",
   "user_register_failed": "યૂઝર રજીસ્ટ્રેશન નિષ્ફળ થયું.",
+  "username_required": "ઈમેલ યો નામ આવશ્યક છે.",
   "refresh_token_required": "રીફ્રેશ ટોકન આવશ્યક છે.",
   "refresh_token_invalid": "અમાન્ય રીફ્રેશ ટોકન.",
   "access_token_required": "ઍક્સેસ ટોકન આવશ્યક છે.",
@@ -23,8 +24,8 @@
   "user_logged_out": "યૂઝર સફળતાપૂર્વક લૉગઆઉટ થયો.",
   "user_not_found": "યૂઝર મળ્યો નથી.",
   "email_does_not_exist": "આ ઇમેઇલ અમારી સાથે નોંધાયેલ નથી.",
-  "invalid_email_or_password": "અમાન્ય ઈમેલ અથવા પાસવર્ડ.",
-  "invalid_email_or_token": "અમાન્ય ઈમેલ અથવા ટોકન.",
+  "invalid_username_or_password": "અમાન્ય નામ અથવા પાસવર્ડ.",
+  "invalid_email_or_token": "અમાન્ય ઈમેઇલ અથવા ટોકન.",
   "unauthorized": "અનધિકૃત પ્રવેશ.",
   "otp_invalid": "અમાન્ય ઓટીપી.",
   "otp_sent_to_email": "ઓટીપી ઈમેલ પર મોકલવામાં આવ્યો છે.",
@@ -70,5 +71,6 @@
   "report_deleted": "રિપોર્ટ સફળતાપૂર્વક કાઢી નાખવામાં આવ્યો.",
   "report_validated": "રિપોર્ટ સફળતાપૂર્વક માન્ય થયો.",
   "invalid_review_validated": "અમાન્ય સમીક્ષા માન્યતા.",
-  "forbidden": "પ્રવેશ પર પ્રતિબંધ છે."
+  "forbidden": "પ્રવેશ પર પ્રતિબંધ છે.",
+  "save_unsave_reel": "રીલ સફળતાપૂર્વક સાથી/અલિક કરવામાં આવ્યો."
 }

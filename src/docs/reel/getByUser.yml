@@ -99,6 +99,8 @@
                             type: number
                           isLiked:
                             type: boolean
+                          isSaved:
+                            type: boolean
                           createdAt:
                             type: string
                             format: date-time
