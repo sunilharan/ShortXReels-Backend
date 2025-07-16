@@ -2,6 +2,7 @@ import expressAsyncHandler from 'express-async-handler';
 import { Category } from '../models/category.model';
 import { removeFile } from '../config/constants';
 import { t } from 'i18next';
+import { rename } from 'fs';
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -18,32 +19,36 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
 
 export const createCategory = expressAsyncHandler(async (req: any, res) => {
   try {
-    let { name } = req.body;
-    let image;
-    if (!name || typeof name !== 'string' || !name.trim()) {
+    const { name } = req.body;
+    const tempFile = req.file?.path;
+
+    if (!name) {
       res.status(400);
       throw new Error('name_required');
     }
-    if (
-      !req.file ||
-      !req.file.filename ||
-      !req.file.mimetype.startsWith('image/')
-    ) {
+    if (!tempFile) {
       res.status(400);
       throw new Error('image_required');
     }
-    image = req.file.filename;
-    name = name.trim().toLowerCase();
-    const existingCategory = await Category.findOne({ name }).exec();
-    if (existingCategory) {
+
+    const exists = await Category.findOne({
+      name: { $regex: name, $options: 'i' },
+    });
+    if (exists) {
       res.status(409);
-      await removeFile(image, 'uploads/categories');
       throw new Error('category_exists');
     }
-    const category = await Category.create({ name, image });
-    res.status(201).json({
-      success: true,
-      data: category,
+
+    const categoryPath = `categories/${req.file.filename}`;
+    const filePath = `files/${categoryPath}`;
+
+    rename(tempFile, filePath, async (err) => {
+      if (err) {
+        throw new Error('file_upload_failed');
+      }
+
+      const category = await Category.create({ name, image: categoryPath });
+      res.status(201).json({ success: true, data: category });
     });
   } catch (error: any) {
     throw error;
@@ -55,7 +60,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
     const { id } = req.params;
     if (!id) {
       res.status(400);
-      throw new Error('invalid_category_id');
+      throw new Error('invalid_request');
     }
     const category = await Category.findByIdAndDelete(id).exec();
     if (!category) {
@@ -63,7 +68,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
       throw new Error('category_not_found');
     }
     if (category.image) {
-      await removeFile(category.image, 'uploads/categories');
+      await removeFile(category.image, 'files/categories');
     }
     res.status(200).json({
       success: true,
@@ -77,42 +82,49 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
 export const editCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id, name, oldImage } = req.body;
-    let image;
-    if (
-      req.file &&
-      req.file.filename &&
-      req.file.mimetype.startsWith('image/')
-    ) {
-      image = req.file.filename;
-    }
-    const existingCategory = await Category.findOne({ name }).exec();
-    if (existingCategory && existingCategory?.id.toString() !== id) {
+    const tempFile = req.file?.path;
+
+    const existingCategory = await Category.findOne({
+      name: { $regex: name, $options: 'i' },
+    });
+
+    if (existingCategory && existingCategory.id.toString() !== id) {
       res.status(409);
-      await removeFile(image, 'uploads/categories');
       throw new Error('category_exists');
     }
-    let categoryData: any = {};
-    if (name) {
-      categoryData.name = name;
+
+    const updateData: any = { name };
+
+    if (tempFile) {
+      const categoryPath = `categories/${req.file.filename}`;
+      const filePath = `files/${categoryPath}`;
+      rename(tempFile, filePath, async (err) => {
+        if (err) {
+          throw new Error('file_upload_failed');
+        }
+        updateData.image = categoryPath;
+        const category = await Category.findByIdAndUpdate(id, updateData, {
+          new: true,
+        });
+
+        if (!category) {
+          throw new Error('category_not_found');
+        }
+
+        if (oldImage) {
+          removeFile(oldImage, 'files/categories');
+        }
+        res.status(200).json({ success: true, data: category });
+      });
+    } else {
+      const category = await Category.findByIdAndUpdate(id, updateData, {
+        new: true,
+      });
+      if (!category) {
+        throw new Error('category_not_found');
+      }
+      res.status(200).json({ success: true, data: category });
     }
-    if (image) {
-      categoryData.image = image;
-    }
-    const category = await Category.findByIdAndUpdate(id, categoryData, {
-      new: true,
-    }).exec();
-    if (!category) {
-      res.status(404);
-      await removeFile(image, 'uploads/categories');
-      throw new Error('category_not_found');
-    }
-    if (oldImage) {
-      await removeFile(oldImage, 'uploads/categories');
-    }
-    res.status(200).json({
-      success: true,
-      data: category,
-    });
   } catch (error: any) {
     throw error;
   }

@@ -17,7 +17,7 @@ export const otpSchema = new Schema<IOtp>(
     otp: { type: String },
     expiresAt: {
       type: Date,
-      default: () => moment().add(parseInt(config.otpExpire || '180'), 'seconds').toDate()
+      default: () => moment().add(parseInt(config.otpExpire), 'seconds').toDate()
     },  
   },
   {

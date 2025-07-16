@@ -11,8 +11,8 @@ import {
 } from '../config/constants';
 import { IReel, Reel } from '../models/reel.model';
 import { t } from 'i18next';
-import { ObjectId } from 'mongodb';
-import { createReadStream, existsSync, statSync, unlinkSync } from 'fs';
+import mongoose from 'mongoose';
+import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
 
@@ -28,10 +28,15 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   const categoryId = req.query.categoryId || '';
   const addReels = JSON.parse(req.query.addReelIds || '[]');
 
-  const matchQuery: any = { status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } };
+  const matchQuery: any = {
+    status: STATUS_TYPE.active,
+    createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
+  };
   if (removeReels.length && !profileUserId) {
     matchQuery._id = {
-      $nin: removeReels.map((id: string) => new ObjectId(id)),
+      $nin: removeReels.map(
+        (id: string) => new mongoose.Types.ObjectId(String(id))
+      ),
     };
   }
 
@@ -40,7 +45,11 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
 
   if (addReels.length) {
     const addReelQuery = {
-      _id: { $in: addReels.map((id: string) => new ObjectId(id)) },
+      _id: {
+        $in: addReels.map(
+          (id: string) => new mongoose.Types.ObjectId(String(id))
+        ),
+      },
     };
     reels = await fetchReels(
       userId,
@@ -51,7 +60,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   }
 
   if (profileUserId) {
-    matchQuery.createdBy = new ObjectId(profileUserId);
+    matchQuery.createdBy = new mongoose.Types.ObjectId(String(profileUserId));
     reels = [
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
@@ -66,7 +75,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   } else if (categoryId) {
     const primaryQuery = {
       ...matchQuery,
-      categories: { $in: [new ObjectId(categoryId)] },
+      categories: { $in: [new mongoose.Types.ObjectId(String(categoryId))] },
     };
     const primaryReels = await fetchReels(
       userId,
@@ -75,12 +84,15 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       savedReels
     );
     reels = [...reels, ...primaryReels];
-    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } });
+    totalRecords = await Reel.countDocuments({
+      status: STATUS_TYPE.active,
+      createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
+    });
 
     if (reels.length < limit) {
       const fallbackQuery = {
         ...matchQuery,
-        categories: { $nin: [new ObjectId(categoryId)] },
+        categories: { $nin: [new mongoose.Types.ObjectId(String(categoryId))] },
       };
       const fallbackLimit = limit - reels.length;
       reels = [
@@ -98,7 +110,10 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
     ];
-    totalRecords = await Reel.countDocuments({ status: STATUS_TYPE.active, createdBy: { $ne: new ObjectId(userId) } });
+    totalRecords = await Reel.countDocuments({
+      status: STATUS_TYPE.active,
+      createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
+    });
   }
 
   const reelsMap = new Map<string, any>();
@@ -140,7 +155,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
   }
   if (!id) {
     res.status(400);
-    throw new Error('invalid_user_id');
+    throw new Error('invalid_request');
   }
   const user = await User.findById(id).select(
     'id name email phone gender birth status profile displayName description'
@@ -150,7 +165,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
     throw new Error('user_not_found');
   }
   const matchQuery = {
-    createdBy: new ObjectId(user.id),
+    createdBy: new mongoose.Types.ObjectId(String(user.id)),
     status: STATUS_TYPE.active,
   };
   const total = await Reel.countDocuments(matchQuery);
@@ -179,12 +194,11 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
 
 export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = new ObjectId(req.user.id);
-    const savedReels = req.user.savedReels;
+    const userId = new mongoose.Types.ObjectId(String(req.user.id));
+    const savedReels = req.user.savedReels || [];
     const user = await User.findById(userId).select('interests').lean();
     const interestIds =
-      user?.interests.map((i: any) => new ObjectId(i.id)) || [];
-
+      user?.interests.map((i: any) => new mongoose.Types.ObjectId(i.id)) || [];
     const interestReels = await Reel.aggregate([
       {
         $match: {
@@ -269,7 +283,12 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           thumbnail: { $concat: [config.host + '/thumbnail/', '$thumbnail'] },
           isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
           isSaved: {
-            $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+            $in: [
+              '$_id',
+              savedReels.map(
+                (id: any) => new mongoose.Types.ObjectId(String(id))
+              ),
+            ],
           },
         },
       },
@@ -396,7 +415,12 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           thumbnail: { $concat: [config.host + '/thumbnail/', '$thumbnail'] },
           isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
           isSaved: {
-            $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+            $in: [
+              '$_id',
+              savedReels.map(
+                (id: string) => new mongoose.Types.ObjectId(String(id))
+              ),
+            ],
           },
         },
       },
@@ -482,9 +506,9 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
 export const reelById = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id } = req.params;
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
     let reel = await Reel.findById(id)
       .populate('createdBy', 'name profile')
@@ -507,47 +531,69 @@ export const reelById = expressAsyncHandler(async (req: any, res) => {
 
 export const createReel = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.user.id;
     const {
       caption,
       categories: rawCategories,
       mediaType,
       duration,
     } = req.body;
+    const userId = req.user.id;
     const categories = JSON.parse(rawCategories).map(
-      (id: string) => new ObjectId(id)
+      (id: string) => new mongoose.Types.ObjectId(id)
     );
-
     const files = req.files || {};
-    let reelData: Partial<IReel> = {
-      createdBy: new ObjectId(userId),
+
+    const reelData: any = {
+      createdBy: new mongoose.Types.ObjectId(userId),
       caption,
       categories,
       mediaType,
     };
 
+    const mediaFiles = files.media || [];
+
+    const moveMediaFile = (file: any) => {
+      const mediaPath = `reels/${file.filename}`;
+      const destPath = `files/${mediaPath}`;
+      return new Promise<string>((resolve, reject) => {
+        rename(file.path, destPath, (err) => {
+          if (err) reject(err);
+          else resolve(mediaPath);
+        });
+      });
+    };
+
+    const mediaPaths = await Promise.all(mediaFiles.map(moveMediaFile));
+
+    reelData.media =
+      mediaType === MEDIA_TYPE.video ? mediaPaths[0] : mediaPaths;
     if (mediaType === MEDIA_TYPE.video) {
-      const mediaFile = files.media?.[0];
-      if (mediaFile) {
-        reelData.media = mediaFile.filename;
-        reelData.duration = parseFloat(duration) || 0;
-      }
-    } else if (mediaType === MEDIA_TYPE.image) {
-      const images = files.media?.map((img: any) => img.filename) || [];
-      reelData.media = images.length > 0 ? images : [];
+      reelData.duration = parseFloat(duration) || 0;
     }
 
-    const thumbnail = files.thumbnail?.[0];
-    if (thumbnail) {
-      reelData.thumbnail = thumbnail.filename;
+    const thumbnailFile = files.thumbnail?.[0];
+    if (thumbnailFile) {
+      const thumbPath = `thumbnails/${thumbnailFile.filename}`;
+      const destThumbPath = `files/${thumbPath}`;
+      await new Promise<void>((resolve, reject) => {
+        rename(thumbnailFile.path, destThumbPath, (err) => {
+          if (err) reject(err);
+          else {
+            reelData.thumbnail = thumbPath;
+            resolve();
+          }
+        });
+      });
     }
 
     const reel = await Reel.create(reelData);
-    const populatedReel = await Reel.findById(reel._id)
+    const populatedReel = await Reel.findById(reel.id)
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
       .populate('likedBy', 'name profile')
-      .populate('viewedBy', 'name profile');
+      .populate('viewedBy', 'name profile')
+      .exec();
+
     res.status(201).json({ success: true, data: populatedReel });
   } catch (error: any) {
     throw error;
@@ -560,9 +606,9 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id } = req.params;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
 
     let reel;
@@ -605,9 +651,9 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const { id, action } = req.body;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
     if (!action || (action !== LIKE_TYPE.like && action !== LIKE_TYPE.unlike)) {
       res.status(400);
@@ -619,13 +665,17 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
       reel = null;
     } else {
       const alreadyLiked = reelDoc.likedBy.some(
-        (uid: any) => uid.toString() === userId
+        (id: any) => id.toString() === userId
       );
       if (action === LIKE_TYPE.like) {
         if (!alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $addToSet: { likedBy: new ObjectId(userId) } },
+            {
+              $addToSet: {
+                likedBy: new mongoose.Types.ObjectId(String(userId)),
+              },
+            },
             { new: true }
           ).exec();
         } else {
@@ -635,7 +685,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
         if (alreadyLiked) {
           reel = await Reel.findByIdAndUpdate(
             id,
-            { $pull: { likedBy: new ObjectId(userId) } },
+            { $pull: { likedBy: new mongoose.Types.ObjectId(String(userId)) } },
             { new: true }
           ).exec();
         } else {
@@ -658,11 +708,11 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
-    // console.log(`Streaming video for ID: ${req.params.id}`);
-    const reelId = new ObjectId(req.params.id);
-    if (!reelId || !ObjectId.isValid(reelId)) {
+    // const userId = req.user.id;
+    const reelId = new mongoose.Types.ObjectId(String(req.params.id));
+    if (!reelId) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
     const reel = await Reel.findById(reelId);
     if (!reel) {
@@ -683,10 +733,14 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const stat = statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
-    // const userId = req.user.id;
-    // await Reel.findByIdAndUpdate(reelId, {
-    //   $push: { viewedBy: new ObjectId(userId) },
-    // }).exec();
+    // const isViewed = reel.viewedBy.some(
+    //   (id: any) => id.toString() === userId
+    // );
+    // if (!isViewed) {
+    //   await Reel.findByIdAndUpdate(reelId, {
+    //     $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },
+    //   }).exec();
+    // }
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
@@ -820,9 +874,16 @@ export const fetchReels = async (
         totalViews: 1,
         totalLikes: 1,
         totalComments: 1,
-        isLiked: { $in: [new ObjectId(userId), '$likedBy'] },
+        isLiked: {
+          $in: [new mongoose.Types.ObjectId(String(userId)), '$likedBy'],
+        },
         isSaved: {
-          $in: ['$_id', savedReels.map((id: any) => new ObjectId(id))],
+          $in: [
+            '$_id',
+            savedReels.map(
+              (id: any) => new mongoose.Types.ObjectId(String(id))
+            ),
+          ],
         },
         createdAt: 1,
         createdBy: {

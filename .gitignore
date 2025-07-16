@@ -67,7 +67,7 @@ testem.log
 .DS_Store
 Thumbs.db
 package-lock.json
-images
+files
 uploads
 build
 /dbBackup

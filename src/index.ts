@@ -70,13 +70,13 @@ app.get('/api/roles', adminOnly, getRoles);
 app.get('/api/health', checkHealth);
 setupSwaggerDocs(app);
 
-app.use('/profile', express.static('uploads/profiles'));
-app.use('/category', express.static('uploads/categories'));
-app.use('/reel', express.static('uploads/reels'));
-app.use('/thumbnail', express.static('uploads/thumbnails'));
+app.use('/profile', express.static('files/profiles'));
+app.use('/category', express.static('files/categories'));
+app.use('/reel', express.static('files/reels'));
+app.use('/thumbnail', express.static('files/thumbnails'));
 
 const httpServer = createServer(app);
-const SOCKET_PORT: any = config.socketPort || 5003;
+const SOCKET_PORT: any = config.socketPort || 5001;
 httpServer.listen(SOCKET_PORT, () =>
   console.log(`Socket server is running on port ${SOCKET_PORT}.`)
 );

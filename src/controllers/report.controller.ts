@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose'
 import { UserRole, STATUS_TYPE } from '../config/constants';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
@@ -18,21 +18,13 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       reportType,
     } = req.body;
     let createData: any = {};
-    if (!reel || !ObjectId.isValid(reel)) {
+    if (!reel) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
-    if (!reason || typeof reason !== 'string' || reason.trim() === '') {
+    if (!reason) {
       res.status(400);
       throw new Error('reason_required');
-    }
-    if (comment && !ObjectId.isValid(comment)) {
-      res.status(400);
-      throw new Error('invalid_comment_id');
-    }
-    if (reply && !ObjectId.isValid(reply)) {
-      res.status(400);
-      throw new Error('invalid_reply_id');
     }
     const reelExists = await Reel.findById(reel).exec();
     if (!reelExists) {
@@ -56,21 +48,21 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
         throw new Error('reply_not_found');
       }
     }
-    createData.reportedBy = new ObjectId(userId);
-    createData.reel = new ObjectId(reel);
+    createData.reportedBy = new mongoose.Types.ObjectId(String(userId));
+    createData.reel = new mongoose.Types.ObjectId(String(reel));
     createData.reason = reason;
     createData.reportType = reportType;
     if (comment) {
-      createData.comment = new ObjectId(comment);
+      createData.comment = new mongoose.Types.ObjectId(String(comment));
     }
     if (reply) {
-      createData.reply = new ObjectId(reply);
+      createData.reply = new mongoose.Types.ObjectId(String(reply));
     }
     const alreadyReported = await Report.findOne({
-      reportedBy: new ObjectId(userId),
-      reel: new ObjectId(reel),
-      comment: new ObjectId(comment),
-      reply: new ObjectId(reply),
+      reportedBy: new mongoose.Types.ObjectId(String(userId)),
+      reel: new mongoose.Types.ObjectId(String(reel)),
+      comment: new mongoose.Types.ObjectId(String(comment)),
+      reply: new mongoose.Types.ObjectId(String(reply)),
       reason: reason,
       reportType: reportType,
     }).exec();
@@ -103,14 +95,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
 
     const matchQuery: any = {};
     if (role === UserRole.User) {
-      matchQuery.reportedBy = new ObjectId(userId);
+      matchQuery.reportedBy = new mongoose.Types.ObjectId(String(userId));
     }
     if (search) {
       const searchRegex = new RegExp(search, 'i');
       matchQuery.$or = [{ reason: searchRegex }];
     }
     if (reportType) matchQuery.reportType = reportType;
-    if (reviewBy) matchQuery.reviewBy = new ObjectId(reviewBy);
+    if (reviewBy) matchQuery.reviewBy = new mongoose.Types.ObjectId(String(reviewBy));
     if (reviewResultValid !== undefined) {
       matchQuery.reviewResultValid = reviewResultValid === 'true';
     }
@@ -324,9 +316,9 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id } = req.params;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400);
-      throw new Error('invalid_report_id');
+      throw new Error('invalid_request');
     }
     let report;
     if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
@@ -336,8 +328,8 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
     } else {
       report = await Report.findOneAndUpdate(
         {
-          _id: new ObjectId(id),
-          reportedBy: new ObjectId(userId),
+          _id: new mongoose.Types.ObjectId(String(id)),
+          reportedBy: new mongoose.Types.ObjectId(String(userId)),
           status: { $ne: STATUS_TYPE.deleted },
         },
         {
@@ -365,9 +357,9 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     const role = req.role;
     const { id, reviewResultValid } = req.body;
 
-    if (!id || !ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400);
-      throw new Error('invalid_report_id');
+      throw new Error('invalid_request');
     }
 
     if (typeof reviewResultValid !== 'boolean') {
@@ -377,7 +369,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     const report = await Report.findByIdAndUpdate(
       id,
       {
-        reviewBy: new ObjectId(userId),
+        reviewBy: new mongoose.Types.ObjectId(String(userId)),
         reviewResultValid: reviewResultValid,
         reviewDate: new Date(),
       },

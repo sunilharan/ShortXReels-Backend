@@ -3,7 +3,7 @@ dotenv.config();
 
 export const config = {
     port: process.env.PORT || 0,
-    socketPort: process.env.SOCKET_PORT || 5003,
+    socketPort: process.env.SOCKET_PORT || 5001,
     host: process.env.HOST || "",
     databaseUrl: process.env.DATABASE_URL || "",
     otpExpire: process.env.OTP_EXPIRE_IN_SECONDS || "",

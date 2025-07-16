@@ -1,10 +1,9 @@
 import expressAsyncHandler from 'express-async-handler';
 import { verifyToken } from '../utils/encrypt';
 import { User } from '../models/user.model';
-import { JwtPayload } from 'jsonwebtoken';
 import { STATUS_TYPE, UserRole } from '../config/constants';
 import { IRole } from '../models/role.model';
-``
+
 export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
@@ -16,13 +15,13 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
     res.status(401);
     throw new Error('unauthorized');
   }
-  const decoded = verifyToken(token) as JwtPayload;
-  if (!decoded || typeof decoded === 'string' || !('id' in decoded)) {
+  const decoded:any = verifyToken(token);
+  if (!decoded || !decoded?.id ) {
     res.status(401);
     throw new Error('unauthorized');
   }
   const user = await User.findOne({
-    _id: decoded.id,
+    _id: decoded?.id,
     token: token,
     status: STATUS_TYPE.active,
   })

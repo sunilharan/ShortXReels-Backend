@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { Role } from '../models/role.model';
-import { Categories, ROLES } from '../config/constants';
+import { CATEGORIES, ROLES } from '../config/constants';
 import { config } from '../config/config';
 import { Category } from '../models/category.model';
 export const connectDB = async () => {
@@ -31,7 +31,7 @@ const createInitial = async () => {
   Category.estimatedDocumentCount()
     .then((count) => {
       if (count === 0) {
-        Categories.forEach((category) => {
+        CATEGORIES.forEach((category) => {
           Category.create({
             name: category,
             image: `${category}.jpg`,

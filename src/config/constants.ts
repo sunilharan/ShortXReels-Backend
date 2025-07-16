@@ -7,13 +7,16 @@ export const UserRole = {
 };
 export const ROLES = [UserRole.SuperAdmin, UserRole.Admin, UserRole.User];
 
+export const FILE_FOLDER = process.cwd() + '/files';
 export const UPLOAD_FOLDER = process.cwd() + '/uploads';
-export const PROFILE_FOLDER = UPLOAD_FOLDER + '/profiles';
-export const REEL_FOLDER = UPLOAD_FOLDER + '/reels';
-export const CATEGORY_FOLDER = UPLOAD_FOLDER + '/categories';
-export const THUMBNAIL_FOLDER = UPLOAD_FOLDER + '/thumbnails';
+
+export const PROFILE_FOLDER = FILE_FOLDER + '/profiles';
+export const REEL_FOLDER = FILE_FOLDER + '/reels';
+export const CATEGORY_FOLDER = FILE_FOLDER + '/categories';
+export const THUMBNAIL_FOLDER = FILE_FOLDER + '/thumbnails';
 
 export const FOLDER_LIST = [
+  FILE_FOLDER,
   UPLOAD_FOLDER,
   PROFILE_FOLDER,
   REEL_FOLDER,
@@ -40,7 +43,7 @@ export const CategoriesType = {
   education: 'Education',
   entertainment: 'Entertainment',
 };
-export const Categories = [
+export const CATEGORIES = [
   CategoriesType.music,
   CategoriesType.gaming,
   CategoriesType.sports,

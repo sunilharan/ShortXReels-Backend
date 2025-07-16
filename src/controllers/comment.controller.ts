@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 import { Reel } from '../models/reel.model';
 import { COMMENT_TYPE, LIKE_TYPE, UserRole } from '../config/constants';
 import { t } from 'i18next';
@@ -12,11 +12,11 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const { reelId: reel, content, commentId } = req.body;
 
-    if (!reel || !ObjectId.isValid(reel)) {
+    if (!reel) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
-    if (!content || typeof content !== 'string' || content.trim() === '') {
+    if (!content) {
       res.status(400);
       throw new Error('invalid_content');
     }
@@ -25,21 +25,17 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-
     let comment;
-
     if (commentId) {
       const commentExists = await Comment.findById(commentId).exec();
       if (!commentExists) {
         res.status(404);
         throw new Error('comment_not_found');
       }
-
       const reply = {
         repliedBy: userId,
         content,
       };
-
       await Comment.findByIdAndUpdate(
         commentId,
         { $addToSet: { replies: reply } },
@@ -54,15 +50,14 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         content,
       });
     }
-
     if (!comment) {
       res.status(400);
       throw new Error('comment_creation_failed');
     }
 
     const commentData = await fetchComments(userId, { _id: comment._id });
-    const totalcomments = await Comment.countDocuments({
-      reel: new ObjectId(reel),
+    const totalComments = await Comment.countDocuments({
+      reel: new mongoose.Types.ObjectId(String(reel)),
     }).exec();
 
     const io = WebSocket.getInstance();
@@ -72,21 +67,18 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         type: commentId ? COMMENT_TYPE.reply : COMMENT_TYPE.comment,
         reelId: reel,
         comment: commentData[0],
-        totalComments: totalcomments,
+        totalComments: totalComments,
       });
 
     res.status(201).json({
       success: true,
       data: {
         comment: commentData[0],
-        totalComments: totalcomments,
+        totalComments: totalComments,
       },
     });
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Something went wrong',
-    });
+    throw error;
   }
 });
 
@@ -97,9 +89,9 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    if (!reelId || !ObjectId.isValid(reelId)) {
+    if (!reelId) {
       res.status(400);
-      throw new Error('invalid_reel_id');
+      throw new Error('invalid_request');
     }
     const reelExists = await Reel.findById(reelId).exec();
     if (!reelExists) {
@@ -109,7 +101,7 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
 
     const comments = await fetchComments(
       userId,
-      { reel: new ObjectId(reelId) },
+      { reel: new mongoose.Types.ObjectId(String(reelId)) },
       { skip, limit }
     );
 
@@ -133,9 +125,9 @@ export const getById = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const commentId = req.params.id;
 
-    if (!commentId || !ObjectId.isValid(commentId)) {
+    if (!commentId) {
       res.status(400);
-      throw new Error('invalid_comment_id');
+      throw new Error('invalid_request');
     }
     const comment = await Comment.findById(commentId)
       .populate('commentedBy', 'name profile')
@@ -164,9 +156,9 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     const commentId = req.query.commentId;
     const replyId = req.query.replyId;
 
-    if (!commentId || !ObjectId.isValid(commentId)) {
+    if (!commentId) {
       res.status(400);
-      throw new Error('invalid_comment_id');
+      throw new Error('invalid_request');
     }
     let comment;
     if (!replyId) {
@@ -174,21 +166,21 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
         comment = await Comment.findByIdAndDelete(commentId);
       } else {
         comment = await Comment.findOneAndDelete({
-          _id: new ObjectId(commentId),
-          commentedBy: new ObjectId(userId),
+          _id: new mongoose.Types.ObjectId(String(commentId)),
+          commentedBy: new mongoose.Types.ObjectId(String(userId)),
         });
       }
     } else {
       if (req.role === UserRole.SuperAdmin || req.role === UserRole.Admin) {
         comment = await Comment.findOneAndUpdate(
           {
-            _id: new ObjectId(commentId),
-            'replies._id': new ObjectId(replyId),
+            _id: new mongoose.Types.ObjectId(String(commentId)),
+            'replies._id': new mongoose.Types.ObjectId(String(replyId)),
           },
           {
             $pull: {
               replies: {
-                _id: new ObjectId(replyId),
+                _id: new mongoose.Types.ObjectId(String(replyId)),
               },
             },
           },
@@ -197,14 +189,14 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       } else {
         comment = await Comment.findOneAndUpdate(
           {
-            _id: new ObjectId(commentId),
-            'replies._id': new ObjectId(replyId),
-            'replies.repliedBy': new ObjectId(userId),
+            _id: new mongoose.Types.ObjectId(String(commentId)),
+            'replies._id': new mongoose.Types.ObjectId(String(replyId)),
+            'replies.repliedBy': new mongoose.Types.ObjectId(String(userId)),
           },
           {
             $pull: {
               replies: {
-                _id: new ObjectId(replyId),
+                _id: new mongoose.Types.ObjectId(String(replyId)),
               },
             },
           }
@@ -221,7 +213,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       throw new Error('reel_not_found');
     }
     const totalComments = await Comment.countDocuments({
-      reel: new ObjectId(reel?.id),
+      reel: new mongoose.Types.ObjectId(String(reel?.id)),
     });
     const io = WebSocket.getInstance();
 
@@ -254,16 +246,12 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_action');
     }
-    if (!commentId || !ObjectId.isValid(commentId)) {
+    if (!commentId) {
       res.status(400);
-      throw new Error('invalid_comment_id');
-    }
-    if (replyId && !ObjectId.isValid(replyId)) {
-      res.status(400);
-      throw new Error('invalid_reply_id');
+      throw new Error('invalid_request');
     }
 
-    const userObjectId = new ObjectId(userId);
+    const userObjectId = new mongoose.Types.ObjectId(String(userId));
 
     if (replyId) {
       const commentDoc = await Comment.findOne(
@@ -278,7 +266,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
 
       const reply = commentDoc.replies[0];
       const alreadyLiked = reply.likedBy.some(
-        (uid: any) => uid.toString() === userId
+        (id: any) => id.toString() === userId
       );
 
       let updateQuery: any = {};
@@ -302,7 +290,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
 
       const updatedReply = updatedDoc?.replies?.[0];
       const isNowLiked = updatedReply?.likedBy?.some(
-        (uid: any) => uid.toString() === userId
+        (id: any) => id.toString() === userId
       );
       const totalLikes = updatedReply?.likedBy?.length || 0;
 
@@ -330,7 +318,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       }
 
       const alreadyLiked = commentDoc.likedBy.some(
-        (uid: any) => uid.toString() === userId
+        (id: any) => id.toString() === userId
       );
 
       let updateQuery: any = {};
@@ -346,7 +334,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
 
       const updatedComment = await Comment.findById(commentId).exec();
       const isNowLiked = updatedComment?.likedBy?.some(
-        (uid: any) => uid.toString() === userId
+        (id: any) => id.toString() === userId
       );
       const totalLikes = updatedComment?.likedBy?.length || 0;
 
@@ -372,15 +360,15 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-async function fetchComments(
+export const fetchComments = async (
   userId: string,
-  matchCondition: any,
+  matchQuery: any,
   options: { skip?: number; limit?: number } = {}
-) {
+) => {
   const { skip, limit } = options;
 
   const pipeline: any[] = [
-    { $match: matchCondition },
+    { $match: matchQuery },
     { $sort: { createdAt: -1 } },
   ];
 
@@ -407,7 +395,7 @@ async function fetchComments(
     },
     {
       $addFields: {
-        isLiked: { $in: [new ObjectId(userId), '$likedBy'] },
+        isLiked: { $in: [new mongoose.Types.ObjectId(String(userId)), '$likedBy'] },
         totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
         replies: {
           $map: {
@@ -417,7 +405,9 @@ async function fetchComments(
               id: '$$reply._id',
               content: '$$reply.content',
               createdAt: '$$reply.createdAt',
-              isLiked: { $in: [new ObjectId(userId), '$$reply.likedBy'] },
+              isLiked: {
+                $in: [new mongoose.Types.ObjectId(String(userId)), '$$reply.likedBy'],
+              },
               totalLikes: { $size: { $ifNull: ['$$reply.likedBy', []] } },
               repliedBy: {
                 $let: {

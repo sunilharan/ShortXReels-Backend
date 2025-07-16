@@ -17,5 +17,4 @@ router.post("/",uploadReel,validateCreateReel, createReel);
 router.delete("/:id", deleteReel);
 router.post("/likeUnlike",likeUnlikeReel);
 
-
 export default router;
