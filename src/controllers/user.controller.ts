@@ -120,7 +120,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       throw new Error('password_required');
     }
     const user = await User.findOne({
-      $or: [{ email: userName }, { name: userName }],
+      $or: [{ email: userName }, { name: userName , $and: [{ status: { $ne: STATUS_TYPE.deleted } }] }],
     })
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')

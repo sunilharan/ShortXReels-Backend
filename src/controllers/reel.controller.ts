@@ -708,7 +708,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
-    // const userId = req.user.id;
+    const userId = req.user.id;
     const reelId = new mongoose.Types.ObjectId(String(req.params.id));
     if (!reelId) {
       res.status(400);
@@ -733,14 +733,14 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const stat = statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
-    // const isViewed = reel.viewedBy.some(
-    //   (id: any) => id.toString() === userId
-    // );
-    // if (!isViewed) {
-    //   await Reel.findByIdAndUpdate(reelId, {
-    //     $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },
-    //   }).exec();
-    // }
+    const isViewed = reel.viewedBy.some(
+      (id: any) => id.toString() === userId
+    );
+    if (!isViewed) {
+      await Reel.findByIdAndUpdate(reelId, {
+        $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },
+      }).exec();
+    }
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
