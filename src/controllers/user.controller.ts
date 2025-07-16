@@ -101,9 +101,7 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
     });
     res.status(200).send({
       status: true,
-      data: {
-        isExist: !!user,
-      },
+      data: !!user,
     });
   } catch (error: any) {
     throw error;
@@ -235,7 +233,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('email_does_not_exist');
     }
-    const otpData = crypto.randomInt(1000, 9999);;
+    const otpData = crypto.randomInt(1000, 9999);
     await Otp.findOneAndDelete({ userId: user.id }).exec();
     const otp = await Otp.create({ userId: user.id, otp: otpData });
     // await sendMail(user.email, 'your_otp_code', otpData?.otp?.toString() || '');
@@ -363,7 +361,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
 export const logout = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findByIdAndUpdate(userId, { $unset: { token: "" } })
+    const user = await User.findByIdAndUpdate(userId, { $unset: { token: '' } })
       .populate<{ role: IRole }>('role')
       .exec();
     if (!user) {
@@ -384,7 +382,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const user = await User.findByIdAndUpdate(userId, {
       status: STATUS_TYPE.deleted,
-      $unset: { token: "" },
+      $unset: { token: '' },
     });
     if (!user) {
       res.status(404);
@@ -649,7 +647,7 @@ export const removeProfile = expressAsyncHandler(async (req: any, res) => {
     if (user.profile) {
       await removeFile(user.profile, 'files/profiles');
     }
-    await User.findByIdAndUpdate(userId, { $unset: { profile: "" } }).exec();
+    await User.findByIdAndUpdate(userId, { $unset: { profile: '' } }).exec();
     res.status(200).json({
       success: true,
       message: t('profile_removed'),
