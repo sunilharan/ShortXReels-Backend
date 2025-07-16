@@ -6,12 +6,12 @@ import { validateCreateReel } from "../middlewares/reel.middleware";
 
 const router = Router();
 
-router.get("/view/:id", streamReelVideo);
 router.use(authenticate);
 
 router.get("/", getReels);
 router.get("/getByUser", getReelsByUser);
 router.get("/dashboardReels", dashboardReels);
+router.get("/view/:id", streamReelVideo);
 router.get("/:id", reelById);
 router.post("/",uploadReel,validateCreateReel, createReel);
 router.delete("/:id", deleteReel);
