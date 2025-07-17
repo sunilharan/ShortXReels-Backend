@@ -31,7 +31,7 @@ const options: Options = {
             type: 'string',
             enum: ['en', 'hi','gu'],
           },
-          description: 'Language for localization (english, hindi, gujrati)',
+          description: 'Language for localization (english, hindi, gujarati)',
         },
       },
       schemas: {

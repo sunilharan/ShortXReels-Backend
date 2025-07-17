@@ -406,7 +406,6 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
     const updateData: any = {};
 
     if (userData.name) updateData.name = userData.name;
-    if (userData.email) updateData.email = userData.email;
     if (userData.phone) updateData.phone = userData.phone;
     if (userData.gender) updateData.gender = userData.gender;
     if (userData.birthDate) updateData.birthDate = userData.birthDate;

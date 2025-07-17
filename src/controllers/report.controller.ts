@@ -17,7 +17,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       reason,
       reportType,
     } = req.body;
-    let createData: any = {};
+
     if (!reel) {
       res.status(400);
       throw new Error('invalid_request');
@@ -40,40 +40,54 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     }
     if (reply) {
       const replyExists = await Comment.findOne({
-        _id: comment,
-        replies: { $elemMatch: { _id: reply } },
+        _id: new mongoose.Types.ObjectId(String(comment)),
+        replies: { $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)) } },
       }).exec();
       if (!replyExists) {
         res.status(404);
         throw new Error('reply_not_found');
       }
     }
-    createData.reportedBy = new mongoose.Types.ObjectId(String(userId));
-    createData.reel = new mongoose.Types.ObjectId(String(reel));
-    createData.reason = reason;
-    createData.reportType = reportType;
+
+    const createData: any = {
+      reportedBy: new mongoose.Types.ObjectId(String(userId)),
+      reel: new mongoose.Types.ObjectId(String(reel)),
+      reason,
+      reportType,
+    };
+
     if (comment) {
       createData.comment = new mongoose.Types.ObjectId(String(comment));
     }
     if (reply) {
       createData.reply = new mongoose.Types.ObjectId(String(reply));
     }
-    const alreadyReported = await Report.findOne({
+
+    const alreadyReportedQuery: any = {
       reportedBy: new mongoose.Types.ObjectId(String(userId)),
       reel: new mongoose.Types.ObjectId(String(reel)),
-      comment: new mongoose.Types.ObjectId(String(comment)),
-      reply: new mongoose.Types.ObjectId(String(reply)),
-      reason: reason,
-      reportType: reportType,
-    }).exec();
+      reason,
+      reportType,
+    };
+
+    if (comment) {
+      alreadyReportedQuery.comment = new mongoose.Types.ObjectId(String(comment));
+    }
+    if (reply) {
+      alreadyReportedQuery.reply = new mongoose.Types.ObjectId(String(reply));
+    }
+
+    const alreadyReported = await Report.findOne(alreadyReportedQuery).exec();
+
     if (!alreadyReported) {
-      const report = await Report.create(createData);
+      await Report.create(createData);
     }
     res.status(201).json({
       success: true,
       data: true,
       message: t('report_created'),
     });
+
   } catch (error: any) {
     throw error;
   }

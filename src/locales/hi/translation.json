@@ -45,6 +45,7 @@
   "reel_deleted": "रील सफलतापूर्वक हटाई गई।",
   "invalid_request": "अमान्य प्रश्नो छें।",
   "comment_not_found": "टिप्पणी नहीं मिली।",
+  "comment_created": "टिप्पणी सफलतापूर्वक बनाई गई।",
   "comment_creation_failed": "टिप्पणी बनाना विफल रहा।",
   "comment_deleted": "टिप्पणी सफलतापूर्वक हटाई गई।",
   "role_not_found": "भूमिका नहीं मिली।",

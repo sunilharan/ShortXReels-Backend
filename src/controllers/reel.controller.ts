@@ -558,7 +558,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       return new Promise<string>((resolve, reject) => {
         rename(file.path, destPath, (err) => {
           if (err) reject(err);
-          else resolve(mediaPath);
+          else resolve(file.filename);
         });
       });
     };
@@ -579,7 +579,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
         rename(thumbnailFile.path, destThumbPath, (err) => {
           if (err) reject(err);
           else {
-            reelData.thumbnail = thumbPath;
+            reelData.thumbnail = thumbnailFile.filename;
             resolve();
           }
         });
@@ -699,6 +699,10 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     }
     res.status(200).json({
       success: true,
+      data: {
+        totalLikes: reel.likedBy.length,
+        isLiked: reel.likedBy.some((id: any) => id.toString() === userId),
+      },
       message: t('like_unlike_success'),
     });
   } catch (error: any) {
@@ -733,9 +737,7 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const stat = statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
-    const isViewed = reel.viewedBy.some(
-      (id: any) => id.toString() === userId
-    );
+    const isViewed = reel.viewedBy.some((id: any) => id.toString() === userId);
     if (!isViewed) {
       await Reel.findByIdAndUpdate(reelId, {
         $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },

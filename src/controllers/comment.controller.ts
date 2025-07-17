@@ -43,39 +43,54 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       ).exec();
 
       comment = await Comment.findById(commentId).exec();
+      if (!comment) {
+        res.status(400);
+        throw new Error('comment_creation_failed');
+      }
+      const commentData = await fetchComments(userId, { _id: comment._id });
+      const totalComments = await Comment.countDocuments({
+        reel: new mongoose.Types.ObjectId(String(reel)),
+      }).exec();
+      const newReply = commentData[0].replies[commentData[0].replies.length - 1];
+      const io = WebSocket.getInstance();
+      io.of('reel')
+        .to(commentData[0].reel.toString())
+        .emit('newComment', {
+          type: COMMENT_TYPE.reply,
+          reelId: reel,
+          commentId: commentId,
+          reply: newReply,
+          totalComments: totalComments,
+        });
     } else {
       comment = await Comment.create({
         commentedBy: userId,
         reel,
         content,
       });
-    }
-    if (!comment) {
-      res.status(400);
-      throw new Error('comment_creation_failed');
-    }
+      if (!comment) {
+        res.status(400);
+        throw new Error('comment_creation_failed');
+      }
+      const commentData = await fetchComments(userId, { _id: comment._id });
+      const totalComments = await Comment.countDocuments({
+        reel: new mongoose.Types.ObjectId(String(reel)),
+      }).exec();
 
-    const commentData = await fetchComments(userId, { _id: comment._id });
-    const totalComments = await Comment.countDocuments({
-      reel: new mongoose.Types.ObjectId(String(reel)),
-    }).exec();
-
-    const io = WebSocket.getInstance();
-    io.of('reel')
-      .to(reel.toString())
-      .emit('newComment', {
-        type: commentId ? COMMENT_TYPE.reply : COMMENT_TYPE.comment,
-        reelId: reel,
-        comment: commentData[0],
-        totalComments: totalComments,
-      });
+      const io = WebSocket.getInstance();
+      io.of('reel')
+        .to(reel.toString())
+        .emit('newComment', {
+          type: COMMENT_TYPE.comment,
+          reelId: reel,
+          comment: commentData[0],
+          totalComments: totalComments,
+        });
+    }
 
     res.status(201).json({
       success: true,
-      data: {
-        comment: commentData[0],
-        totalComments: totalComments,
-      },
+      message: t('comment_created'),
     });
   } catch (error: any) {
     throw error;
@@ -395,7 +410,9 @@ export const fetchComments = async (
     },
     {
       $addFields: {
-        isLiked: { $in: [new mongoose.Types.ObjectId(String(userId)), '$likedBy'] },
+        isLiked: {
+          $in: [new mongoose.Types.ObjectId(String(userId)), '$likedBy'],
+        },
         totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
         replies: {
           $map: {
@@ -406,7 +423,10 @@ export const fetchComments = async (
               content: '$$reply.content',
               createdAt: '$$reply.createdAt',
               isLiked: {
-                $in: [new mongoose.Types.ObjectId(String(userId)), '$$reply.likedBy'],
+                $in: [
+                  new mongoose.Types.ObjectId(String(userId)),
+                  '$$reply.likedBy',
+                ],
               },
               totalLikes: { $size: { $ifNull: ['$$reply.likedBy', []] } },
               repliedBy: {
@@ -486,7 +506,7 @@ export const fetchComments = async (
       },
     }
   );
-
+  
   const results = await Comment.aggregate(pipeline).exec();
   return results;
-}
+};

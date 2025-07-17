@@ -45,6 +45,7 @@
   "reel_deleted": "Reel deleted successfully.",
   "invalid_request": "Invalid request.",
   "comment_not_found": "Comment not found.",
+  "comment_created": "Comment created successfully.",
   "comment_creation_failed": "Comment creation failed.",
   "comment_deleted": "Comment deleted successfully.",
   "role_not_found": "Role not found.",
