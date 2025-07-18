@@ -1,11 +1,18 @@
 import expressAsyncHandler from 'express-async-handler';
 import { User } from '../models/user.model';
-import { STATUS_TYPE, GENDER_TYPE, emailRegex, passwordRegex } from '../config/constants';
+import {
+  STATUS_TYPE,
+  GENDER_TYPE,
+  emailRegex,
+  passwordRegex,
+  imageMaxSize,
+} from '../config/constants';
 import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
-  const { name, email, password, phone, gender, roleId ,displayName} = req.body;
+  const { name, email, password, phone, gender, roleId, displayName } =
+    req.body;
   res.status(400);
   if (!name) {
     throw new Error('name_required');
@@ -51,7 +58,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     }
   }
   const emailExists = await User.findOne({
-    email : {$regex : email, $options: 'i'},
+    email: { $regex: email, $options: 'i' },
     $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
   }).exec();
   if (emailExists) {
@@ -73,7 +80,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     const userId = req.user.id;
-    const {  gender, interests, displayName, name } = req.body;
+    const { gender, interests, displayName, name } = req.body;
     res.status(400);
     if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
       throw new Error('gender_invalid');
@@ -90,11 +97,19 @@ export const validateUpdateUser = expressAsyncHandler(
     }
     const nameExists = await User.findOne({
       name,
-      $and: [{ _id: { $ne: userId } }, { status: { $ne: STATUS_TYPE.deleted } }],
+      $and: [
+        { _id: { $ne: userId } },
+        { status: { $ne: STATUS_TYPE.deleted } },
+      ],
     }).exec();
     if (nameExists) {
       res.status(409);
       throw new Error('name_exist');
+    }
+
+    if (req?.file && req?.file?.size > imageMaxSize) {
+      res.status(400);
+      throw new Error('image_max_size_exceeded');
     }
     next();
   }

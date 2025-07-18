@@ -3,7 +3,7 @@ import SocketInterface from './SocketInterface';
 
 class ReelSocket implements SocketInterface {
   handleConnection(socket: Socket) {
-    socket.emit('ping', 'Hello! Welcome to Instagram real-time socket');
+    socket.emit('ping', 'Hello! Welcome to Short X Reels real-time socket');
   }
 
   middlewareImplementation(socket: Socket, next: any) {

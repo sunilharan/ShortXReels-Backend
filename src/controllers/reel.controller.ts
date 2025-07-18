@@ -9,7 +9,7 @@ import {
   STATUS_TYPE,
   UserRole,
 } from '../config/constants';
-import { IReel, Reel } from '../models/reel.model';
+import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
@@ -20,9 +20,6 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
   const savedReels = req.user.savedReels;
   const limit = parseInt(req.query.limit) || 10;
-  const page = parseInt(req.query.page) || 1;
-  const skip = (page - 1) * limit;
-
   const profileUserId = req.query.profileUserId || '';
   const removeReels = JSON.parse(req.query.removeReelIds || '[]');
   const categoryId = req.query.categoryId || '';
@@ -32,7 +29,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     status: STATUS_TYPE.active,
     createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
   };
-  if (removeReels.length && !profileUserId) {
+  if (removeReels.length) {
     matchQuery._id = {
       $nin: removeReels.map(
         (id: string) => new mongoose.Types.ObjectId(String(id))
@@ -63,13 +60,13 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     matchQuery.createdBy = new mongoose.Types.ObjectId(String(profileUserId));
     reels = [
       ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
     totalRecords = await Reel.countDocuments(matchQuery);
   } else if (categoryId === 'recommended') {
     reels = [
       ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
     totalRecords = await Reel.countDocuments(matchQuery);
   } else if (categoryId) {
@@ -80,7 +77,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
     const primaryReels = await fetchReels(
       userId,
       primaryQuery,
-      { skip, limit },
+      { skip: 0, limit },
       savedReels
     );
     reels = [...reels, ...primaryReels];
@@ -108,7 +105,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   } else {
     reels = [
       ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip, limit }, savedReels)),
+      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
     totalRecords = await Reel.countDocuments({
       status: STATUS_TYPE.active,
@@ -623,19 +620,19 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     }
     if (reel.media) {
       if (reel.mediaType === MEDIA_TYPE.video) {
-        await removeFile(reel?.media as string, 'uploads/reels');
+        await removeFile(reel?.media as string, 'files/reels');
       } else if (reel.mediaType === MEDIA_TYPE.image) {
         if (Array.isArray(reel.media)) {
           reel.media.forEach((img: any) => {
-            removeFile(img, 'uploads/reels');
+            removeFile(img, 'files/reels');
           });
         } else {
-          removeFile(reel.media, 'uploads/reels');
+          removeFile(reel.media, 'files/reels');
         }
       }
     }
     if (reel.thumbnail) {
-      await removeFile(reel.thumbnail, 'uploads/thumbnails');
+      await removeFile(reel.thumbnail, 'files/thumbnails');
     }
     res.status(200).json({
       success: true,
@@ -712,7 +709,6 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.user.id;
     const reelId = new mongoose.Types.ObjectId(String(req.params.id));
     if (!reelId) {
       res.status(400);
@@ -737,12 +733,6 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     const stat = statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
-    const isViewed = reel.viewedBy.some((id: any) => id.toString() === userId);
-    if (!isViewed) {
-      await Reel.findByIdAndUpdate(reelId, {
-        $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },
-      }).exec();
-    }
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
@@ -788,6 +778,34 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
       file.pipe(res);
     }
   } catch (error) {
+    throw error;
+  }
+});
+
+export const viewReel = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const reelId = new mongoose.Types.ObjectId(String(req.params.id));
+    if (!reelId) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    let reel = await Reel.findById(reelId);
+    if (!reel) {
+      res.status(404);
+      throw new Error('reel_not_found');
+    }
+    const isViewed = reel.viewedBy.some((id: any) => id.toString() === userId);
+    if (!isViewed) {
+      reel = await Reel.findByIdAndUpdate(reelId, {
+        $push: { viewedBy: new mongoose.Types.ObjectId(String(userId)) },
+      }).exec();
+    }
+    res.status(200).json({
+      success: true,
+      message: t('reel_viewed'),
+    });
+  } catch (error: any) {
     throw error;
   }
 });

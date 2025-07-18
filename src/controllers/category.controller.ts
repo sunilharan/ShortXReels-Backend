@@ -3,6 +3,7 @@ import { Category } from '../models/category.model';
 import { removeFile } from '../config/constants';
 import { t } from 'i18next';
 import { rename } from 'fs';
+import { imageMaxSize } from '../config/constants';
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -30,7 +31,10 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('image_required');
     }
-
+    if (req?.file && req?.file?.size > imageMaxSize) {
+      res.status(400);
+      throw new Error('image_max_size_exceeded');
+    }
     const exists = await Category.findOne({
       name: { $regex: name, $options: 'i' },
     });
@@ -98,6 +102,10 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     if (tempFile) {
       const categoryPath = `categories/${req.file.filename}`;
       const filePath = `files/${categoryPath}`;
+      if (req?.file && req?.file?.size > imageMaxSize) {
+        res.status(400);
+        throw new Error('image_max_size_exceeded');
+      }
       rename(tempFile, filePath, async (err) => {
         if (err) {
           throw new Error('file_upload_failed');

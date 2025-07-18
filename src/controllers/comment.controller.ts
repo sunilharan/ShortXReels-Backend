@@ -16,7 +16,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    if (!content) {
+    if (!content || content.trim() === '') {
       res.status(400);
       throw new Error('invalid_content');
     }

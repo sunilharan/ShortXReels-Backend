@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, Document, PopulatedDoc } from 'mongoose';
+import { Schema, model, Document, PopulatedDoc } from 'mongoose';
 import { IUser } from './user.model';
 import { ICategory } from './category.model';
 import { MEDIA_TYPE, STATUS_TYPE } from '../config/constants';
@@ -47,7 +47,7 @@ const reelSchema = new Schema<IReel>(
         delete ret.__v;
         if (ret.media && ret.mediaType === MEDIA_TYPE.video) {
           ret.media = `${config.host}/api/reel/view/${ret.id}`;
-        } else if (ret.mediaType === MEDIA_TYPE.image && ret.media) {
+        } else if (ret.mediaType === MEDIA_TYPE.image && ret.media.length > 0) {
           ret.media = ret.media.map(
             (img: any) => `${config.host}/reel/${img}`
           );

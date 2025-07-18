@@ -1,10 +1,9 @@
-import { unlinkSync, existsSync, mkdirSync, renameSync } from 'fs';
+import { randomUUID } from 'crypto';
 import multer from 'multer';
 import path from 'path';
+import { unlinkSync, existsSync, mkdirSync } from 'fs';
 import {
-  imageMaxSize,
   UPLOAD_FOLDER,
-  videoMaxSize,
   FOLDER_LIST,
 } from '../config/constants';
 
@@ -18,45 +17,33 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}${ext}`);
+    cb(null, `${randomUUID()}${ext}`);
   },
 });
 
-const getFileFilter =
-  (allowedTypes: string[]) =>
-  (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (allowedTypes.some((type) => file.mimetype.startsWith(`${type}/`))) {
-      cb(null, true);
-    } else {
-      cb(new Error(`only_${allowedTypes.join('_or_')}_allowed`));
-    }
-  };
 
-const createUploader = (types: string[], maxSize: number) =>
-  multer({
+const createUploader = (types: string[]) => {
+  return multer({
     storage,
-    fileFilter: getFileFilter(types),
-    limits: { fileSize: maxSize },
+    fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+      if (!types.some((type) => file.mimetype.startsWith(`${type}/`))) {
+        cb(new Error(`only_${types.join('_or_')}_allowed`));
+      } else {
+        cb(null, true);
+      }
+    },
   });
-
-const uploaders = {
-  profile: createUploader(['image'], imageMaxSize),
-  category: createUploader(['image'], imageMaxSize),
-  reelMedia: createUploader(['video', 'image'], videoMaxSize),
-  thumbnail: createUploader(['image'], imageMaxSize),
 };
 
-export const uploadProfile = uploaders.profile.single('profile');
-export const uploadCategory = uploaders.category.single('image');
-
-export const uploadReel = uploaders.reelMedia.fields([
+export const uploadProfile = createUploader(['image']).single('profile');
+export const uploadCategory = createUploader(['image']).single('image');
+export const uploadReel = createUploader(['video', 'image']).fields([
   { name: 'media', maxCount: 10 },
   { name: 'thumbnail', maxCount: 1 },
 ]);
 
 export const cleanupUploadedFiles = (req: any) => {
   const filePaths: string[] = [];
-
   if (req.file) {
     filePaths.push(req.file.path);
   }
@@ -80,8 +67,6 @@ export const cleanupUploadedFiles = (req: any) => {
       if (existsSync(filePath)) {
         unlinkSync(filePath);
       }
-    } catch (err) {
-      console.error(`Failed to delete file: ${filePath}`, err);
-    }
+    } catch (_) {}
   });
 };
