@@ -15,6 +15,8 @@ import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
+import { Comment } from '../models/comments.model';
+import { Report } from '../models/report.model';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
@@ -634,6 +636,8 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     if (reel.thumbnail) {
       await removeFile(reel.thumbnail, 'files/thumbnails');
     }
+    await Comment.deleteMany({ reel: new mongoose.Types.ObjectId(String(id)) }).exec();
+    await Report.deleteMany({ reel: new mongoose.Types.ObjectId(String(id)) }).exec();
     res.status(200).json({
       success: true,
       message: t('reel_deleted'),
@@ -709,12 +713,12 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
-    const reelId = new mongoose.Types.ObjectId(String(req.params.id));
+    const reelId = req.params.id;
     if (!reelId) {
       res.status(400);
       throw new Error('invalid_request');
     }
-    const reel = await Reel.findById(reelId);
+    const reel = await Reel.findById(reelId).exec();
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');

@@ -75,6 +75,9 @@ app.use('/category', express.static('files/categories'));
 app.use('/reel', express.static('files/reels'));
 app.use('/thumbnail', express.static('files/thumbnails'));
 
+app.use(notFound);
+app.use(errorHandler);
+
 const httpServer = createServer(app);
 const SOCKET_PORT: any = config.socketPort || 5001;
 httpServer.listen(SOCKET_PORT, () =>
@@ -86,8 +89,6 @@ io.initializeHandlers([
   { path: '/reel', handler: new ReelSocket() },
 ]);
 
-app.use(notFound);
-app.use(errorHandler);
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
