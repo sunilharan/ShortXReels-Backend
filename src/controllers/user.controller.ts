@@ -18,6 +18,8 @@ import { config } from '../config/config';
 import { Reel } from '../models/reel.model';
 import { fetchReels } from './reel.controller';
 import { rename } from 'fs';
+import { Comment } from '../models/comments.model';
+import { Report } from '../models/report.model';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -120,7 +122,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       throw new Error('password_required');
     }
     const user = await User.findOne({
-      $or: [{ email: userName }, { name: userName} ],
+      $or: [{ email: userName }, { name: userName }],
       $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
     })
       .populate<{ role: IRole }>('role')
@@ -389,6 +391,15 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('user_not_found');
     }
+    await Reel.updateMany(
+      { createdBy: userId },
+      { status: STATUS_TYPE.inactive }
+    ).exec();
+    await Comment.deleteMany({ commentedBy: userId }).exec();
+    await Report.updateMany(
+      { reportedBy: userId },
+      { status: STATUS_TYPE.inactive }
+    ).exec();
     res.status(200).json({
       success: true,
       message: t('user_deleted'),
@@ -402,7 +413,7 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
     const userData = req.body;
-    const tempFile = req.file?.path;
+    const profile = req.files?.profile?.[0];
     const updateData: any = {};
 
     if (userData.name) updateData.name = userData.name;
@@ -420,51 +431,28 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
       );
     }
 
-    if (tempFile) {
-      const profilePath = `profiles/${req.file.filename}`;
-      const destPath = `files/${profilePath}`;
+    if (profile) {
+      const destPath = `files/profiles/${profile.filename}`;
       await new Promise<void>((resolve, reject) => {
-        rename(tempFile, destPath, (err) => {
+        rename(profile.path, destPath, (err) => {
           if (err) return reject(new Error('profile_upload_failed'));
-          updateData.profile = req.file.filename;
+          updateData.profile = profile.filename;
           resolve();
         });
       });
-
-      const user = await User.findByIdAndUpdate(userId, updateData, {
-        new: true,
-      })
-        .populate<{ role: IRole }>('role')
-        .populate<{ interests: ICategory }>('interests', 'name image')
-        .exec();
-
-      if (!user) {
-        throw new Error('user_not_found');
-      }
       if (userData.oldProfile) {
         removeFile(userData.oldProfile, 'files/profiles');
       }
-
-      res.status(200).json({
-        success: true,
-        data: user,
-      });
-    } else {
-      const user = await User.findByIdAndUpdate(userId, updateData, {
-        new: true,
-      })
-        .populate<{ role: IRole }>('role')
-        .populate<{ interests: ICategory }>('interests', 'name image')
-        .exec();
-
-      if (!user) {
-        throw new Error('user_not_found');
-      }
-      res.status(200).json({
-        success: true,
-        data: user,
-      });
     }
+
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true })
+      .populate('role')
+      .populate('interests', 'name image')
+      .exec();
+
+    if (!user) throw new Error('user_not_found');
+
+    res.status(200).json({ success: true, data: user });
   } catch (error: any) {
     throw error;
   }
@@ -519,7 +507,6 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       message: t('password_changed'),
     });
   } catch (error: any) {
-    console.log('updateUser');
     throw error;
   }
 });

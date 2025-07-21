@@ -49,46 +49,10 @@ export const validateCreateReel = expressAsyncHandler(
         throw new Error('media_required');
       }
 
-      const videoFiles = mediaFiles.filter((f: any) =>
-        f.mimetype.startsWith('video/')
-      );
-      const imageFiles = mediaFiles.filter((f: any) =>
-        f.mimetype.startsWith('image/')
-      );
-
-      if (mediaType === MEDIA_TYPE.video) {
-        if (imageFiles.length > 0) {
-          res.status(400);
-          throw new Error('invalid_video_format');
-        }
-        const durationNum = parseFloat(duration);
-        if (isNaN(durationNum) || durationNum <= 0) {
-          res.status(400);
-          throw new Error('invalid_duration');
-        }
-      } else if (mediaType === MEDIA_TYPE.image) {
-        if (videoFiles.length > 0) {
-          res.status(400);
-          throw new Error('invalid_image_format');
-        }
-        imageFiles.forEach((f: any) => {
-          if (f.size > imageMaxSize) {
-            res.status(400);
-            throw new Error('image_max_size_exceeded');
-          }
-        });
-      }
-
       const thumbnailFile = files.thumbnail?.[0];
       if (!thumbnailFile) {
         res.status(400);
         throw new Error('thumbnail_required');
-      }
-      if (thumbnailFile) {
-        if (thumbnailFile.size > imageMaxSize) {
-          res.status(400);
-          throw new Error('image_max_size_exceeded');
-        }
       }
       next();
     } catch (error: any) {

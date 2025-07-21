@@ -1,72 +1,321 @@
 import { randomUUID } from 'crypto';
-import multer from 'multer';
+import busboy from 'busboy';
 import path from 'path';
-import { unlinkSync, existsSync, mkdirSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  createWriteStream,
+  unlinkSync,
+  WriteStream,
+} from 'fs';
 import {
   UPLOAD_FOLDER,
   FOLDER_LIST,
+  imageMaxSize,
+  videoMaxSize,
+  MEDIA_TYPE,
 } from '../config/constants';
+import { Request, Response, NextFunction } from 'express';
+import { t } from 'i18next';
 
 FOLDER_LIST.forEach((dir) => {
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-});
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_FOLDER);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
-
-
-const createUploader = (types: string[]) => {
-  return multer({
-    storage,
-    fileFilter: (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-      if (!types.some((type) => file.mimetype.startsWith(`${type}/`))) {
-        cb(new Error(`only_${types.join('_or_')}_allowed`));
-      } else {
-        cb(null, true);
-      }
-    },
-  });
-};
-
-export const uploadProfile = createUploader(['image']).single('profile');
-export const uploadCategory = createUploader(['image']).single('image');
-export const uploadReel = createUploader(['video', 'image']).fields([
-  { name: 'media', maxCount: 10 },
-  { name: 'thumbnail', maxCount: 1 },
-]);
-
-export const cleanupUploadedFiles = (req: any) => {
-  const filePaths: string[] = [];
-  if (req.file) {
-    filePaths.push(req.file.path);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
+});
 
-  if (req.files) {
-    if (Array.isArray(req.files)) {
-      req.files.forEach((file: any) => filePaths.push(file.path));
-    } else if (typeof req.files === 'object') {
-      Object.values(req.files).forEach((fileArray: any) => {
-        (Array.isArray(fileArray) ? fileArray : [fileArray]).forEach(
-          (file: any) => {
-            if (file?.path) filePaths.push(file.path);
-          }
-        );
-      });
+interface FileInfo {
+  filename: string;
+  encoding: string;
+  mimeType: string;
+}
+
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  filename: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      files?: Record<string, UploadedFile[]>;
+      body: Record<string, any>;
     }
   }
+}
 
-  filePaths.forEach((filePath) => {
-    try {
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
+interface AllowedFields {
+  [field: string]: {
+    maxCount: number;
+    types: string[];
+  };
+}
+
+export const uploadFiles = (allowedFields: AllowedFields) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const contentType = req.headers['content-type'] || '';
+    if (
+      !contentType.startsWith('multipart/form-data') ||
+      !contentType.includes('boundary=')
+    ) {
+      req.files = {};
+      req.body = {};
+      return next();
+    }
+
+    const bb = busboy({ headers: req.headers });
+    const files: Record<string, UploadedFile[]> = {};
+    const body: Record<string, any> = {};
+    let errored = false;
+    let pending = 0;
+
+    const fail = (err: Error | string) => {
+      if (!errored) {
+        errored = true;
+        const message = t(String(err || 'invalid_request'));
+        res.status(400).json({ success: false, message });
       }
-    } catch (_) {}
-  });
+    };
+
+    bb.on('field', (name, val) => {
+      body[name] = val;
+    });
+
+    bb.on('file', (field, stream, info: FileInfo) => {
+      if (errored) {
+        return stream.resume();
+      }
+
+      if (req.baseUrl === '/api/reel') {
+        const mediaType = body.mediaType || req.body.mediaType;
+
+        if (!mediaType || ![MEDIA_TYPE.image, MEDIA_TYPE.video].includes(mediaType)) {
+          stream.resume();
+          return fail('invalid_media_type');
+        }
+
+        const rule = allowedFields[field];
+        if (!rule) {
+          stream.resume();
+          return fail(`only_${field}_allowed`);
+        }
+
+        const mime = info.mimeType;
+        const cleanTypes = rule.types.map((t) => t.replace(/^"|"$/g, ''));
+
+        if (
+          field === 'media' &&
+          mediaType === MEDIA_TYPE.image &&
+          !mime.startsWith('image/')
+        ) {
+          stream.resume();
+          return fail(`only_${MEDIA_TYPE.image}_allowed`);
+        }
+        if (
+          field === 'media' &&
+          mediaType === MEDIA_TYPE.video &&
+          !mime.startsWith('video/')
+        ) {
+          stream.resume();
+          return fail(`only_${MEDIA_TYPE.video}_allowed`);
+        }
+
+        if (
+          mediaType === MEDIA_TYPE.video &&
+          files[field] &&
+          files[field].length > 0
+        ) {
+          stream.resume();
+          return fail(`invalid_${field}_format`);
+        }
+
+        const MAX_SIZE =
+          mediaType === MEDIA_TYPE.image ? imageMaxSize : videoMaxSize;
+        if (!cleanTypes.some((t) => mime.startsWith(t + '/'))) {
+          stream.resume();
+          return fail(`invalid_${field}_format`);
+        }
+
+        const id = `${randomUUID()}${path.extname(info.filename)}`;
+        const savePath = path.join(UPLOAD_FOLDER, id);
+
+        let size = 0;
+        pending++;
+        const out: WriteStream = createWriteStream(savePath);
+
+        stream.on('data', (chunk) => {
+          size += chunk.length;
+
+          if (size > MAX_SIZE) {
+            stream.destroy();
+            out.destroy();
+            try {
+              unlinkSync(savePath);
+            } catch {}
+            pending--;
+            return fail(`${mediaType}_max_size_exceeded`);
+          }
+        });
+
+        stream.pipe(out);
+
+        out.on('close', () => {
+          if (errored) return;
+
+          if (!files[field]) files[field] = [];
+
+          files[field].push({
+            fieldname: field,
+            originalname: info.filename,
+            encoding: info.encoding,
+            mimeType: mime,
+            size,
+            path: savePath,
+            filename: id,
+          });
+
+          pending--;
+
+          if (pending === 0 && !errored) {
+            req.files = files;
+            req.body = { ...req.body, ...body };
+            next();
+          }
+        });
+
+        out.on('error', (err) => {
+          if (errored) return;
+          stream.destroy();
+          try {
+            unlinkSync(savePath);
+          } catch {}
+          pending--;
+          fail(err);
+        });
+
+        stream.on('error', (err) => {
+          if (errored) return;
+          out.destroy();
+          try {
+            unlinkSync(savePath);
+          } catch {}
+          pending--;
+          fail(err);
+        });
+      } else {
+        const rule = allowedFields[field];
+        if (!rule) {
+          stream.resume();
+          return fail(`only_${field}_allowed`);
+        }
+
+        const mime = info.mimeType || 'application/octet-stream';
+        const ext = path.extname(info.filename).toLowerCase();
+        const inferredMime = {
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.png': 'image/png',
+          '.gif': 'image/gif',
+        }[ext];
+
+        if (!rule.types.some((t) => inferredMime?.startsWith(t + '/'))) {
+          stream.resume();
+          return fail(`invalid_image_format`);
+        }
+
+        const MAX_FILE_SIZE = imageMaxSize;
+        const id = `${randomUUID()}${path.extname(info.filename)}`;
+        const savePath = path.join(UPLOAD_FOLDER, id);
+
+        let size = 0;
+        pending++;
+        const out: WriteStream = createWriteStream(savePath);
+
+        stream.on('data', (chunk) => {
+          size += chunk.length;
+
+          if (size > MAX_FILE_SIZE) {
+            stream.destroy();
+            out.destroy();
+            try {
+              unlinkSync(savePath);
+            } catch {}
+            pending--;
+            return fail('image_max_size_exceeded');
+          }
+        });
+
+        stream.pipe(out);
+
+        out.on('close', () => {
+          if (errored) return;
+
+          if (!files[field]) files[field] = [];
+
+          files[field].push({
+            fieldname: field,
+            originalname: info.filename,
+            encoding: info.encoding,
+            mimeType: inferredMime || mime,
+            size,
+            path: savePath,
+            filename: id,
+          });
+
+          pending--;
+
+          if (pending === 0 && !errored) {
+            req.files = files;
+            req.body = { ...req.body, ...body };
+            next();
+          }
+        });
+
+        out.on('error', (err) => {
+          if (errored) return;
+          stream.destroy();
+          try {
+            unlinkSync(savePath);
+          } catch {}
+          pending--;
+          fail(err);
+        });
+
+        stream.on('error', (err) => {
+          if (errored) return;
+          out.destroy();
+          try {
+            unlinkSync(savePath);
+          } catch {}
+          pending--;
+          fail(err);
+        });
+      }
+    });
+
+    bb.on('finish', () => {
+      if (pending === 0 && !errored) {
+        if (req.baseUrl === '/api/reel' && Object.keys(files).length === 0) {
+          return fail('no_files_uploaded');
+        }
+        req.files = files;
+        req.body = { ...req.body, ...body };
+        next();
+      }
+    });
+
+    req.pipe(bb);
+
+    req.on('error', (err) => {
+      if (!errored) {
+        errored = true;
+        fail(err);
+      }
+    });
+  };
 };

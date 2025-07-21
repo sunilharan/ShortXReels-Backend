@@ -31,10 +31,7 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('image_required');
     }
-    if (req?.file && req?.file?.size > imageMaxSize) {
-      res.status(400);
-      throw new Error('image_max_size_exceeded');
-    }
+    
     const exists = await Category.findOne({
       name: { $regex: name, $options: 'i' },
     });

@@ -1,6 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
 import {
+  imageMaxSize,
   LIKE_TYPE,
   MEDIA_TYPE,
   REEL_FOLDER,
@@ -536,12 +537,12 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       mediaType,
       duration,
     } = req.body;
+    const files = req.files || {};
     const userId = req.user.id;
+
     const categories = JSON.parse(rawCategories).map(
       (id: string) => new mongoose.Types.ObjectId(id)
     );
-    const files = req.files || {};
-
     const reelData: any = {
       createdBy: new mongoose.Types.ObjectId(userId),
       caption,
@@ -550,50 +551,39 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     };
 
     const mediaFiles = files.media || [];
+    const thumbnail = files.thumbnail?.[0];
 
-    const moveMediaFile = (file: any) => {
-      const mediaPath = `reels/${file.filename}`;
-      const destPath = `files/${mediaPath}`;
-      return new Promise<string>((resolve, reject) => {
-        rename(file.path, destPath, (err) => {
-          if (err) reject(err);
-          else resolve(file.filename);
-        });
+    const moveFile = (file: any, subfolder: string) => {
+      const mediaPath = `${subfolder}/${file.filename}`;
+      const dest = `files/${mediaPath}`;
+      rename(file.path, dest, (err) => {
+        if (err) throw err;
       });
+      return file.filename;
     };
 
-    const mediaPaths = await Promise.all(mediaFiles.map(moveMediaFile));
-
-    reelData.media =
-      mediaType === MEDIA_TYPE.video ? mediaPaths[0] : mediaPaths;
     if (mediaType === MEDIA_TYPE.video) {
+      reelData.media = moveFile(mediaFiles[0], 'reels');
       reelData.duration = parseFloat(duration) || 0;
+    } else {
+      reelData.media = mediaFiles.map((f: any) => moveFile(f, 'reels'));
     }
 
-    const thumbnailFile = files.thumbnail?.[0];
-    if (thumbnailFile) {
-      const thumbPath = `thumbnails/${thumbnailFile.filename}`;
-      const destThumbPath = `files/${thumbPath}`;
-      await new Promise<void>((resolve, reject) => {
-        rename(thumbnailFile.path, destThumbPath, (err) => {
-          if (err) reject(err);
-          else {
-            reelData.thumbnail = thumbnailFile.filename;
-            resolve();
-          }
-        });
-      });
+    if (thumbnail) {
+      if (thumbnail.size > imageMaxSize)
+        throw new Error('image_max_size_exceeded');
+      reelData.thumbnail = moveFile(thumbnail, 'thumbnails');
     }
 
     const reel = await Reel.create(reelData);
-    const populatedReel = await Reel.findById(reel.id)
+    const populated = await Reel.findById(reel.id)
       .populate('createdBy', 'name profile')
       .populate('categories', 'name image')
       .populate('likedBy', 'name profile')
       .populate('viewedBy', 'name profile')
       .exec();
 
-    res.status(201).json({ success: true, data: populatedReel });
+    res.status(201).json({ success: true, data: populated });
   } catch (error: any) {
     throw error;
   }
@@ -636,8 +626,12 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
     if (reel.thumbnail) {
       await removeFile(reel.thumbnail, 'files/thumbnails');
     }
-    await Comment.deleteMany({ reel: new mongoose.Types.ObjectId(String(id)) }).exec();
-    await Report.deleteMany({ reel: new mongoose.Types.ObjectId(String(id)) }).exec();
+    await Comment.deleteMany({
+      reel: new mongoose.Types.ObjectId(String(id)),
+    }).exec();
+    await Report.deleteMany({
+      reel: new mongoose.Types.ObjectId(String(id)),
+    }).exec();
     res.status(200).json({
       success: true,
       message: t('reel_deleted'),

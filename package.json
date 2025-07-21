@@ -15,6 +15,7 @@
   "dependencies": {
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
+    "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.6.0",
@@ -33,6 +34,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/cors": "^2.8.19",
     "@types/crypto-js": "^4.2.2",
     "@types/express": "^5.0.3",

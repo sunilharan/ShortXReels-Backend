@@ -36,6 +36,7 @@
   "category_not_found": "श्रेणी नहीं मिली।",
   "image_required": "इमेज आवश्यक है।",
   "only_image_allowed": "अमान्य इमेज फॉर्मैट।",
+  "only_video_allowed": "अमान्य वीडियो फॉर्मैट।",
   "profile_removed": "प्रोफाइल सफलतापूर्वक हटाया गया।",
   "file_upload_failed": "फाइल लाववामां निष्फलता।",
   "profile_upload_failed": "प्रोफाइल लाववामां निष्फलता।",

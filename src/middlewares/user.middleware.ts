@@ -81,36 +81,38 @@ export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     const userId = req.user.id;
     const { gender, interests, displayName, name } = req.body;
-    res.status(400);
+
     if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
+      res.status(400);
       throw new Error('gender_invalid');
     }
     if (interests) {
-      if (typeof interests === 'string' && JSON.parse(interests).length <= 0) {
+      const parsed =
+        typeof interests === 'string' ? JSON.parse(interests) : interests;
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        res.status(400);
         throw new Error('interests_invalid');
       }
     }
-    if (displayName) {
-      if (typeof displayName !== 'string' || displayName.trim().length === 0) {
-        throw new Error('display_name_invalid');
-      }
+
+    if (
+      displayName &&
+      (!displayName.trim() || typeof displayName !== 'string')
+    ) {
+      res.status(400);
+      throw new Error('display_name_invalid');
     }
+
     const nameExists = await User.findOne({
       name,
-      $and: [
-        { _id: { $ne: userId } },
-        { status: { $ne: STATUS_TYPE.deleted } },
-      ],
+      _id: { $ne: userId },
+      status: { $ne: STATUS_TYPE.deleted },
     }).exec();
     if (nameExists) {
       res.status(409);
       throw new Error('name_exist');
     }
 
-    if (req?.file && req?.file?.size > imageMaxSize) {
-      res.status(400);
-      throw new Error('image_max_size_exceeded');
-    }
     next();
   }
 );

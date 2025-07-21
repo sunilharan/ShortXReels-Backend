@@ -28,6 +28,7 @@
   "unauthorized": "Unauthorized access.",
   "otp_invalid": "The OTP you entered is either incorrect or has expired.",
   "only_image_allowed": "Only image files are allowed.",
+  "only_video_allowed": "Only video files are allowed.",
   "profile_removed": "Profile removed successfully.",
   "file_upload_failed": "File upload failed.",
   "profile_upload_failed": "Profile upload failed.",
