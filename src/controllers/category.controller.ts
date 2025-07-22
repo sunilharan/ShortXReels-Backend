@@ -21,13 +21,13 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
 export const createCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name } = req.body;
-    const tempFile = req.file?.path;
-
+    const image = req.files?.image?.[0];
+    
     if (!name) {
       res.status(400);
       throw new Error('name_required');
     }
-    if (!tempFile) {
+    if (!image) {
       res.status(400);
       throw new Error('image_required');
     }
@@ -40,15 +40,12 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       throw new Error('category_exists');
     }
 
-    const categoryPath = `categories/${req.file.filename}`;
-    const filePath = `files/${categoryPath}`;
+    const filePath = `files/categories/${image.filename}`;
 
-    rename(tempFile, filePath, async (err) => {
-      if (err) {
-        throw new Error('file_upload_failed');
-      }
+    rename(image.path, filePath, async (err) => {
+      if (err) throw new Error('file_upload_failed');
 
-      const category = await Category.create({ name, image: categoryPath });
+      const category = await Category.create({ name, image: image.filename });
       res.status(201).json({ success: true, data: category });
     });
   } catch (error: any) {
@@ -83,7 +80,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
 export const editCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id, name, oldImage } = req.body;
-    const tempFile = req.file?.path;
+    const image = req.files?.image?.[0];
 
     const existingCategory = await Category.findOne({
       name: { $regex: name, $options: 'i' },
@@ -96,38 +93,36 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
 
     const updateData: any = { name };
 
-    if (tempFile) {
-      const categoryPath = `categories/${req.file.filename}`;
-      const filePath = `files/${categoryPath}`;
-      if (req?.file && req?.file?.size > imageMaxSize) {
-        res.status(400);
+    if (image) {
+      if (image.size > imageMaxSize) {
+        res.status(413);
         throw new Error('image_max_size_exceeded');
       }
-      rename(tempFile, filePath, async (err) => {
-        if (err) {
-          throw new Error('file_upload_failed');
-        }
-        updateData.image = categoryPath;
+
+      const filePath = `files/categories/${image.filename}`;
+
+      rename(image.path, filePath, async (err) => {
+        if (err) throw new Error('file_upload_failed');
+
+        updateData.image = image.filename;
+
         const category = await Category.findByIdAndUpdate(id, updateData, {
           new: true,
         });
 
-        if (!category) {
-          throw new Error('category_not_found');
-        }
+        if (!category) throw new Error('category_not_found');
 
-        if (oldImage) {
-          removeFile(oldImage, 'files/categories');
-        }
+        if (oldImage) removeFile(oldImage, 'files/categories');
+
         res.status(200).json({ success: true, data: category });
       });
     } else {
       const category = await Category.findByIdAndUpdate(id, updateData, {
         new: true,
       });
-      if (!category) {
-        throw new Error('category_not_found');
-      }
+
+      if (!category) throw new Error('category_not_found');
+
       res.status(200).json({ success: true, data: category });
     }
   } catch (error: any) {
