@@ -2,7 +2,8 @@ import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
 import mongoose from 'mongoose';
 import { Reel } from '../models/reel.model';
-import { COMMENT_TYPE, LIKE_TYPE, UserRole } from '../config/constants';
+import { UserRole } from '../config/constants';
+import { COMMENT_TYPE, LIKE_TYPE } from '../config/enums';
 import { t } from 'i18next';
 import { config } from '../config/config';
 import WebSocket from '../websocket/WebSocket';
@@ -51,17 +52,16 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       const totalComments = await Comment.countDocuments({
         reel: new mongoose.Types.ObjectId(String(reel)),
       }).exec();
-      const newReply = commentData[0].replies[commentData[0].replies.length - 1];
+      const newReply =
+        commentData[0].replies[commentData[0].replies.length - 1];
       const io = WebSocket.getInstance();
-      io.of('reel')
-        .to(commentData[0].reel.toString())
-        .emit('newComment', {
-          type: COMMENT_TYPE.reply,
-          reelId: reel,
-          commentId: commentId,
-          reply: newReply,
-          totalComments: totalComments,
-        });
+      io.of('reel').to(commentData[0].reel.toString()).emit('newComment', {
+        type: COMMENT_TYPE.reply,
+        reelId: reel,
+        commentId: commentId,
+        reply: newReply,
+        totalComments: totalComments,
+      });
     } else {
       comment = await Comment.create({
         commentedBy: userId,
@@ -78,14 +78,12 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       }).exec();
 
       const io = WebSocket.getInstance();
-      io.of('reel')
-        .to(reel.toString())
-        .emit('newComment', {
-          type: COMMENT_TYPE.comment,
-          reelId: reel,
-          comment: commentData[0],
-          totalComments: totalComments,
-        });
+      io.of('reel').to(reel.toString()).emit('newComment', {
+        type: COMMENT_TYPE.comment,
+        reelId: reel,
+        comment: commentData[0],
+        totalComments: totalComments,
+      });
     }
 
     res.status(201).json({
@@ -177,46 +175,25 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     }
     let comment;
     if (!replyId) {
-      if (req.role === UserRole.SuperAdmin || req.role === UserRole.Admin) {
-        comment = await Comment.findByIdAndDelete(commentId);
-      } else {
-        comment = await Comment.findOneAndDelete({
-          _id: new mongoose.Types.ObjectId(String(commentId)),
-          commentedBy: new mongoose.Types.ObjectId(String(userId)),
-        });
-      }
+      comment = await Comment.findOneAndDelete({
+        _id: new mongoose.Types.ObjectId(String(commentId)),
+        commentedBy: new mongoose.Types.ObjectId(String(userId)),
+      });
     } else {
-      if (req.role === UserRole.SuperAdmin || req.role === UserRole.Admin) {
-        comment = await Comment.findOneAndUpdate(
-          {
-            _id: new mongoose.Types.ObjectId(String(commentId)),
-            'replies._id': new mongoose.Types.ObjectId(String(replyId)),
-          },
-          {
-            $pull: {
-              replies: {
-                _id: new mongoose.Types.ObjectId(String(replyId)),
-              },
+      comment = await Comment.findOneAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(String(commentId)),
+          'replies._id': new mongoose.Types.ObjectId(String(replyId)),
+          'replies.repliedBy': new mongoose.Types.ObjectId(String(userId)),
+        },
+        {
+          $pull: {
+            replies: {
+              _id: new mongoose.Types.ObjectId(String(replyId)),
             },
           },
-          { new: true }
-        );
-      } else {
-        comment = await Comment.findOneAndUpdate(
-          {
-            _id: new mongoose.Types.ObjectId(String(commentId)),
-            'replies._id': new mongoose.Types.ObjectId(String(replyId)),
-            'replies.repliedBy': new mongoose.Types.ObjectId(String(userId)),
-          },
-          {
-            $pull: {
-              replies: {
-                _id: new mongoose.Types.ObjectId(String(replyId)),
-              },
-            },
-          }
-        );
-      }
+        }
+      );
     }
     if (!comment) {
       res.status(404);
@@ -506,7 +483,7 @@ export const fetchComments = async (
       },
     }
   );
-  
+
   const results = await Comment.aggregate(pipeline).exec();
   return results;
 };

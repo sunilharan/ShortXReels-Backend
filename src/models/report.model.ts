@@ -1,7 +1,7 @@
 import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
 import { IReel } from './reel.model';
-import {  REPORT_TYPE, STATUS_TYPE } from '../config/constants';
+import {  REPORT_TYPE, STATUS_TYPE } from '../config/enums';
 import { IComment, IReply } from './comments.model';
 
 export interface IReport extends Document {

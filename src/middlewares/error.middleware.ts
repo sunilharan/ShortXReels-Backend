@@ -9,7 +9,7 @@ export const errorHandler = (err: any, req: any, res: any, next: any) => {
   res.status(statusCode);
   res.json({
     success: false,
-    message: req.t ? req.t(err.message) : "Oops, something went wrong",
+    message: req.t ? req.t(err.message) : req.t("invalid_request"),
     stack: process.env.NODE_ENV !== 'production' ? err.stack : null,
   });
 };

@@ -1,12 +1,16 @@
 import expressAsyncHandler from 'express-async-handler';
 import { verifyToken } from '../utils/encrypt';
 import { User } from '../models/user.model';
-import { STATUS_TYPE, UserRole } from '../config/constants';
+import { UserRole } from '../config/constants';
+import { STATUS_TYPE } from '../config/enums';
 import { IRole } from '../models/role.model';
 
 export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
   let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer ')
+  ) {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.query.at) {
     token = req.query.at;
@@ -15,8 +19,8 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
     res.status(401);
     throw new Error('unauthorized');
   }
-  const decoded:any = verifyToken(token);
-  if (!decoded || !decoded?.id ) {
+  const decoded: any = verifyToken(token);
+  if (!decoded || !decoded?.id) {
     res.status(401);
     throw new Error('unauthorized');
   }

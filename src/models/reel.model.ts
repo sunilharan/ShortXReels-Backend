@@ -1,7 +1,7 @@
 import { Schema, model, Document, PopulatedDoc } from 'mongoose';
 import { IUser } from './user.model';
 import { ICategory } from './category.model';
-import { MEDIA_TYPE, STATUS_TYPE } from '../config/constants';
+import { MEDIA_TYPE, STATUS_TYPE } from '../config/enums';
 import { config } from '../config/config';
 
 export interface IReel extends Document {

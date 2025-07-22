@@ -1,0 +1,101 @@
+/admin/login:
+  post:
+    tags: ['Admin']
+    summary: 'Login a admin'
+    security: []
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              userName:
+                type: string
+              password:
+                type: string
+    responses:
+      200:
+        description: 'Admin logged in successfully'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    phone:
+                      type: string
+                    gender:
+                      type: string
+                    birthDate:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    profile:
+                      type: string
+                    displayName:
+                      type: string
+                    description:
+                      type: string
+                    role:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        id:
+                          type: string
+                    notification:
+                      type: object
+                      properties:
+                        social:
+                          type: boolean
+                        subscription:
+                          type: boolean
+                        recommendation:
+                          type: boolean
+                    interests:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          image:
+                            type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    accessToken:
+                      type: string
+                    refreshToken:
+                      type: string
+      400:
+        description: 'Bad Request'
+      401:
+        description: 'Unauthorized'
+      403:
+        description: 'Forbidden'
+      404:
+        description: 'Not Found'
+      409:
+        description: 'Conflict'
+      500:
+        description: 'Internal Server Error'

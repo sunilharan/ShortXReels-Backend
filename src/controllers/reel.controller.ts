@@ -1,15 +1,11 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
 import {
-  imageMaxSize,
-  LIKE_TYPE,
-  MEDIA_TYPE,
   REEL_FOLDER,
   removeFile,
-  SORT_TYPE,
-  STATUS_TYPE,
   UserRole,
 } from '../config/constants';
+import { STATUS_TYPE, SORT_TYPE, MEDIA_TYPE, LIKE_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import mongoose from 'mongoose';
@@ -349,7 +345,13 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
     ]);
 
     const recommended = await Reel.aggregate([
-      { $match: { status: 'active', categories: { $nin: interestIds } } },
+      {
+        $match: {
+          status: 'active',
+          categories: { $nin: interestIds },
+          createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
+        },
+      },
       { $sort: { createdAt: -1 } },
       {
         $lookup: {
@@ -570,8 +572,6 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     }
 
     if (thumbnail) {
-      if (thumbnail.size > imageMaxSize)
-        throw new Error('image_max_size_exceeded');
       reelData.thumbnail = moveFile(thumbnail, 'thumbnails');
     }
 
@@ -600,12 +600,8 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
 
-    let reel;
-    if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
-      reel = await Reel.findByIdAndDelete(id).exec();
-    } else {
-      reel = await Reel.findOneAndDelete({ createdBy: userId, _id: id }).exec();
-    }
+    const reel = await Reel.findOneAndDelete({ createdBy: userId, _id: id }).exec();
+
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');

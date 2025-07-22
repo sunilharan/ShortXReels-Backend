@@ -4,12 +4,8 @@ import mongoose from 'mongoose';
 import { User } from '../models/user.model';
 import { decryptData, generateToken, verifyToken } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
-import {
-  UserRole,
-  removeFile,
-  STATUS_TYPE,
-  SAVE_TYPE,
-} from '../config/constants';
+import { UserRole, removeFile } from '../config/constants';
+import { STATUS_TYPE, SAVE_TYPE } from '../config/enums';
 import { Otp } from '../models/otp.model';
 import crypto from 'crypto';
 import { sendMail } from '../utils/sendMail';
@@ -38,7 +34,6 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('role_not_found');
     }
-
     let newPassword = decryptData(password);
     newPassword = newPassword?.password?.split('-');
     if (newPassword?.length > 1) {
@@ -143,6 +138,73 @@ export const login = expressAsyncHandler(async (req: any, res) => {
     }
     const isMatch = user && (await user.matchPassword(newPassword));
     if (!isMatch) {
+      res.status(400);
+      throw new Error('invalid_username_or_password');
+    }
+    const accessToken = generateToken(
+      { id: user.id, role: user.role.name },
+      config.jwtAccessExpire
+    );
+    const refreshToken = generateToken(
+      {
+        id: user.id,
+        token: accessToken,
+      },
+      config.jwtRefreshExpire
+    );
+    user.token = accessToken;
+    await User.findByIdAndUpdate(user.id, { token: accessToken });
+    const userData = JSON.parse(JSON.stringify(user));
+    res.status(200).json({
+      success: true,
+      data: {
+        ...userData,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const loginAdmin = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { userName, password } = req.body;
+    if (!userName) {
+      res.status(400);
+      throw new Error('username_required');
+    }
+    if (!password) {
+      res.status(400);
+      throw new Error('password_required');
+    }
+    const user = await User.findOne({
+      $or: [{ email: userName }, { name: userName }],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+    })
+      .populate<{ role: IRole }>('role')
+      .populate<{ interests: ICategory }>('interests', 'name image')
+      .exec();
+    if (!user) {
+      res.status(400);
+      throw new Error('invalid_username_or_password');
+    }
+    if (!password) {
+      res.status(400);
+      throw new Error('password_required');
+    }
+    let newPassword = decryptData(password);
+    newPassword = newPassword?.password?.split('-');
+    if (newPassword?.length > 1) {
+      newPassword = newPassword[1];
+    }
+    const isMatch = user && (await user.matchPassword(newPassword));
+    if (!isMatch) {
+      res.status(400);
+      throw new Error('invalid_username_or_password');
+    }
+    if(user.role.name !== UserRole.Admin && user.role.name !== UserRole.SuperAdmin){
       res.status(400);
       throw new Error('invalid_username_or_password');
     }
@@ -286,6 +348,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const resetPassword = expressAsyncHandler(async (req: any, res) => {
   try {
     const { token, password } = req.body;
@@ -513,14 +576,13 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
 export const adminRegister = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { name, email, password, phone, gender, birthDate, roleId } =
-      req.body;
+    const { name, email, password, phone, gender, birthDate } = req.body;
     let newPassword = decryptData(password);
     newPassword = newPassword?.password?.split('-');
     if (newPassword?.length > 1) {
       newPassword = newPassword[1];
     }
-
+    const role = await Role.findOne({ name: UserRole.Admin }).exec();
     let user = await User.create({
       name,
       email,
@@ -528,17 +590,165 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       phone,
       gender,
       birthDate,
-      role: roleId,
+      role: role?.id,
     });
     if (!user) {
       res.status(400);
       throw new Error('user_register_failed');
     }
     user = await user.populate('role');
-    user = await user.populate('interests');
     res.status(200).json({
       success: true,
       data: user,
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+export const adminEdit = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userData = req.body;
+    if (!userData.userId) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    const updateData: any = {};
+    if (userData.hasOwnProperty('password')) {
+      delete userData.password;
+    }
+    if (userData.hasOwnProperty('role')) {
+      delete userData.role;
+    }
+    if (userData.hasOwnProperty('profile')) {
+      delete userData.profile;
+    }
+    if (userData.name) updateData.name = userData.name;
+    if (userData.email) updateData.email = userData.email;
+    if (userData.phone) updateData.phone = userData.phone;
+    if (userData.gender) updateData.gender = userData.gender;
+    if (userData.birthDate) updateData.birthDate = userData.birthDate;
+    if (userData.status) updateData.status = userData.status;
+    if (userData.displayName) updateData.displayName = userData.displayName;
+    if (userData.description) updateData.description = userData.description;
+    if (userData.notification) {
+      updateData.notification =
+        typeof userData.notification === 'string'
+          ? JSON.parse(userData.notification)
+          : userData.notification;
+    }
+    if (userData.interests) {
+      updateData.interests = JSON.parse(userData.interests).map(
+        (id: string) => new mongoose.Types.ObjectId(String(id))
+      );
+    }
+    if (userData.password) {
+      let newPassword = decryptData(userData.password);
+      newPassword = newPassword?.password?.split('-');
+      if (newPassword?.length > 1) {
+        newPassword = newPassword[1];
+      }
+      updateData.password = newPassword;
+    }
+
+    let user = await User.findByIdAndUpdate(
+      userData.userId,
+      { ...updateData },
+      { new: true }
+    ).exec();
+    if (!user) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    user = await user.populate('role');
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const adminDelete = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    const updateData: any = {};
+    updateData.status = STATUS_TYPE.deleted;
+    let user = await User.findByIdAndUpdate(
+      id,
+      { ...updateData },
+      { new: true }
+    ).exec();
+    if (!user) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    await Reel.updateMany(
+      { createdBy: id },
+      { status: STATUS_TYPE.inactive }
+    ).exec();
+    await Comment.deleteMany({ commentedBy: id }).exec();
+    await Report.updateMany(
+      { reportedBy: id },
+      { status: STATUS_TYPE.inactive }
+    ).exec();
+    res.status(200).json({
+      success: true,
+      message: t('user_deleted'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const adminGetUsers = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const id = req.query.userId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const status = req.query.status;
+    const roleId = req.query.roleId;
+    const search = req.query.search;
+    const matchQuery: any = {};
+    if (status) {
+      matchQuery.status = status;
+    }
+    if (roleId) {
+      matchQuery.role = new mongoose.Types.ObjectId(String(roleId));
+    }
+    if (id) {
+      matchQuery._id = new mongoose.Types.ObjectId(String(id));
+    }
+    if (search) {
+      matchQuery.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { displayName: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const users = await User.find(matchQuery)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .populate('role')
+      .select('-interests')
+      .exec();
+    const total = await User.countDocuments(matchQuery).exec();
+    res.status(200).json({
+      success: true,
+      data: {
+        users,
+        totalRecords: total,
+        totalUsers: total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error: any) {
     throw error;

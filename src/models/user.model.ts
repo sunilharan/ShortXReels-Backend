@@ -1,7 +1,7 @@
 import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
 import { IRole } from './role.model';
 import { ICategory } from './category.model';
-import { GENDER_TYPE, STATUS_TYPE } from '../config/constants';
+import { GENDER_TYPE, STATUS_TYPE } from '../config/enums';
 import bcrypt from 'bcryptjs';
 import { config } from '../config/config';
 import { IReel } from './reel.model';

@@ -9,12 +9,10 @@ export const ROLES = [UserRole.SuperAdmin, UserRole.Admin, UserRole.User];
 
 export const FILE_FOLDER = process.cwd() + '/files';
 export const UPLOAD_FOLDER = process.cwd() + '/uploads';
-
 export const PROFILE_FOLDER = FILE_FOLDER + '/profiles';
 export const REEL_FOLDER = FILE_FOLDER + '/reels';
 export const CATEGORY_FOLDER = FILE_FOLDER + '/categories';
 export const THUMBNAIL_FOLDER = FILE_FOLDER + '/thumbnails';
-
 export const FOLDER_LIST = [
   FILE_FOLDER,
   UPLOAD_FOLDER,
@@ -56,54 +54,18 @@ export const CATEGORIES = [
   CategoriesType.education,
   CategoriesType.entertainment,
 ];
-export enum STATUS_TYPE {
-  active = 'active',
-  inactive = 'inactive',
-  deleted = 'deleted',
-}
 
-export enum GENDER_TYPE {
-  male = 'male',
-  female = 'female',
-  other = 'other',
-}
-export enum MEDIA_TYPE {
-  image = 'image',
-  video = 'video',
-}
-export enum LIKE_TYPE {
-  like = 'like',
-  unlike = 'unlike',
-}
-export enum COMMENT_TYPE {
-  comment = 'comment',
-  reply = 'reply',
-}
-export enum REPORT_TYPE {
-  reel = 'reel',
-  comment = 'comment',
-  reply = 'reply',
-}
-export enum SORT_TYPE {
-  popular = 'popular',
-  latest = 'latest',
-  oldest = 'oldest',
-}
-export enum SAVE_TYPE {
-  save = 'save',
-  unsave = 'unsave',
-}
 export const DEFAULT_SUPER_ADMIN = {
   email: 'superadmin@gmail.com',
   password: 'Admin12@',
   name: 'superadmin',
-  role: UserRole.SuperAdmin,
-  status: STATUS_TYPE.active,
-  gender: GENDER_TYPE.male,
-  birthDate: new Date('1990-01-01'),
+  displayName: 'Moderator',
 };
 
-export const removeFile = async (filePath: string | undefined | null, folderName: string) => {
+export const removeFile = async (
+  filePath: string | undefined | null,
+  folderName: string
+) => {
   try {
     if (!filePath || typeof filePath !== 'string') {
       return;
@@ -122,8 +84,8 @@ export const removeFile = async (filePath: string | undefined | null, folderName
     const fullPath = `${process.cwd()}/${folderName}/${fileName}`;
     if (existsSync(fullPath)) {
       unlinkSync(fullPath);
-    } 
+    }
   } catch (error) {
-    return
+    return;
   }
 };

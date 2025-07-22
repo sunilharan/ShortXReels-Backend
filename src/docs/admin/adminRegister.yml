@@ -1,7 +1,7 @@
-/user/adminRegister:
+/admin/register:
   post:
-    tags: ["User"]
-    summary: "Admin Register"
+    tags: ['Admin']
+    summary: 'Admin Register'
     requestBody:
       required: true
       content:
@@ -21,8 +21,6 @@
                 type: string
               birthDate:
                 type: string
-              roleId:
-                type: string
               displayName:
                 type: string
               interests:
@@ -33,7 +31,7 @@
                 type: string
     responses:
       200:
-        description: "User registered successfully"
+        description: 'Admin registered successfully'
         content:
           application/json:
             schema:
@@ -103,10 +101,10 @@
                     refreshToken:
                       type: string
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

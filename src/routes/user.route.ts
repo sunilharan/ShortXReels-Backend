@@ -15,13 +15,13 @@ import {
   verifyOtp,
   resetPassword,
   changePassword,
-  adminRegister,
   nameExist,
   getSavedReels,
   saveUnsaveReel,
   removeProfile,
+  loginAdmin,
 } from '../controllers/user.controller';
-import { adminOnly, authenticate } from '../middlewares/auth.middleware';
+import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
 
 const router = Router();
@@ -29,6 +29,7 @@ const router = Router();
 router.post('/register', validateRegister, register);
 router.get('/nameExist/:name', nameExist);
 router.post('/login', login);
+router.post('/loginAdmin', loginAdmin);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);
 router.post('/verifyOtp', verifyOtp);
@@ -47,7 +48,6 @@ router.put(
   updateUser
 );
 router.put('/changePassword', changePassword);
-router.post('/adminRegister', validateRegister, adminOnly, adminRegister);
 router.get('/getSavedReels', getSavedReels);
 router.post('/saveUnsaveReel', saveUnsaveReel);
 router.delete('/removeProfile', removeProfile);

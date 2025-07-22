@@ -7,14 +7,16 @@ import {
   createWriteStream,
   unlinkSync,
   WriteStream,
+  statSync,
 } from 'fs';
+import ffmpeg from 'fluent-ffmpeg';
 import {
   UPLOAD_FOLDER,
   FOLDER_LIST,
   imageMaxSize,
   videoMaxSize,
-  MEDIA_TYPE,
 } from '../config/constants';
+import { MEDIA_TYPE } from '../config/enums';
 import { Request, Response, NextFunction } from 'express';
 import { t } from 'i18next';
 
@@ -56,6 +58,19 @@ interface AllowedFields {
   };
 }
 
+const generateThumbnail = (videoPath: string, thumbnailPath: string) => {
+  return new Promise<void>((resolve, reject) => {
+    ffmpeg(videoPath)
+      .on('end', () => resolve())
+      .on('error', reject)
+      .screenshots({
+        count: 1,
+        folder: path.dirname(thumbnailPath),
+        filename: path.basename(thumbnailPath),
+      });
+  });
+};
+
 export const uploadFiles = (allowedFields: AllowedFields) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const contentType = req.headers['content-type'] || '';
@@ -87,6 +102,11 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
     });
 
     bb.on('file', (field, stream, info: FileInfo) => {
+      if (field === 'thumbnail') {
+        stream.resume();
+        return;
+      }
+
       if (errored) {
         return stream.resume();
       }
@@ -94,7 +114,10 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
       if (req.baseUrl === '/api/reel') {
         const mediaType = body.mediaType || req.body.mediaType;
 
-        if (!mediaType || ![MEDIA_TYPE.image, MEDIA_TYPE.video].includes(mediaType)) {
+        if (
+          !mediaType ||
+          ![MEDIA_TYPE.image, MEDIA_TYPE.video].includes(mediaType)
+        ) {
           stream.resume();
           return fail('invalid_media_type');
         }
@@ -135,7 +158,7 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
         }
 
         const MAX_SIZE =
-          mediaType === MEDIA_TYPE.image ? imageMaxSize : videoMaxSize;
+          mediaType === MEDIA_TYPE.image ? imageMaxSize : Infinity;
         if (!cleanTypes.some((t) => mime.startsWith(t + '/'))) {
           stream.resume();
           return fail(`invalid_${field}_format`);
@@ -150,7 +173,6 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
 
         stream.on('data', (chunk) => {
           size += chunk.length;
-
           if (size > MAX_SIZE) {
             stream.destroy();
             out.destroy();
@@ -164,12 +186,11 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
 
         stream.pipe(out);
 
-        out.on('close', () => {
+        out.on('close', async () => {
           if (errored) return;
-
           if (!files[field]) files[field] = [];
 
-          files[field].push({
+          const uploadedFile: UploadedFile = {
             fieldname: field,
             originalname: info.filename,
             encoding: info.encoding,
@@ -177,10 +198,35 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
             size,
             path: savePath,
             filename: id,
-          });
+          };
+
+          files[field].push(uploadedFile);
+          if (mediaType === MEDIA_TYPE.video) {
+            try {
+              const thumbnailFileName = `${path.parse(id).name}.jpg`;
+              const thumbnailPath = path.join(UPLOAD_FOLDER, thumbnailFileName);
+
+              await generateThumbnail(savePath, thumbnailPath);
+
+              const thumbStats = statSync(thumbnailPath);
+
+              files['thumbnail'] = [
+                {
+                  fieldname: 'thumbnail',
+                  originalname: thumbnailFileName,
+                  encoding: '7bit',
+                  mimeType: 'image/jpeg',
+                  size: thumbStats.size,
+                  path: thumbnailPath,
+                  filename: thumbnailFileName,
+                },
+              ];
+            } catch (err) {
+              console.error('Thumbnail generation failed:', err);
+            }
+          }
 
           pending--;
-
           if (pending === 0 && !errored) {
             req.files = files;
             req.body = { ...req.body, ...body };
@@ -238,7 +284,6 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
 
         stream.on('data', (chunk) => {
           size += chunk.length;
-
           if (size > MAX_FILE_SIZE) {
             stream.destroy();
             out.destroy();
@@ -254,7 +299,6 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
 
         out.on('close', () => {
           if (errored) return;
-
           if (!files[field]) files[field] = [];
 
           files[field].push({

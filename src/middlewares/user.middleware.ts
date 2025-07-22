@@ -1,12 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import { User } from '../models/user.model';
-import {
-  STATUS_TYPE,
-  GENDER_TYPE,
-  emailRegex,
-  passwordRegex,
-  imageMaxSize,
-} from '../config/constants';
+import { STATUS_TYPE, GENDER_TYPE } from '../config/enums';
+import { emailRegex, passwordRegex, UserRole } from '../config/constants';
 import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
 
@@ -79,9 +74,11 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
 
 export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
-    const userId = req.user.id;
+    let userId = req.user.id;
     const { gender, interests, displayName, name } = req.body;
-
+    if(req.body.userId && (req.role === UserRole.Admin || req.role === UserRole.SuperAdmin)){
+      userId = req.body.userId;
+    }
     if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
       res.status(400);
       throw new Error('gender_invalid');

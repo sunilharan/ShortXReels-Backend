@@ -1,0 +1,123 @@
+/admin:
+  put:
+    tags: ['Admin']
+    summary: 'Admin Edit'
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              userId:
+                type: string
+              name:
+                type: string
+              phone:
+                type: string
+              gender:
+                type: string
+              birthDate:
+                type: string
+              displayName:
+                type: string
+              description:
+                type: string
+              status:
+                type: string
+                enum:
+                  - active
+                  - inactive
+                  - deleted
+              notification:
+                type: object
+                properties:
+                  social:
+                    type: boolean
+                  subscription:
+                    type: boolean
+                  recommendation:
+                    type: boolean
+              interests:
+                type: array
+                items:
+                  type: string
+    responses:
+      200:
+        description: 'User updated successfully'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    phone:
+                      type: string
+                    gender:
+                      type: string
+                    birthDate:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    profile:
+                      type: string
+                    displayName:
+                      type: string
+                    description:
+                      type: string
+                    role:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                    notification:
+                      type: object
+                      properties:
+                        social:
+                          type: boolean
+                        subscription:
+                          type: boolean
+                        recommendation:
+                          type: boolean
+                    interests:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          image:
+                            type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+      400:
+        description: 'Bad Request'
+      401:
+        description: 'Unauthorized'
+      404:
+        description: 'User not found'
+      409:
+        description: 'Conflict'
+      500:
+        description: 'Internal Server Error'

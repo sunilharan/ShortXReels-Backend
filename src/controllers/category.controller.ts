@@ -3,7 +3,6 @@ import { Category } from '../models/category.model';
 import { removeFile } from '../config/constants';
 import { t } from 'i18next';
 import { rename } from 'fs';
-import { imageMaxSize } from '../config/constants';
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -22,7 +21,7 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name } = req.body;
     const image = req.files?.image?.[0];
-    
+
     if (!name) {
       res.status(400);
       throw new Error('name_required');
@@ -31,7 +30,7 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('image_required');
     }
-    
+
     const exists = await Category.findOne({
       name: { $regex: name, $options: 'i' },
     });
@@ -94,37 +93,20 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     const updateData: any = { name };
 
     if (image) {
-      if (image.size > imageMaxSize) {
-        res.status(413);
-        throw new Error('image_max_size_exceeded');
-      }
-
       const filePath = `files/categories/${image.filename}`;
 
       rename(image.path, filePath, async (err) => {
         if (err) throw new Error('file_upload_failed');
-
         updateData.image = image.filename;
-
-        const category = await Category.findByIdAndUpdate(id, updateData, {
-          new: true,
-        });
-
-        if (!category) throw new Error('category_not_found');
-
         if (oldImage) removeFile(oldImage, 'files/categories');
-
-        res.status(200).json({ success: true, data: category });
       });
-    } else {
-      const category = await Category.findByIdAndUpdate(id, updateData, {
-        new: true,
-      });
-
-      if (!category) throw new Error('category_not_found');
-
-      res.status(200).json({ success: true, data: category });
+      updateData.image = image.filename;
     }
+    const category = await Category.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+    if (!category) throw new Error('category_not_found');
+    res.status(200).json({ success: true, data: category });
   } catch (error: any) {
     throw error;
   }

@@ -26,8 +26,7 @@ router.get('/:id', reelById);
 router.post(
   '/',
   uploadFiles({
-    media: { types: ['video', 'image'], maxCount: 10 },
-    thumbnail: { types: ['image'], maxCount: 1 },
+    media: { types: ['video', 'image'], maxCount: 10 }
   }),
   validateCreateReel,
   createReel

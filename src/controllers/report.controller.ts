@@ -1,7 +1,8 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
-import mongoose from 'mongoose'
-import { UserRole, STATUS_TYPE } from '../config/constants';
+import mongoose from 'mongoose';
+import { UserRole } from '../config/constants';
+import { STATUS_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import { Comment } from '../models/comments.model';
@@ -41,7 +42,9 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     if (reply) {
       const replyExists = await Comment.findOne({
         _id: new mongoose.Types.ObjectId(String(comment)),
-        replies: { $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)) } },
+        replies: {
+          $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)) },
+        },
       }).exec();
       if (!replyExists) {
         res.status(404);
@@ -71,7 +74,9 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     };
 
     if (comment) {
-      alreadyReportedQuery.comment = new mongoose.Types.ObjectId(String(comment));
+      alreadyReportedQuery.comment = new mongoose.Types.ObjectId(
+        String(comment)
+      );
     }
     if (reply) {
       alreadyReportedQuery.reply = new mongoose.Types.ObjectId(String(reply));
@@ -87,7 +92,6 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       data: true,
       message: t('report_created'),
     });
-
   } catch (error: any) {
     throw error;
   }
@@ -116,7 +120,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       matchQuery.$or = [{ reason: searchRegex }];
     }
     if (reportType) matchQuery.reportType = reportType;
-    if (reviewBy) matchQuery.reviewBy = new mongoose.Types.ObjectId(String(reviewBy));
+    if (reviewBy)
+      matchQuery.reviewBy = new mongoose.Types.ObjectId(String(reviewBy));
     if (reviewResultValid !== undefined) {
       matchQuery.reviewResultValid = reviewResultValid === 'true';
     }
@@ -258,14 +263,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                   $and: [
                     { $ne: ['$reportedBy.profile', null] },
                     { $ne: ['$reportedBy.profile', ''] },
-                    { $ifNull: ['$reportedBy.profile', false] }
-                  ]
+                    { $ifNull: ['$reportedBy.profile', false] },
+                  ],
                 },
                 { $concat: [config.host + '/profile/', '$reportedBy.profile'] },
-                '$$REMOVE'
-              ]
-            }
-          },                   
+                '$$REMOVE',
+              ],
+            },
+          },
           reason: 1,
           reportType: 1,
           status: 1,
@@ -281,12 +286,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                       $and: [
                         { $ne: ['$reviewBy.profile', null] },
                         { $ne: ['$reviewBy.profile', ''] },
-                        { $ifNull: ['$reviewBy.profile', false] }
-                      ]
+                        { $ifNull: ['$reviewBy.profile', false] },
+                      ],
                     },
-                    { $concat: [config.host + '/profile/', '$reviewBy.profile'] },
-                    '$$REMOVE'
-                  ]
+                    {
+                      $concat: [config.host + '/profile/', '$reviewBy.profile'],
+                    },
+                    '$$REMOVE',
+                  ],
                 },
               },
               '$$REMOVE',
@@ -334,23 +341,17 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    let report;
-    if (role === UserRole.SuperAdmin || role === UserRole.Admin) {
-      report = await Report.findByIdAndUpdate(id, {
+    const report = await Report.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(String(id)),
+        reportedBy: new mongoose.Types.ObjectId(String(userId)),
+        status: { $ne: STATUS_TYPE.deleted },
+      },
+      {
         status: STATUS_TYPE.deleted,
-      }).exec();
-    } else {
-      report = await Report.findOneAndUpdate(
-        {
-          _id: new mongoose.Types.ObjectId(String(id)),
-          reportedBy: new mongoose.Types.ObjectId(String(userId)),
-          status: { $ne: STATUS_TYPE.deleted },
-        },
-        {
-          status: STATUS_TYPE.deleted,
-        }
-      ).exec();
-    }
+      }
+    ).exec();
+
     if (!report) {
       res.status(404);
       throw new Error('report_not_found');

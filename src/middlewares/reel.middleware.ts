@@ -1,5 +1,5 @@
 import expressAsyncHandler from 'express-async-handler';
-import { imageMaxSize, MEDIA_TYPE } from '../config/constants';
+import {  MEDIA_TYPE } from '../config/enums';
 import { Category } from '../models/category.model';
 import mongoose from 'mongoose';
 
