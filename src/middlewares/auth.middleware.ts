@@ -26,7 +26,7 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
   }
   const user = await User.findOne({
     _id: decoded?.id,
-    token: token,
+    token: {$in : token},
     status: STATUS_TYPE.active,
   })
     .populate<{ role: IRole }>('role')
@@ -43,6 +43,14 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
 export const adminOnly = expressAsyncHandler(async (req: any, res, next) => {
   const userRole = req.role;
   if (userRole !== UserRole.SuperAdmin && userRole !== UserRole.Admin) {
+    res.status(403);
+    throw new Error('forbidden');
+  }
+  next();
+});
+export const superAdminOnly = expressAsyncHandler(async (req: any, res, next) => {
+  const userRole = req.role;
+  if (userRole !== UserRole.SuperAdmin) {
     res.status(403);
     throw new Error('forbidden');
   }

@@ -14,9 +14,13 @@
               id:
                 type: string
                 description: The ID of the report to validate.
-              reviewResultValid:
-                type: boolean
+              reviewResult:
+                type: string
+                enum: ["resolved", "rejected"]
                 description: Whether the report has been validated.
+              reviewNotes:
+                type: string
+                description: The notes for the report validation.
     responses:
       200:
         description: Successfully validated report.

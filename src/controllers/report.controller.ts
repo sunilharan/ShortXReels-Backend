@@ -2,7 +2,7 @@ import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import mongoose from 'mongoose';
 import { UserRole } from '../config/constants';
-import { STATUS_TYPE } from '../config/enums';
+import { REPORT_STATUS, STATUS_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import { Comment } from '../models/comments.model';
@@ -100,31 +100,39 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
 export const getReports = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const role = req.role;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
-
-    const search = (req.query.search as string) || '';
-    const reviewBy = req.query.reviewBy as string;
-    const reviewResultValid = req.query.reviewResultValid;
-    const status = req.query.status as string;
-    const reportType = req.query.reportType as string;
+    const search = req.query.search;
+    const reviewBy = req.query.reviewBy;
+    const reportedBy = req.query.reportedBy;
+    const reviewResult = req.query.reviewResult;
+    const status = req.query.status;
+    const reportType = req.query.reportType;
+    const startDate = req?.query?.startDate;
+    const endDate = req?.query?.endDate;
 
     const matchQuery: any = {};
-    if (role === UserRole.User) {
-      matchQuery.reportedBy = new mongoose.Types.ObjectId(String(userId));
-    }
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      matchQuery.$or = [{ reason: searchRegex }];
+      matchQuery.$or = [
+        { reason: { $regex: search, $options: 'i' } },
+        { reviewNotes: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (startDate && endDate) {
+      matchQuery.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
     }
     if (reportType) matchQuery.reportType = reportType;
     if (reviewBy)
       matchQuery.reviewBy = new mongoose.Types.ObjectId(String(reviewBy));
-    if (reviewResultValid !== undefined) {
-      matchQuery.reviewResultValid = reviewResultValid === 'true';
+    if (reviewResult) {
+      matchQuery.reviewResult = reviewResult;
     }
+    if (reportedBy)
+      matchQuery.reportedBy = new mongoose.Types.ObjectId(String(reportedBy));
     if (status) {
       matchQuery.status = status;
     } else {
@@ -306,7 +314,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               '$$REMOVE',
             ],
           },
-          reviewResultValid: 1,
+          reviewResult: 1,
+          reviewNotes: 1,
           createdAt: 1,
           updatedAt: 1,
         },
@@ -334,7 +343,6 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
 export const deleteReport = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const role = req.role;
     const { id } = req.params;
 
     if (!id) {
@@ -369,15 +377,17 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const role = req.role;
-    const { id, reviewResultValid } = req.body;
+    const { id, reviewResult, reviewNotes } = req.body;
 
     if (!id) {
       res.status(400);
       throw new Error('invalid_request');
     }
 
-    if (typeof reviewResultValid !== 'boolean') {
+    if (
+      reviewResult === REPORT_STATUS.resolved &&
+      reviewResult === REPORT_STATUS.rejected
+    ) {
       res.status(400);
       throw new Error('invalid_review_validated');
     }
@@ -385,7 +395,8 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       id,
       {
         reviewBy: new mongoose.Types.ObjectId(String(userId)),
-        reviewResultValid: reviewResultValid,
+        reviewResult: reviewResult,
+        reviewNotes: reviewNotes,
         reviewDate: new Date(),
       },
       {
@@ -401,10 +412,18 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('report_not_found');
     }
-    if (report.reviewResultValid) {
-      await Reel.findByIdAndUpdate(report.reel, {
-        status: STATUS_TYPE.inactive,
-      }).exec();
+    if (report.reviewResult === REPORT_STATUS.resolved) {
+      if (report.reportType === 'reel') {
+        await Reel.findByIdAndUpdate(report.reel, {
+          status: STATUS_TYPE.inactive,
+        }).exec();
+      } else if (report.reportType === 'comment') {
+        await Comment.findByIdAndDelete(report.comment).exec();
+      } else if (report.reportType === 'reply') {
+        await Comment.findByIdAndUpdate(report.comment, {
+          $pull: { replies: { _id: report.reply } },
+        }).exec();
+      }
     }
     res.status(200).json({
       success: true,

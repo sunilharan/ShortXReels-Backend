@@ -1,7 +1,7 @@
-/report:
+/admin/reports:
   get:
     description: Get all reports
-    tags: [Report]
+    tags: ['Admin']
     parameters:
       - $ref: "#/components/parameters/AcceptLanguage"
       - in: query
@@ -24,18 +24,33 @@
           type: string
           enum: ["active", "inactive", "deleted"]
       - in: query
+        name: reportedBy
+        schema:
+          type: string
+      - in: query
         name: reviewBy
         schema:
           type: string
       - in: query
-        name: reviewResultValid
+        name: reviewResult
         schema:
-          type: boolean
+          type: string
+          enum: ["pending", "resolved", "rejected"]
       - in: query
         name: reportType
         schema:
           type: string
           enum: ["reel", "comment", "reply"]
+      - in: query
+        name: startDate
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: endDate
+        schema:
+          type: string
+          format: date-time
     responses:
       200:
         description: A list of reports
@@ -118,8 +133,14 @@
                               profile:
                                 type: string
                                 nullable: true
-                          reviewResultValid:
-                            type: boolean
+                          reviewResult:
+                            type: string
+                            enum: ["pending", "resolved", "rejected"]
+                          reviewNotes:
+                            type: string
+                          reviewDate:
+                            type: string
+                            format: date-time
                           createdAt:
                             type: string
                             format: date-time

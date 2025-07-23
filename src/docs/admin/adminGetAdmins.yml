@@ -1,7 +1,7 @@
-/admin/users:
+/admin/admins:
   get:
     tags: ['Admin']
-    summary: 'Get App users'
+    summary: 'Get Admin users - super admin only'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
@@ -29,7 +29,7 @@
           type: string
     responses:
       200:
-        description: 'User fetched successfully'
+        description: 'Admin fetched successfully'
         content:
           application/json:
             schema:

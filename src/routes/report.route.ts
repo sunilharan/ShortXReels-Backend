@@ -10,7 +10,6 @@ import {
 const router = Router();
 
 router.use(authenticate);
-router.get('/', getReports);
 router.post('/', createReport);
 router.delete('/:id', deleteReport);
 router.post('/validate', adminOnly, validateReport);

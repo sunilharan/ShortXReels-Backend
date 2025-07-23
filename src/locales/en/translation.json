@@ -53,6 +53,7 @@
   "comment_deleted": "Comment deleted successfully.",
   "role_not_found": "Role not found.",
   "caption_required": "Caption is required.",
+  "no_files_uploaded": "No files uploaded.",
   "categories_required": "Categories are required.",
   "media_not_found": "Media not found.",
   "invalid_video_format": "Invalid video format.",

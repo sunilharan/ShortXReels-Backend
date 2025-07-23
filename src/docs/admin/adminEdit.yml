@@ -1,13 +1,13 @@
 /admin:
   put:
     tags: ['Admin']
-    summary: 'Admin Edit'
+    summary: 'Admin Edit - super admin only'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
       required: true
       content:
-        application/json:
+        multipart/form-data:
           schema:
             type: object
             properties:
@@ -31,6 +31,13 @@
                   - active
                   - inactive
                   - deleted
+              password:
+                type: string
+              profile:
+                type: string
+                format: binary
+              oldProfile:
+                type: string
               notification:
                 type: object
                 properties:
@@ -40,10 +47,6 @@
                     type: boolean
                   recommendation:
                     type: boolean
-              interests:
-                type: array
-                items:
-                  type: string
     responses:
       200:
         description: 'User updated successfully'

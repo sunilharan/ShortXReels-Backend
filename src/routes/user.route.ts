@@ -19,7 +19,6 @@ import {
   getSavedReels,
   saveUnsaveReel,
   removeProfile,
-  loginAdmin,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
@@ -29,7 +28,6 @@ const router = Router();
 router.post('/register', validateRegister, register);
 router.get('/nameExist/:name', nameExist);
 router.post('/login', login);
-router.post('/loginAdmin', loginAdmin);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);
 router.post('/verifyOtp', verifyOtp);

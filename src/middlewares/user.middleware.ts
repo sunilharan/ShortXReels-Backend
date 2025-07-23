@@ -6,8 +6,7 @@ import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
-  const { name, email, password, phone, gender, roleId, displayName } =
-    req.body;
+  const { name, email, password, phone, gender, displayName } = req.body;
   res.status(400);
   if (!name) {
     throw new Error('name_required');
@@ -45,13 +44,6 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!passwordRegex.test(newPassword)) {
     throw new Error('password_invalid');
   }
-  if (roleId) {
-    const roleExists = await Role.findById(roleId).exec();
-    if (!roleExists) {
-      res.status(404);
-      throw new Error('role_not_found');
-    }
-  }
   const emailExists = await User.findOne({
     email: { $regex: email, $options: 'i' },
     $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
@@ -76,7 +68,7 @@ export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     let userId = req.user.id;
     const { gender, interests, displayName, name } = req.body;
-    if(req.body.userId && (req.role === UserRole.Admin || req.role === UserRole.SuperAdmin)){
+    if (req.body.userId && req.role === UserRole.SuperAdmin) {
       userId = req.body.userId;
     }
     if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
@@ -84,8 +76,7 @@ export const validateUpdateUser = expressAsyncHandler(
       throw new Error('gender_invalid');
     }
     if (interests) {
-      const parsed =
-        typeof interests === 'string' ? JSON.parse(interests) : interests;
+      const parsed =JSON.parse(interests);
       if (!Array.isArray(parsed) || parsed.length === 0) {
         res.status(400);
         throw new Error('interests_invalid');

@@ -25,6 +25,11 @@ export enum REPORT_TYPE {
   comment = 'comment',
   reply = 'reply',
 }
+export enum REPORT_STATUS {
+  pending = 'pending',
+  resolved = 'resolved',
+  rejected = 'rejected',
+}
 export enum SORT_TYPE {
   popular = 'popular',
   latest = 'latest',

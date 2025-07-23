@@ -1,11 +1,11 @@
 /admin/register:
   post:
     tags: ['Admin']
-    summary: 'Admin Register'
+    summary: 'Admin Register - super admin only'
     requestBody:
       required: true
       content:
-        application/json:
+        multipart/form-data:
           schema:
             type: object
             properties:
@@ -23,10 +23,9 @@
                 type: string
               displayName:
                 type: string
-              interests:
-                type: array
-                items:
-                  type: string
+              profile:
+                type: string
+                format: binary
               description:
                 type: string
     responses:

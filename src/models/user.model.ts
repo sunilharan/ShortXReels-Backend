@@ -18,7 +18,7 @@ export interface IUser extends Document {
   birthDate: Date;
   status: STATUS_TYPE;
   role: PopulatedDoc<Document<ObjectId> & IRole>;
-  token: string;
+  token: string[];
   notification: {
     social: boolean;
     subscription: boolean;
@@ -44,7 +44,7 @@ export const userSchema = new Schema<IUser>(
     birthDate: { type: Date },
     status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
     role: { type: Schema.Types.ObjectId, ref: 'Role' },
-    token: { type: String },
+    token: [{ type: String }],
     notification: {
       social: { type: Boolean, default: true },
       subscription: { type: Boolean, default: true },

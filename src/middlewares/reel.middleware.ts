@@ -1,5 +1,5 @@
 import expressAsyncHandler from 'express-async-handler';
-import {  MEDIA_TYPE } from '../config/enums';
+import { MEDIA_TYPE } from '../config/enums';
 import { Category } from '../models/category.model';
 import mongoose from 'mongoose';
 
@@ -41,6 +41,13 @@ export const validateCreateReel = expressAsyncHandler(
           res.status(404);
           throw new Error('category_not_found');
         }
+      }
+      if (
+        mediaType === MEDIA_TYPE.video &&
+        (!duration || duration <= 0 || duration > 60)
+      ) {
+        res.status(400);
+        throw new Error('invalid_duration');
       }
 
       const mediaFiles = files.media;

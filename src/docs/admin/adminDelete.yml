@@ -1,7 +1,7 @@
 /admin/{id}:
   delete:
     tags: ['Admin']
-    summary: 'Admin Delete'
+    summary: 'Admin Delete - super admin only'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - name: id

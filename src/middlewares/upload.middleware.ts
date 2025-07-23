@@ -102,7 +102,11 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
     });
 
     bb.on('file', (field, stream, info: FileInfo) => {
-      if (field === 'thumbnail') {
+      if (
+        field === 'thumbnail' &&
+        req.baseUrl === '/api/reel' &&
+        body.mediaType === MEDIA_TYPE.video
+      ) {
         stream.resume();
         return;
       }
@@ -333,6 +337,15 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
         stream.on('error', (err) => {
           if (errored) return;
           out.destroy();
+          try {
+            unlinkSync(savePath);
+          } catch {}
+          pending--;
+          fail(err);
+        });
+        out.on('error', (err) => {
+          if (errored) return;
+          stream.destroy();
           try {
             unlinkSync(savePath);
           } catch {}
