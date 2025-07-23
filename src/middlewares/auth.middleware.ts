@@ -26,12 +26,11 @@ export const authenticate = expressAsyncHandler(async (req: any, res, next) => {
   }
   const user = await User.findOne({
     _id: decoded?.id,
-    token: {$in : token},
     status: STATUS_TYPE.active,
   })
     .populate<{ role: IRole }>('role')
     .exec();
-  if (!user) {
+  if (!user || !user?.token?.includes(token)) {
     res.status(401);
     throw new Error('unauthorized');
   }

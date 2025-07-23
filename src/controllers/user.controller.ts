@@ -583,8 +583,8 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       phone,
       gender,
       birthDate,
-      interests,
-      notification,
+      displayName,
+      description
     } = req.body;
     const profile = req.files?.profile?.[0];
     let newPassword = decryptData(password);
@@ -608,6 +608,12 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
     }
     if (gender) {
       userData.gender = gender;
+    }
+    if (displayName) {
+      userData.displayName = displayName;
+    }
+    if (description) {
+      userData.description = description;
     }
     if (birthDate) {
       userData.birthDate = birthDate;
@@ -661,9 +667,9 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
     if (userData.phone) updateData.phone = userData.phone;
     if (userData.gender) updateData.gender = userData.gender;
     if (userData.birthDate) updateData.birthDate = userData.birthDate;
-    if (userData.status) updateData.status = userData.status;
     if (userData.displayName) updateData.displayName = userData.displayName;
     if (userData.description) updateData.description = userData.description;
+    if (userData.status) updateData.status = userData.status;
     if (userData.password) {
       let newPassword = decryptData(userData.password);
       newPassword = newPassword?.password?.split('-');
@@ -681,9 +687,9 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
           resolve();
         });
       });
-      if (userData.oldProfile) {
-        removeFile(userData.oldProfile, 'files/profiles');
-      }
+    }
+    if (userData.oldProfile) {
+      removeFile(userData.oldProfile, 'files/profiles');
     }
     if (userData.notification) {
       updateData.notification = JSON.parse(userData.notification);
