@@ -11,7 +11,8 @@ const router = Router();
 
 router.use(authenticate);
 router.post('/', createReport);
-router.delete('/:id', deleteReport);
-router.post('/validate', adminOnly, validateReport);
+router.delete('/:id', adminOnly, deleteReport);
+router.get('/', adminOnly, getReports);
+router.put('/', adminOnly, validateReport);
 
 export default router;

@@ -4,15 +4,14 @@ import {
   validateUpdateUser,
 } from '../middlewares/user.middleware';
 import {
-  loginAdmin,
+  adminLogin,
   adminRegister,
   adminEdit,
   adminDelete,
   adminGetAppUsers,
   adminGetAdminUsers,
+  adminRemoveProfilePicture,
 } from '../controllers/user.controller';
-import { getReports } from '../controllers/report.controller';
-
 import {
   adminOnly,
   authenticate,
@@ -22,17 +21,17 @@ import { uploadFiles } from '../middlewares/upload.middleware';
 
 const router = Router();
 
-router.post('/login', loginAdmin);
+router.post('/login', adminLogin);
 
 router.use(authenticate);
 router.use(adminOnly);
 router.get('/users', adminGetAppUsers);
-router.get('/reports', getReports);
+router.delete('/removeProfilePicture/:id', adminRemoveProfilePicture);
 
 router.use(superAdminOnly);
-router.get('/admins', adminGetAdminUsers);
+router.get('/', adminGetAdminUsers);
 router.post(
-  '/register',
+  '/',
   uploadFiles({
     profile: { maxCount: 1, types: ['image'] },
   }),

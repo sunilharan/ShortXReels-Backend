@@ -1,11 +1,13 @@
 import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
 import { IReel } from './reel.model';
+import { STATUS_TYPE } from '../config/enums';
 
 export interface IReply extends Document {
   repliedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   content: string;
   likedBy: PopulatedDoc<Document<ObjectId> & IUser>[];
+  status: STATUS_TYPE;
   createdAt: Date;
 }
 
@@ -15,6 +17,7 @@ export interface IComment extends Document {
   content: string;
   likedBy: PopulatedDoc<Document<ObjectId> & IUser>[];
   replies: IReply[];
+  status: STATUS_TYPE;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,11 +28,13 @@ export const commentSchema = new Schema<IComment>(
     commentedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true },
     likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
     replies: [
       {
         repliedBy: { type: Schema.Types.ObjectId, ref: 'User' },
         content: { type: String },
         likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+        status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
         createdAt: { type: Date, default: Date.now },
       },
     ],

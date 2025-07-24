@@ -1,5 +1,5 @@
-/report/validate:
-  post:
+/report:
+  put:
     tags: ["Report"]
     summary: Validate a report
     parameters:

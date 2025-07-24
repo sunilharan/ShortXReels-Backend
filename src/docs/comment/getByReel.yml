@@ -68,6 +68,8 @@
                                   type: boolean
                                 isSaved:
                                   type: boolean
+                                status:
+                                  type: string
                                 totalLikes:
                                   type: number
                                 repliedBy:
@@ -79,6 +81,8 @@
                                       type: string
                                     profile:
                                       type: string
+                          status:
+                            type: string
                           createdAt:
                             type: string
                             format: date-time

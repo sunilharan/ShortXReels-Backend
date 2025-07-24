@@ -14,7 +14,6 @@ import {
   UPLOAD_FOLDER,
   FOLDER_LIST,
   imageMaxSize,
-  videoMaxSize,
 } from '../config/constants';
 import { MEDIA_TYPE } from '../config/enums';
 import { Request, Response, NextFunction } from 'express';

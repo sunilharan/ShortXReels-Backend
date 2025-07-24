@@ -31,6 +31,7 @@ const options: Options = {
             type: 'string',
             enum: ['en', 'hi','gu'],
           },
+          default: 'en',
           description: 'Language for localization (english, hindi, gujarati)',
         },
       },

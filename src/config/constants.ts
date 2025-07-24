@@ -25,8 +25,7 @@ export const FOLDER_LIST = [
 export const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
 export const passwordRegex =
   /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?\d)(?=.*?[#?!@$%^&*-]).{8,}$/;
-export const imageMaxSize = 10 * 1024 * 1024;
-export const videoMaxSize = 100 * 1024 * 1024;
+export const imageMaxSize = 50 * 1024 * 1024;
 
 export const CategoriesType = {
   music: 'Music',

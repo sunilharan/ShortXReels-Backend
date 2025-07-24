@@ -1,10 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
-import {
-  REEL_FOLDER,
-  removeFile,
-  UserRole,
-} from '../config/constants';
+import { REEL_FOLDER, removeFile, UserRole } from '../config/constants';
 import { STATUS_TYPE, SORT_TYPE, MEDIA_TYPE, LIKE_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
@@ -600,33 +596,42 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
 
-    const reel = await Reel.findOneAndDelete({ createdBy: userId, _id: id }).exec();
-
+    let reel;
+    if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+      reel = await Reel.findOneAndUpdate({
+        _id: new mongoose.Types.ObjectId(String(id)),
+      }, {
+        $set: {
+          status: STATUS_TYPE.deleted,
+        },
+      }).exec();
+    } else {
+      reel = await Reel.findOneAndUpdate({
+        createdBy: new mongoose.Types.ObjectId(String(userId)),
+        _id: new mongoose.Types.ObjectId(String(id)),
+      }, {
+        $set: {
+          status: STATUS_TYPE.deleted,
+        },
+      }).exec();
+    }
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    if (reel.media) {
-      if (reel.mediaType === MEDIA_TYPE.video) {
-        await removeFile(reel?.media as string, 'files/reels');
-      } else if (reel.mediaType === MEDIA_TYPE.image) {
-        if (Array.isArray(reel.media)) {
-          reel.media.forEach((img: any) => {
-            removeFile(img, 'files/reels');
-          });
-        } else {
-          removeFile(reel.media, 'files/reels');
-        }
-      }
-    }
-    if (reel.thumbnail) {
-      await removeFile(reel.thumbnail, 'files/thumbnails');
-    }
-    await Comment.deleteMany({
+    await Comment.updateMany({
       reel: new mongoose.Types.ObjectId(String(id)),
+    }, {
+      $set: {
+        status: STATUS_TYPE.deleted,
+      },
     }).exec();
-    await Report.deleteMany({
+    await Report.updateMany({
       reel: new mongoose.Types.ObjectId(String(id)),
+    }, {
+      $set: {
+        status: STATUS_TYPE.deleted,
+      },
     }).exec();
     res.status(200).json({
       success: true,
@@ -704,11 +709,17 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
 export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
   try {
     const reelId = req.params.id;
+    const role = req.role;
     if (!reelId) {
       res.status(400);
       throw new Error('invalid_request');
     }
-    const reel = await Reel.findById(reelId).exec();
+    let reel;
+    if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+      reel = await Reel.findOne({ _id: new mongoose.Types.ObjectId(String(reelId)) }).exec();
+    } else {
+      reel = await Reel.findOne({ _id: new mongoose.Types.ObjectId(String(reelId)), status: STATUS_TYPE.active }).exec();
+    }
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
@@ -784,7 +795,7 @@ export const viewReel = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    let reel = await Reel.findById(reelId);
+    let reel = await Reel.findOne({ _id: reelId, status: STATUS_TYPE.active }).exec();
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
@@ -827,7 +838,7 @@ export const fetchReels = async (
         from: 'comments',
         let: { reelId: '$_id' },
         pipeline: [
-          { $match: { $expr: { $eq: ['$reel', '$$reelId'] } } },
+          { $match: { $expr: { $and: [{ $eq: ['$reel', '$$reelId'] }, { $eq: ['$status', STATUS_TYPE.active] }] } } },
           { $count: 'count' },
         ],
         as: 'commentStats',

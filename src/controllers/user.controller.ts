@@ -166,7 +166,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const loginAdmin = expressAsyncHandler(async (req: any, res) => {
+export const adminLogin = expressAsyncHandler(async (req: any, res) => {
   try {
     const { userName, password } = req.body;
     if (!userName) {
@@ -584,7 +584,6 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       gender,
       birthDate,
       displayName,
-      description
     } = req.body;
     const profile = req.files?.profile?.[0];
     let newPassword = decryptData(password);
@@ -611,9 +610,6 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
     }
     if (displayName) {
       userData.displayName = displayName;
-    }
-    if (description) {
-      userData.description = description;
     }
     if (birthDate) {
       userData.birthDate = birthDate;
@@ -650,25 +646,19 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
 export const adminEdit = expressAsyncHandler(async (req: any, res) => {
   try {
     const userData = req.body;
+    const userId = req.body.id;
     const profile = req.files?.profile?.[0];
-    if (!userData.userId) {
+    if (!userId) {
       res.status(400);
       throw new Error('invalid_request');
     }
     const updateData: any = {};
-    if (userData.hasOwnProperty('role')) {
-      delete userData.role;
-    }
-    if (userData.hasOwnProperty('profile')) {
-      delete userData.profile;
-    }
     if (userData.name) updateData.name = userData.name;
     if (userData.email) updateData.email = userData.email;
     if (userData.phone) updateData.phone = userData.phone;
     if (userData.gender) updateData.gender = userData.gender;
     if (userData.birthDate) updateData.birthDate = userData.birthDate;
     if (userData.displayName) updateData.displayName = userData.displayName;
-    if (userData.description) updateData.description = userData.description;
     if (userData.status) updateData.status = userData.status;
     if (userData.password) {
       let newPassword = decryptData(userData.password);
@@ -691,12 +681,9 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
     if (userData.oldProfile) {
       removeFile(userData.oldProfile, 'files/profiles');
     }
-    if (userData.notification) {
-      updateData.notification = JSON.parse(userData.notification);
-    }
 
     let user = await User.findByIdAndUpdate(
-      userData.userId,
+      userId,
       { ...updateData },
       { new: true }
     ).exec();
@@ -705,6 +692,7 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     user = await user.populate('role');
+    user = await user.populate('interests');
     res.status(200).json({
       success: true,
       data: user,
@@ -721,11 +709,9 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    const updateData: any = {};
-    updateData.status = STATUS_TYPE.deleted;
     let user = await User.findByIdAndUpdate(
       id,
-      { ...updateData },
+      {status: STATUS_TYPE.deleted },
       { new: true }
     ).exec();
     if (!user) {
@@ -751,7 +737,7 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
 });
 
 const getUsersByRole = async (req: any, res: any, roleName: string) => {
-  const id = req.query.userId;
+  const id = req.query.id;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -888,9 +874,9 @@ export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const removeProfile = expressAsyncHandler(async (req: any, res) => {
+export const adminRemoveProfilePicture = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.params.id;
     const user = await User.findById(userId).exec();
     if (!user) {
       res.status(404);

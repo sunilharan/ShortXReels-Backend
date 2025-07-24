@@ -3,12 +3,11 @@ import { User } from '../models/user.model';
 import { STATUS_TYPE, GENDER_TYPE } from '../config/enums';
 import { emailRegex, passwordRegex, UserRole } from '../config/constants';
 import { decryptData } from '../utils/encrypt';
-import { Role } from '../models/role.model';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   const { name, email, password, phone, gender, displayName } = req.body;
   res.status(400);
-  if (!name) {
+  if (!name.trim()) {
     throw new Error('name_required');
   }
   if (!email) {
@@ -23,7 +22,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!gender) {
     throw new Error('gender_required');
   }
-  if (!displayName) {
+  if (!displayName.trim()) {
     throw new Error('display_name_required');
   }
   if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
@@ -68,29 +67,29 @@ export const validateUpdateUser = expressAsyncHandler(
   async (req: any, res, next) => {
     let userId = req.user.id;
     const { gender, interests, displayName, name } = req.body;
-    if (req.body.userId && req.role === UserRole.SuperAdmin) {
-      userId = req.body.userId;
+    if (req.body.id && req.role === UserRole.SuperAdmin) {
+      userId = req.body.id;
     }
     if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
       res.status(400);
       throw new Error('gender_invalid');
     }
     if (interests) {
-      const parsed =JSON.parse(interests);
+      const parsed = JSON.parse(interests);
       if (!Array.isArray(parsed) || parsed.length === 0) {
         res.status(400);
         throw new Error('interests_invalid');
       }
     }
 
-    if (
-      displayName &&
-      (!displayName.trim() || typeof displayName !== 'string')
-    ) {
+    if (displayName && !displayName.trim()) {
       res.status(400);
       throw new Error('display_name_invalid');
     }
-
+    if (name && !name.trim()) {
+      res.status(400);
+      throw new Error('name_invalid');
+    }
     const nameExists = await User.findOne({
       name,
       _id: { $ne: userId },

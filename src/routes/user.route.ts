@@ -18,7 +18,6 @@ import {
   nameExist,
   getSavedReels,
   saveUnsaveReel,
-  removeProfile,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
@@ -48,5 +47,4 @@ router.put(
 router.put('/changePassword', changePassword);
 router.get('/getSavedReels', getSavedReels);
 router.post('/saveUnsaveReel', saveUnsaveReel);
-router.delete('/removeProfile', removeProfile);
 export default router;

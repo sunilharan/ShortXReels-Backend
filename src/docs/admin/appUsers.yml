@@ -5,7 +5,7 @@
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
-        name: userId
+        name: id
         schema:
           type: string
       - in: query

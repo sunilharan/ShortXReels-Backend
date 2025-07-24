@@ -1,7 +1,7 @@
 /admin:
-  put:
+  post:
     tags: ['Admin']
-    summary: 'Admin Edit - super admin only'
+    summary: 'Create Admin User - super admin only'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -11,9 +11,11 @@
           schema:
             type: object
             properties:
-              userId:
-                type: string
               name:
+                type: string
+              email:
+                type: string
+              password:
                 type: string
               phone:
                 type: string
@@ -23,33 +25,12 @@
                 type: string
               displayName:
                 type: string
-              description:
-                type: string
-              status:
-                type: string
-                enum:
-                  - active
-                  - inactive
-                  - deleted
-              password:
-                type: string
               profile:
                 type: string
                 format: binary
-              oldProfile:
-                type: string
-              notification:
-                type: object
-                properties:
-                  social:
-                    type: boolean
-                  subscription:
-                    type: boolean
-                  recommendation:
-                    type: boolean
     responses:
       200:
-        description: 'User updated successfully'
+        description: 'Admin registered successfully'
         content:
           application/json:
             schema:
@@ -77,9 +58,9 @@
                       type: string
                     profile:
                       type: string
-                    displayName:
-                      type: string
                     description:
+                      type: string
+                    displayName:
                       type: string
                     role:
                       type: object
@@ -114,13 +95,15 @@
                     updatedAt:
                       type: string
                       format: date-time
+                    accessToken:
+                      type: string
+                    refreshToken:
+                      type: string
       400:
         description: 'Bad Request'
       401:
         description: 'Unauthorized'
       404:
-        description: 'User not found'
-      409:
-        description: 'Conflict'
+        description: 'Not Found'
       500:
         description: 'Internal Server Error'

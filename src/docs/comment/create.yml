@@ -65,6 +65,8 @@
                                 type: boolean
                               totalLikes:
                                 type: number
+                              status:
+                                type: string
                               repliedBy:
                                 type: object
                                 properties:
@@ -74,6 +76,8 @@
                                     type: string
                                   profile:
                                     type: string
+                        status:
+                          type: string
                         createdAt:
                           type: string
                           format: date-time

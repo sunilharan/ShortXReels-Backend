@@ -7,6 +7,7 @@ import { COMMENT_TYPE, LIKE_TYPE } from '../config/enums';
 import { t } from 'i18next';
 import { config } from '../config/config';
 import WebSocket from '../websocket/WebSocket';
+import { STATUS_TYPE } from '../config/enums';
 
 export const createComment = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -48,9 +49,10 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error('comment_creation_failed');
       }
-      const commentData = await fetchComments(userId, { _id: comment._id });
+      const commentData = await fetchComments(userId, { _id: comment._id, status: STATUS_TYPE.active });
       const totalComments = await Comment.countDocuments({
         reel: new mongoose.Types.ObjectId(String(reel)),
+        status: STATUS_TYPE.active,
       }).exec();
       const newReply =
         commentData[0].replies[commentData[0].replies.length - 1];
@@ -72,9 +74,10 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error('comment_creation_failed');
       }
-      const commentData = await fetchComments(userId, { _id: comment._id });
+      const commentData = await fetchComments(userId, { _id: comment._id, status: STATUS_TYPE.active });
       const totalComments = await Comment.countDocuments({
         reel: new mongoose.Types.ObjectId(String(reel)),
+        status: STATUS_TYPE.active,
       }).exec();
 
       const io = WebSocket.getInstance();
@@ -114,11 +117,11 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
 
     const comments = await fetchComments(
       userId,
-      { reel: new mongoose.Types.ObjectId(String(reelId)) },
+      { reel: new mongoose.Types.ObjectId(String(reelId)), status: STATUS_TYPE.active },
       { skip, limit }
     );
 
-    const total = await Comment.countDocuments({ reel: reelId });
+    const total = await Comment.countDocuments({ reel: reelId, status: STATUS_TYPE.active });
     res.status(200).json({
       success: true,
       data: {
@@ -175,9 +178,13 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     }
     let comment;
     if (!replyId) {
-      comment = await Comment.findOneAndDelete({
+      comment = await Comment.findOneAndUpdate({
         _id: new mongoose.Types.ObjectId(String(commentId)),
         commentedBy: new mongoose.Types.ObjectId(String(userId)),
+      }, {
+        $set: {
+          status: STATUS_TYPE.deleted,
+        },
       });
     } else {
       comment = await Comment.findOneAndUpdate(
@@ -187,10 +194,8 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
           'replies.repliedBy': new mongoose.Types.ObjectId(String(userId)),
         },
         {
-          $pull: {
-            replies: {
-              _id: new mongoose.Types.ObjectId(String(replyId)),
-            },
+          $set: {
+            'replies.$.status': STATUS_TYPE.deleted,
           },
         }
       );
@@ -206,6 +211,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     }
     const totalComments = await Comment.countDocuments({
       reel: new mongoose.Types.ObjectId(String(reel?.id)),
+      status: STATUS_TYPE.active,
     });
     const io = WebSocket.getInstance();
 
@@ -393,7 +399,13 @@ export const fetchComments = async (
         totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
         replies: {
           $map: {
-            input: { $ifNull: ['$replies', []] },
+            input: {
+              $filter: {
+                input: { $ifNull: ['$replies', []] },
+                as: 'reply',
+                cond: { $eq: ['$$reply.status', 'active'] },
+              },
+            },
             as: 'reply',
             in: {
               id: '$$reply._id',
@@ -406,6 +418,7 @@ export const fetchComments = async (
                 ],
               },
               totalLikes: { $size: { $ifNull: ['$$reply.likedBy', []] } },
+              status: '$$reply.status',
               repliedBy: {
                 $let: {
                   vars: {
@@ -459,6 +472,7 @@ export const fetchComments = async (
         content: 1,
         createdAt: 1,
         totalLikes: 1,
+        status: 1,
         isLiked: 1,
         replies: 1,
         commentedBy: {

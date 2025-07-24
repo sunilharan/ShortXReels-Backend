@@ -1,12 +1,17 @@
-/user/removeProfile:
+/admin/removeProfilePicture/{id}:
   delete:
-    tags: ["User"]
-    summary: "Remove profile"
+    tags: ["Admin"]
+    summary: "Remove profile picture by user's id"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
     responses:
       200:
-        description: "Profile removed successfully"
+        description: "Profile picture removed successfully"
         content:
           application/json:
             schema:

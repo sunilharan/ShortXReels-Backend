@@ -1,7 +1,7 @@
-/admin/reports:
+/report:
   get:
-    description: Get all reports
-    tags: ['Admin']
+    summary: Get all reports
+    tags: ['Report']
     parameters:
       - $ref: "#/components/parameters/AcceptLanguage"
       - in: query
