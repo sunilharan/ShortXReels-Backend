@@ -2,7 +2,6 @@ import expressAsyncHandler from 'express-async-handler';
 import { Comment } from '../models/comments.model';
 import mongoose from 'mongoose';
 import { Reel } from '../models/reel.model';
-import { UserRole } from '../config/constants';
 import { COMMENT_TYPE, LIKE_TYPE } from '../config/enums';
 import { t } from 'i18next';
 import { config } from '../config/config';

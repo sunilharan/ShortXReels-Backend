@@ -9,7 +9,7 @@ import { STATUS_TYPE, SAVE_TYPE } from '../config/enums';
 import { Otp } from '../models/otp.model';
 import crypto from 'crypto';
 import { sendMail } from '../utils/sendMail';
-import { Category, ICategory } from '../models/category.model';
+import { ICategory } from '../models/category.model';
 import { config } from '../config/config';
 import { Reel } from '../models/reel.model';
 import { fetchReels } from './reel.controller';
@@ -92,8 +92,8 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     let user = await User.findOne({
-      name: name,
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+      status: { $ne: STATUS_TYPE.deleted },
     });
     res.status(200).send({
       status: true,
@@ -117,7 +117,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       $or: [{ email: userName }, { name: userName }],
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      status: STATUS_TYPE.active,
     })
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')
@@ -151,7 +151,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       },
       config.jwtRefreshExpire
     );
-    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken }  });
+    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken } });
     const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
@@ -179,7 +179,7 @@ export const adminLogin = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       $or: [{ email: userName }, { name: userName }],
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      status: STATUS_TYPE.active,
     })
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')
@@ -291,7 +291,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
     }).exec();
     if (!user) {
       res.status(400);
@@ -324,7 +324,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
     })
       .populate('role')
       .exec();
@@ -368,7 +368,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
     } else {
       const user = await User.findOne({
         _id: decoded?.id,
-        $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+        $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
       }).exec();
       if (!user) {
         res.status(400);
@@ -426,8 +426,10 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
 export const logout = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const token= req.headers.authorization.split(' ')[1];
-    const user = await User.findByIdAndUpdate(userId, { $pull: { token: token } })
+    const token = req.headers.authorization.split(' ')[1];
+    const user = await User.findByIdAndUpdate(userId, {
+      $pull: { token: token },
+    })
       .populate<{ role: IRole }>('role')
       .exec();
     if (!user) {
@@ -456,12 +458,19 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
     }
     await Reel.updateMany(
       { createdBy: userId },
-      { status: STATUS_TYPE.inactive }
+      { status: STATUS_TYPE.deleted }
     ).exec();
-    await Comment.deleteMany({ commentedBy: userId }).exec();
+    await Comment.updateMany(
+      { commentedBy: userId },
+      { status: STATUS_TYPE.deleted }
+    ).exec();
+    await Comment.updateMany(
+      { 'replies._id': userId },
+      { $set: { 'replies.$.status': STATUS_TYPE.deleted } }
+    ).exec();
     await Report.updateMany(
       { reportedBy: userId },
-      { status: STATUS_TYPE.inactive }
+      { status: STATUS_TYPE.deleted }
     ).exec();
     res.status(200).json({
       success: true,
@@ -546,7 +555,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
     const user = await User.findOne({
       _id: userId,
-      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
     }).exec();
 
     if (!user) {
@@ -576,15 +585,8 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
 export const adminRegister = expressAsyncHandler(async (req: any, res) => {
   try {
-    const {
-      name,
-      email,
-      password,
-      phone,
-      gender,
-      birthDate,
-      displayName,
-    } = req.body;
+    const { name, email, password, phone, gender, birthDate, displayName } =
+      req.body;
     const profile = req.files?.profile?.[0];
     let newPassword = decryptData(password);
     newPassword = newPassword?.password?.split('-');
@@ -654,7 +656,6 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
     }
     const updateData: any = {};
     if (userData.name) updateData.name = userData.name;
-    if (userData.email) updateData.email = userData.email;
     if (userData.phone) updateData.phone = userData.phone;
     if (userData.gender) updateData.gender = userData.gender;
     if (userData.birthDate) updateData.birthDate = userData.birthDate;
@@ -711,21 +712,25 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
     }
     let user = await User.findByIdAndUpdate(
       id,
-      {status: STATUS_TYPE.deleted },
+      { status: STATUS_TYPE.deleted },
       { new: true }
     ).exec();
     if (!user) {
       res.status(400);
       throw new Error('invalid_request');
     }
-    await Reel.updateMany(
-      { createdBy: id },
-      { status: STATUS_TYPE.inactive }
+    await Reel.updateMany({ user: id }, { status: STATUS_TYPE.deleted }).exec();
+    await Comment.updateMany(
+      { user: id },
+      { status: STATUS_TYPE.deleted }
     ).exec();
-    await Comment.deleteMany({ commentedBy: id }).exec();
+    await Comment.updateMany(
+      { 'replies._id': id },
+      { $set: { 'replies.$.status': STATUS_TYPE.deleted } }
+    ).exec();
     await Report.updateMany(
-      { reportedBy: id },
-      { status: STATUS_TYPE.inactive }
+      { user: id },
+      { status: STATUS_TYPE.deleted }
     ).exec();
     res.status(200).json({
       success: true,
@@ -874,23 +879,25 @@ export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const adminRemoveProfilePicture = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.params.id;
-    const user = await User.findById(userId).exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
+export const adminRemoveProfilePicture = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const user = await User.findById(userId).exec();
+      if (!user) {
+        res.status(404);
+        throw new Error('user_not_found');
+      }
+      if (user.profile) {
+        await removeFile(user.profile, 'files/profiles');
+      }
+      await User.findByIdAndUpdate(userId, { $unset: { profile: '' } }).exec();
+      res.status(200).json({
+        success: true,
+        message: t('profile_removed'),
+      });
+    } catch (error: any) {
+      throw error;
     }
-    if (user.profile) {
-      await removeFile(user.profile, 'files/profiles');
-    }
-    await User.findByIdAndUpdate(userId, { $unset: { profile: '' } }).exec();
-    res.status(200).json({
-      success: true,
-      message: t('profile_removed'),
-    });
-  } catch (error: any) {
-    throw error;
   }
-});
+);

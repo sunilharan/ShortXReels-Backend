@@ -37,6 +37,8 @@
                       type: string
                     image:
                       type: string
+                    status:
+                      type: string
                     createdAt:
                       type: string
                       format: date-time

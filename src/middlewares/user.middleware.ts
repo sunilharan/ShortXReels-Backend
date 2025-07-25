@@ -31,6 +31,22 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!emailRegex.test(email)) {
     throw new Error('email_invalid');
   }
+  const emailExists = await User.findOne({
+    $or: [{ email: { $regex: email, $options: 'i' } }, { name: email }],
+    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+  }).exec();
+  if (emailExists) {
+    res.status(409);
+    throw new Error('email_exist');
+  }
+  const nameExists = await User.findOne({
+    $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+  }).exec();
+  if (nameExists) {
+    res.status(409);
+    throw new Error('name_exist');
+  }
   let newPassword = decryptData(password);
   newPassword = newPassword?.password.split('-');
   if (newPassword?.length > 1) {
@@ -43,22 +59,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!passwordRegex.test(newPassword)) {
     throw new Error('password_invalid');
   }
-  const emailExists = await User.findOne({
-    email: { $regex: email, $options: 'i' },
-    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
-  }).exec();
-  if (emailExists) {
-    res.status(409);
-    throw new Error('email_exist');
-  }
-  const nameExists = await User.findOne({
-    name,
-    $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
-  }).exec();
-  if (nameExists) {
-    res.status(409);
-    throw new Error('name_exist');
-  }
+
   res.status(200);
   next();
 });
@@ -90,16 +91,17 @@ export const validateUpdateUser = expressAsyncHandler(
       res.status(400);
       throw new Error('name_invalid');
     }
-    const nameExists = await User.findOne({
-      name,
-      _id: { $ne: userId },
-      status: { $ne: STATUS_TYPE.deleted },
-    }).exec();
-    if (nameExists) {
-      res.status(409);
-      throw new Error('name_exist');
+    if (name) {
+      const nameExists = await User.findOne({
+        $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+        _id: { $ne: userId },
+        status: { $ne: STATUS_TYPE.deleted },
+      }).exec();
+      if (nameExists) {
+        res.status(409);
+        throw new Error('name_exist');
+      }
     }
-
     next();
   }
 );

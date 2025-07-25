@@ -3,14 +3,68 @@ import { Category } from '../models/category.model';
 import { removeFile } from '../config/constants';
 import { t } from 'i18next';
 import { rename } from 'fs';
+import { STATUS_TYPE } from '../config/enums';
+import { UserRole } from '../config/constants';
+export const getActiveCategories = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const categories = await Category.find({
+        status: STATUS_TYPE.active,
+      }).sort({ createdAt: -1 });
+      res.status(200).json({
+        success: true,
+        data: categories,
+      });
+    } catch (error: any) {
+      throw error;
+    }
+  }
+);
 
 export const getCategories = expressAsyncHandler(async (req: any, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const role = req.role;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const status = req.query.status;
+    const search = req.query.search;
+
+    let matchQuery: any = {};
+    if (role === UserRole.SuperAdmin && status) {
+      matchQuery.status = status;
+    } else if (role === UserRole.Admin) {
+      if (status) {
+        if ([STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)) {
+          matchQuery.status = status;
+        } else {
+          matchQuery.status = {
+            $in: [STATUS_TYPE.active, STATUS_TYPE.inactive],
+          };
+        }
+      } else {
+        matchQuery.status = { $ne: STATUS_TYPE.deleted };
+      }
+    }
+    if (search) {
+      matchQuery.name = { $regex: search, $options: 'i' };
+    }
+
+    const categories = await Category.find(matchQuery)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const total = await Category.countDocuments(matchQuery).exec();
 
     res.status(200).json({
       success: true,
-      data: categories,
+      data: {
+        categories,
+        totalRecords: total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error: any) {
     throw error;
@@ -59,13 +113,12 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    const category = await Category.findByIdAndDelete(id).exec();
+    const category = await Category.findByIdAndUpdate(id, {
+      status: STATUS_TYPE.deleted,
+    }).exec();
     if (!category) {
       res.status(404);
       throw new Error('category_not_found');
-    }
-    if (category.image) {
-      await removeFile(category.image, 'files/categories');
     }
     res.status(200).json({
       success: true,
@@ -78,19 +131,20 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
 
 export const editCategory = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { id, name, oldImage } = req.body;
+    const { id, name, oldImage, status } = req.body;
     const image = req.files?.image?.[0];
 
-    const existingCategory = await Category.findOne({
-      name: { $regex: name, $options: 'i' },
-    });
-
-    if (existingCategory && existingCategory.id.toString() !== id) {
-      res.status(409);
-      throw new Error('category_exists');
+    if (name.trim()) {
+      const existingCategory = await Category.findOne({
+        name: { $regex: name.trim(), $options: 'i' },
+      });
+      if (existingCategory && existingCategory.id.toString() !== id) {
+        res.status(409);
+        throw new Error('category_exists');
+      }
     }
 
-    const updateData: any = { name };
+    const updateData: any = {};
 
     if (image) {
       const filePath = `files/categories/${image.filename}`;
@@ -102,9 +156,19 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
       });
       updateData.image = image.filename;
     }
-    const category = await Category.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
+    if (status && [STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)) {
+      updateData.status = status;
+    }
+    if (name.trim()) {
+      updateData.name = name;
+    }
+    const category = await Category.findByIdAndUpdate(
+      id,
+      { ...updateData },
+      {
+        new: true,
+      }
+    );
     if (!category) throw new Error('category_not_found');
     res.status(200).json({ success: true, data: category });
   } catch (error: any) {

@@ -1,8 +1,10 @@
 import { Schema, model, Document } from 'mongoose';
 import { config } from '../config/config';
+import { STATUS_TYPE } from '../config/enums';
 
 export interface ICategory extends Document {
   name: string;
+  status: STATUS_TYPE;
   image: string;
 }
 
@@ -15,6 +17,11 @@ export const categorySchema = new Schema(
     image: {
       type: String,
       required: true,
+    },
+    status: {
+      type: String,
+      enum: Object.values(STATUS_TYPE),
+      default: STATUS_TYPE.active,
     },
   },
   {

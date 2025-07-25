@@ -6,11 +6,12 @@ import {
   deleteCategory,
   getCategories,
   editCategory,
+  getActiveCategories,
 } from '../controllers/category.controller';
 
 const router = Router();
 
-router.get('/', getCategories);
+router.get('/active', getActiveCategories);
 router.use(authenticate);
 router.use(adminOnly);
 router.post(
@@ -27,6 +28,7 @@ router.put(
   }),
   editCategory
 );
+router.get('/', getCategories);
 router.delete('/:id', deleteCategory);
 
 export default router;

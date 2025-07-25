@@ -13,8 +13,6 @@
             properties:
               name:
                 type: string
-              email:
-                type: string
               phone:
                 type: string
               gender:

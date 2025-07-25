@@ -1,9 +1,24 @@
 /category:
   get:
-    tags: ['Category']
-    summary: 'Get all categories'
-    security: []
+    tags: ["Category"]
+    summary: "Get all categories"
     parameters:
+      - in: query
+        name: page
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum: ["active", "inactive", "deleted"]
       - in: query
         name: search
         required: false
@@ -12,7 +27,7 @@
       - $ref: '#/components/parameters/AcceptLanguage'
     responses:
       200:
-        description: 'Categories retrieved successfully'
+        description: "Categories retrieved successfully"
         content:
           application/json:
             schema:
@@ -21,25 +36,35 @@
                 success:
                   type: boolean
                 data:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      image:
-                        type: string
-                      createdAt:
-                        type: string
-                        format: date-time
-                      updatedAt:
-                        type: string
-                        format: date-time
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        image:
+                          type: string
+                        status:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                  totalRecords:
+                    type: integer
+                  totalPages:
+                    type: integer
       400:
-        description: 'Bad Request'
+        description: "Bad Request"
       401:
-        description: 'Unauthorized'
+        description: "Unauthorized"
+      403:
+        description: 'Forbidden'
       500:
-        description: 'Internal Server Error'
+        description: "Internal Server Error"
+  

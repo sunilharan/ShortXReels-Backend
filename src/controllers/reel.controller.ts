@@ -1,6 +1,6 @@
 import expressAsyncHandler from 'express-async-handler';
 import path, { join } from 'path';
-import { REEL_FOLDER, removeFile, UserRole } from '../config/constants';
+import { REEL_FOLDER, UserRole } from '../config/constants';
 import { STATUS_TYPE, SORT_TYPE, MEDIA_TYPE, LIKE_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
