@@ -108,8 +108,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const reviewResult = req.query.reviewResult;
     const status = req.query.status;
     const reportType = req.query.reportType;
-    const startDate = req?.query?.startDate;
-    const endDate = req?.query?.endDate;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
 
     const matchQuery: any = {};
     if (search) {

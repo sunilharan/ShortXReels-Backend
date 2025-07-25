@@ -3,8 +3,7 @@ export enum STATUS_TYPE {
   inactive = 'inactive',
   deleted = 'deleted',
   blocked = 'blocked',
-  }
-
+}
 export enum GENDER_TYPE {
   male = 'male',
   female = 'female',

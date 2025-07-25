@@ -291,7 +291,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
+      status: STATUS_TYPE.active,
     }).exec();
     if (!user) {
       res.status(400);
@@ -324,7 +324,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       email,
-      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
+      status: STATUS_TYPE.active,
     })
       .populate('role')
       .exec();
@@ -368,7 +368,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
     } else {
       const user = await User.findOne({
         _id: decoded?.id,
-        $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
+        status: STATUS_TYPE.active,
       }).exec();
       if (!user) {
         res.status(400);
