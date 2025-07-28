@@ -1,0 +1,38 @@
+/user/status:
+  post:
+    tags: ["User"]
+    summary: "Change status of a User"
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: string
+                enum: ["active", "inactive"]
+    responses:
+      200:
+        description: "User status changed successfully"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      404:
+        description: "User not found"
+      500:
+        description: "Internal Server Error"

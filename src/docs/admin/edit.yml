@@ -23,11 +23,6 @@
                 type: string
               displayName:
                 type: string
-              status:
-                type: string
-                enum:
-                  - active
-                  - inactive
               password:
                 type: string
               profile:

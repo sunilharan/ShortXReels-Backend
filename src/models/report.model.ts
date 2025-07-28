@@ -2,7 +2,7 @@ import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
 import { IReel } from './reel.model';
 import {  REPORT_TYPE, REPORT_STATUS, STATUS_TYPE } from '../config/enums';
-import { IComment, IReply } from './comments.model';
+import { IComment, IReply } from './comment.model';
 
 export interface IReport extends Document {
   reel: PopulatedDoc<Document<ObjectId> & IReel>;
@@ -12,10 +12,10 @@ export interface IReport extends Document {
   reason: string;
   reportType: REPORT_TYPE;
   status: STATUS_TYPE;
-  reviewBy: PopulatedDoc<Document<ObjectId> & IUser>;
-  reviewResult: REPORT_STATUS;
-  reviewNotes: string;
-  reviewDate: Date;
+  reviewedBy: PopulatedDoc<Document<ObjectId> & IUser>;
+  result: REPORT_STATUS;
+  notes: string;
+  reviewedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,10 +29,10 @@ export const reportSchema = new Schema<IReport>(
     reason: { type: String },
     reportType: { type: String, enum: REPORT_TYPE },
     status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
-    reviewBy: { type: Schema.Types.ObjectId, ref: 'User' },
-    reviewResult: { type: String, enum: REPORT_STATUS, default: REPORT_STATUS.pending },
-    reviewNotes: { type: String, default: '' },
-    reviewDate: { type: Date },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    result: { type: String, enum: REPORT_STATUS, default: REPORT_STATUS.pending },
+    notes: { type: String, default: '' },
+    reviewedAt: { type: Date },
   },
   {
     timestamps: true,

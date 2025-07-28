@@ -1,7 +1,7 @@
-/comment:
+/reel/block:
   post:
-    tags: ['Comment']
-    summary: Create a new comment
+    tags: ['Reel']
+    summary: 'Block a Reel'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -11,18 +11,11 @@
           schema:
             type: object
             properties:
-              reelId:
+              id:
                 type: string
-                description: The ID of the reel to comment on.
-              content:
-                type: string
-                description: The content of the comment.
-              commentId:
-                type: string
-                description: The ID of the comment to reply to.
     responses:
-      201:
-        description: Successfully created comment.
+      200:
+        description: 'Reel blocked successfully'
         content:
           application/json:
             schema:
@@ -40,7 +33,5 @@
         description: 'Forbidden'
       404:
         description: 'Not Found'
-      409:
-        description: 'Conflict'
       500:
         description: 'Internal Server Error'

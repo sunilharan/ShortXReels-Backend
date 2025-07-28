@@ -1,16 +1,18 @@
 import { Router } from 'express';
-import { authenticate } from '../middlewares/auth.middleware';
+import { adminOnly, authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
 import {
   getReels,
   createReel,
   deleteReel,
   likeUnlikeReel,
-  reelById,
+  allReels,
   streamReelVideo,
   dashboardReels,
   getReelsByUser,
   viewReel,
+  statusChange,
+  blockReel,
 } from '../controllers/reel.controller';
 import { validateCreateReel } from '../middlewares/reel.middleware';
 
@@ -22,7 +24,6 @@ router.get('/', getReels);
 router.get('/getByUser', getReelsByUser);
 router.get('/dashboardReels', dashboardReels);
 router.get('/view/:id', streamReelVideo);
-router.get('/:id', reelById);
 router.post(
   '/',
   uploadFiles({
@@ -35,5 +36,9 @@ router.post(
 router.delete('/:id', deleteReel);
 router.post('/likeUnlike', likeUnlikeReel);
 router.post('/view/:id', viewReel);
+router.use(adminOnly);
+router.post('/block', blockReel);
+router.post('/status', statusChange);
+router.get('/all', allReels);
 
 export default router;

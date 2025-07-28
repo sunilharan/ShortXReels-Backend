@@ -1,3 +1,5 @@
+import i18next from "i18next";
+
 export const notFound = (req: any, res: any, next: any) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
   res.status(404);
@@ -9,7 +11,7 @@ export const errorHandler = (err: any, req: any, res: any, next: any) => {
   res.status(statusCode);
   res.json({
     success: false,
-    message: req.t ? req.t(err.message) : req.t("invalid_request"),
+    message: req.t ? req.t(err.message) : i18next.t("invalid_request"),
     stack: process.env.NODE_ENV !== 'production' ? err.stack : null,
   });
 };

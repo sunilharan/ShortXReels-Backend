@@ -1,0 +1,45 @@
+/report/acceptReject:
+  post:
+    tags: ["Report"]
+    summary: Accept or reject a report
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                description: The ID of the report to validate.
+              result:
+                type: string
+                enum: ["accepted", "rejected"]
+                description: Whether the report has been validated.
+              notes:
+                type: string
+                description: The notes for the report validation.
+    responses:
+      200:
+        description: Successfully validated report.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+      400:
+        description: "Bad Request"
+      401:
+        description: "Unauthorized"
+      403:
+        description: "Forbidden"
+      404:
+        description: "Not Found"
+      500:
+        description: "Internal Server Error"

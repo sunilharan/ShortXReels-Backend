@@ -28,7 +28,7 @@ export enum REPORT_TYPE {
 }
 export enum REPORT_STATUS {
   pending = 'pending',
-  resolved = 'resolved',
+  accepted = 'accepted',
   rejected = 'rejected',
 }
 export enum SORT_TYPE {

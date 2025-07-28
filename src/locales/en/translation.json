@@ -74,5 +74,7 @@
   "report_validated": "Report validated successfully.",
   "invalid_review_validated": "Invalid review validation.",
   "forbidden": "Access forbidden.",
-  "save_unsave_reel": "Reel saved/unsaved successfully."
+  "save_unsave_reel": "Reel saved/unsaved successfully.",
+  "status_changed": "Status changed successfully.",
+  "data_blocked": "Data blocked successfully."
 }

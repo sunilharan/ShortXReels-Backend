@@ -7,6 +7,7 @@ import {
   getCategories,
   editCategory,
   getActiveCategories,
+  statusChange,
 } from '../controllers/category.controller';
 
 const router = Router();
@@ -30,5 +31,6 @@ router.put(
 );
 router.get('/', getCategories);
 router.delete('/:id', deleteCategory);
+router.post('/status', statusChange);
 
 export default router;

@@ -1,7 +1,7 @@
-/report:
-  put:
-    tags: ["Report"]
-    summary: Validate a report
+/category/status:
+  post:
+    tags: ["Category"]
+    summary: "Change status of a Category"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -13,17 +13,12 @@
             properties:
               id:
                 type: string
-                description: The ID of the report to validate.
-              reviewResult:
+              status:
                 type: string
-                enum: ["resolved", "rejected"]
-                description: Whether the report has been validated.
-              reviewNotes:
-                type: string
-                description: The notes for the report validation.
+                enum: ["active", "inactive"]
     responses:
       200:
-        description: Successfully validated report.
+        description: "Category status changed successfully"
         content:
           application/json:
             schema:

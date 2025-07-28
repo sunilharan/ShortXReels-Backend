@@ -1,14 +1,9 @@
-/user/{id}:
+/user:
   delete:
     tags: ["User"]
-    summary: "Delete a user"
+    summary: "Delete your account"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
     responses:
       200:
         description: "User deleted successfully"

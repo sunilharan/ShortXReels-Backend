@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
-import { Comment } from '../models/comments.model';
+import { Comment } from '../models/comment.model';
 import { Report } from '../models/report.model';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
@@ -57,13 +57,15 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
-    totalRecords = await Reel.countDocuments(matchQuery);
+
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
   } else if (categoryId === 'recommended') {
     reels = [
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
-    totalRecords = await Reel.countDocuments(matchQuery);
+
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
   } else if (categoryId) {
     const primaryQuery = {
       ...matchQuery,
@@ -76,10 +78,8 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       savedReels
     );
     reels = [...reels, ...primaryReels];
-    totalRecords = await Reel.countDocuments({
-      status: STATUS_TYPE.active,
-      createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
-    });
+
+    totalRecords = await countActiveReelsWithActiveUsers(primaryQuery);
 
     if (reels.length < limit) {
       const fallbackQuery = {
@@ -102,10 +102,8 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
-    totalRecords = await Reel.countDocuments({
-      status: STATUS_TYPE.active,
-      createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
-    });
+
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
   }
 
   const reelsMap = new Map<string, any>();
@@ -152,7 +150,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
   const user = await User.findById(id).select(
     'id name email phone gender birth status profile displayName description'
   );
-  if (!user) {
+  if (!user || user.status !== STATUS_TYPE.active) {
     res.status(404);
     throw new Error('user_not_found');
   }
@@ -220,6 +218,11 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
         },
       },
       { $unwind: '$creator' },
+      {
+        $match: {
+          'creator.status': STATUS_TYPE.active,
+        },
+      },
       {
         $lookup: {
           from: 'comments',
@@ -343,7 +346,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
     const recommended = await Reel.aggregate([
       {
         $match: {
-          status: 'active',
+          status: STATUS_TYPE.active,
           categories: { $nin: interestIds },
           createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
         },
@@ -358,6 +361,11 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
         },
       },
       { $unwind: '$creator' },
+      {
+        $match: {
+          'creator.status': STATUS_TYPE.active,
+        },
+      },
       {
         $lookup: {
           from: 'comments',
@@ -501,26 +509,53 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const reelById = expressAsyncHandler(async (req: any, res) => {
+export const allReels = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400);
-      throw new Error('invalid_request');
+    const userId = req.user.id;
+    const savedReels = req?.user?.savedReels;
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+    const sortType = req.query.sortType;
+    const sortBy = req.query.sortBy;
+    const status = req.query.status;
+    const search = req.query.search;
+    const category = req.query.category;
+    const profileUserId = req.query.profileUserId;
+    let matchQuery: any = {};
+    let sortQuery: any = {};
+    if (sortType && sortBy && (sortType === 'asc' || sortType === 'desc') && (sortBy === 'createdAt' || sortBy === 'totalViews' || sortBy === 'totalLikes' || sortBy === 'totalComments')) {
+      sortQuery = {
+        [sortBy]: sortType === 'asc' ? 1 : -1,
+      };
+    }else{
+      sortQuery = { createdAt: -1 };
     }
-    let reel = await Reel.findById(id)
-      .populate('createdBy', 'name profile')
-      .populate('categories', 'name image')
-      .populate('likedBy', 'name profile')
-      .populate('viewedBy', 'name profile')
-      .exec();
-    if (!reel) {
-      res.status(404);
-      throw new Error('reel_not_found');
+    if (status) {
+      matchQuery.status = status;
     }
+    if (search) {
+      matchQuery.caption = { $regex: search, $options: 'i' };
+    }
+    if (category) {
+      matchQuery.categories = { $in: [new mongoose.Types.ObjectId(category)] };
+    }
+    if (profileUserId) {
+      matchQuery.createdBy = new mongoose.Types.ObjectId(profileUserId);
+    }
+    const reels = await fetchReels(
+      userId,
+      matchQuery,
+      { skip, limit, sortQuery },
+      savedReels
+    );
+    const totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
+
     res.status(200).json({
       success: true,
-      data: reel,
+      data: reels,
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limit),
     });
   } catch (error: any) {
     throw error;
@@ -598,41 +633,53 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
 
     let reel;
     if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
-      reel = await Reel.findOneAndUpdate({
-        _id: new mongoose.Types.ObjectId(String(id)),
-      }, {
-        $set: {
-          status: STATUS_TYPE.deleted,
+      reel = await Reel.findOneAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(String(id)),
         },
-      }).exec();
+        {
+          $set: {
+            status: STATUS_TYPE.deleted,
+          },
+        }
+      ).exec();
     } else {
-      reel = await Reel.findOneAndUpdate({
-        createdBy: new mongoose.Types.ObjectId(String(userId)),
-        _id: new mongoose.Types.ObjectId(String(id)),
-      }, {
-        $set: {
-          status: STATUS_TYPE.deleted,
+      reel = await Reel.findOneAndUpdate(
+        {
+          createdBy: new mongoose.Types.ObjectId(String(userId)),
+          _id: new mongoose.Types.ObjectId(String(id)),
         },
-      }).exec();
+        {
+          $set: {
+            status: STATUS_TYPE.deleted,
+          },
+        }
+      ).exec();
     }
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    await Comment.updateMany({
-      reel: new mongoose.Types.ObjectId(String(id)),
-    }, {
-      $set: {
-        status: STATUS_TYPE.deleted,
+    await Comment.updateMany(
+      {
+        reel: new mongoose.Types.ObjectId(String(id)),
       },
-    }).exec();
-    await Report.updateMany({
-      reel: new mongoose.Types.ObjectId(String(id)),
-    }, {
-      $set: {
-        status: STATUS_TYPE.deleted,
+      {
+        $set: {
+          status: STATUS_TYPE.deleted,
+        },
+      }
+    ).exec();
+    await Report.updateMany(
+      {
+        reel: new mongoose.Types.ObjectId(String(id)),
       },
-    }).exec();
+      {
+        $set: {
+          status: STATUS_TYPE.deleted,
+        },
+      }
+    ).exec();
     res.status(200).json({
       success: true,
       message: t('reel_deleted'),
@@ -716,9 +763,14 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
     }
     let reel;
     if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
-      reel = await Reel.findOne({ _id: new mongoose.Types.ObjectId(String(reelId)) }).exec();
+      reel = await Reel.findOne({
+        _id: new mongoose.Types.ObjectId(String(reelId)),
+      }).exec();
     } else {
-      reel = await Reel.findOne({ _id: new mongoose.Types.ObjectId(String(reelId)), status: STATUS_TYPE.active }).exec();
+      reel = await Reel.findOne({
+        _id: new mongoose.Types.ObjectId(String(reelId)),
+        status: STATUS_TYPE.active,
+      }).exec();
     }
     if (!reel) {
       res.status(404);
@@ -795,7 +847,10 @@ export const viewReel = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    let reel = await Reel.findOne({ _id: reelId, status: STATUS_TYPE.active }).exec();
+    let reel = await Reel.findOne({
+      _id: reelId,
+      status: STATUS_TYPE.active,
+    }).exec();
     if (!reel) {
       res.status(404);
       throw new Error('reel_not_found');
@@ -814,7 +869,44 @@ export const viewReel = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
-
+export const statusChange = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id, status } = req.body;
+    if (
+      !id ||
+      !status ||
+      ![STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)
+    ) {
+      throw new Error('invalid_request');
+    }
+    const reel = await Reel.findById(id);
+    if (!reel) throw new Error('reel_not_found');
+    await Reel.findByIdAndUpdate(id, { status });
+    res.status(200).json({
+      success: true,
+      message: t('status_changed'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+export const blockReel = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) {
+      throw new Error('invalid_request');
+    }
+    const reel = await Reel.findById(id);
+    if (!reel) throw new Error('reel_not_found');
+    await Reel.findByIdAndUpdate(id, { status: STATUS_TYPE.blocked });
+    res.status(200).json({
+      success: true,
+      message: t('data_blocked'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
 export const fetchReels = async (
   userId: string,
   matchQuery: any,
@@ -834,11 +926,23 @@ export const fetchReels = async (
     },
     { $unwind: '$createdBy' },
     {
+      $match: { 'createdBy.status': STATUS_TYPE.active },
+    },
+    {
       $lookup: {
         from: 'comments',
         let: { reelId: '$_id' },
         pipeline: [
-          { $match: { $expr: { $and: [{ $eq: ['$reel', '$$reelId'] }, { $eq: ['$status', STATUS_TYPE.active] }] } } },
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$reel', '$$reelId'] },
+                  { $eq: ['$status', STATUS_TYPE.active] },
+                ],
+              },
+            },
+          },
           { $count: 'count' },
         ],
         as: 'commentStats',
@@ -937,4 +1041,26 @@ export const fetchReels = async (
     { $limit: limit },
   ]).exec();
   return results;
+};
+
+export const countActiveReelsWithActiveUsers = async (query: any) => {
+  const result = await Reel.aggregate([
+    { $match: query },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'createdBy',
+        foreignField: '_id',
+        as: 'createdBy',
+      },
+    },
+    { $unwind: '$createdBy' },
+    {
+      $match: {
+        'createdBy.status': STATUS_TYPE.active,
+      },
+    },
+    { $count: 'total' },
+  ]).exec();
+  return result[0]?.total || 0;
 };

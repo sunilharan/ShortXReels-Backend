@@ -14,7 +14,7 @@ import { config } from '../config/config';
 import { Reel } from '../models/reel.model';
 import { fetchReels } from './reel.controller';
 import { rename } from 'fs';
-import { Comment } from '../models/comments.model';
+import { Comment } from '../models/comment.model';
 import { Report } from '../models/report.model';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
@@ -92,11 +92,11 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     let user = await User.findOne({
-      $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+      $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
       status: { $ne: STATUS_TYPE.deleted },
     });
     res.status(200).send({
-      status: true,
+      success: true,
       data: !!user,
     });
   } catch (error: any) {
@@ -445,7 +445,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const deleteUser = expressAsyncHandler(async (req: any, res) => {
+export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findByIdAndUpdate(userId, {
@@ -660,7 +660,6 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
     if (userData.gender) updateData.gender = userData.gender;
     if (userData.birthDate) updateData.birthDate = userData.birthDate;
     if (userData.displayName) updateData.displayName = userData.displayName;
-    if (userData.status) updateData.status = userData.status;
     if (userData.password) {
       let newPassword = decryptData(userData.password);
       newPassword = newPassword?.password?.split('-');
@@ -883,10 +882,17 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
   async (req: any, res) => {
     try {
       const userId = req.params.id;
-      const user = await User.findById(userId).exec();
+      const role = req.role;
+
+      const user = await User.findById(userId)
+        .populate<{ role: IRole }>('role')
+        .exec();
       if (!user) {
         res.status(404);
         throw new Error('user_not_found');
+      }
+      if (role === UserRole.Admin && user.role.name !== UserRole.User) {
+        throw new Error('forbidden');
       }
       if (user.profile) {
         await removeFile(user.profile, 'files/profiles');
@@ -901,3 +907,81 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
     }
   }
 );
+
+export const statusChange = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id, status } = req.body;
+    const role = req.role;
+
+    const allowedStatuses = Object.values(STATUS_TYPE);
+    if (!id || !status || !allowedStatuses.includes(status)) {
+      throw new Error('invalid_request');
+    }
+
+    const user = await User.findById(id).populate<{ role: IRole }>('role');
+    if (!user) throw new Error('user_not_found');
+    if (role === UserRole.Admin && user.role.name !== UserRole.User) {
+      throw new Error('forbidden');
+    }
+    await User.findByIdAndUpdate(id, { status });
+    res.status(200).json({
+      status: true,
+      message: t('status_changed'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const blockUser = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id } = req.body;
+    const role = req.role;
+
+    const user = await User.findById(id).populate<{ role: IRole }>('role');
+    if (!user) throw new Error('user_not_found');
+    if (user.role.name !== UserRole.User) {
+      throw new Error('forbidden');
+    }
+    await User.findByIdAndUpdate(id, { status: STATUS_TYPE.blocked });
+    res.status(200).json({
+      status: true,
+      message: t('data_blocked'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+export const deleteUser = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const role = req.role;
+    if (!id) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    const user = await User.findById(id)
+      .populate<{ role: IRole }>('role')
+      .exec();
+    if (!user) {
+      res.status(400);
+      throw new Error('user_not_found');
+    }
+    if (user.role.name !== UserRole.User) {
+      throw new Error('forbidden');
+    }
+    await User.findByIdAndUpdate(
+      id,
+      { status: STATUS_TYPE.deleted },
+      { new: true }
+    )
+      .populate<{ role: IRole }>('role')
+      .exec();
+    res.status(200).json({
+      success: true,
+      message: t('user_deleted'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});

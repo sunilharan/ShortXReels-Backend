@@ -24,18 +24,10 @@
           type: string
           enum: ["active", "inactive", "deleted"]
       - in: query
-        name: reportedBy
+        name: result
         schema:
           type: string
-      - in: query
-        name: reviewBy
-        schema:
-          type: string
-      - in: query
-        name: reviewResult
-        schema:
-          type: string
-          enum: ["pending", "resolved", "rejected"]
+          enum: ["pending", "accepted", "rejected"]
       - in: query
         name: reportType
         schema:
@@ -96,14 +88,6 @@
                                 type: string
                               content:
                                 type: string
-                          reply:
-                            type: object
-                            nullable: true
-                            properties:
-                              id:
-                                type: string
-                              content:
-                                type: string
                           reportedBy:
                             type: object
                             properties:
@@ -122,7 +106,7 @@
                           status:
                             type: string
                             enum: ["active", "inactive", "deleted"]
-                          reviewBy:
+                          reviewedBy:
                             type: object
                             nullable: true
                             properties:
@@ -133,12 +117,12 @@
                               profile:
                                 type: string
                                 nullable: true
-                          reviewResult:
+                          result:
                             type: string
-                            enum: ["pending", "resolved", "rejected"]
-                          reviewNotes:
+                            enum: ["pending", "accepted", "rejected"]
+                          notes:
                             type: string
-                          reviewDate:
+                          reviewedAt:
                             type: string
                             format: date-time
                           createdAt:

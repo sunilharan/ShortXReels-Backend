@@ -131,10 +131,10 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
 
 export const editCategory = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { id, name, oldImage, status } = req.body;
+    const { id, name, oldImage } = req.body;
     const image = req.files?.image?.[0];
 
-    if (name.trim()) {
+    if (name && name.trim()) {
       const existingCategory = await Category.findOne({
         name: { $regex: name.trim(), $options: 'i' },
       });
@@ -156,10 +156,7 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
       });
       updateData.image = image.filename;
     }
-    if (status && [STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)) {
-      updateData.status = status;
-    }
-    if (name.trim()) {
+    if (name && name.trim()) {
       updateData.name = name;
     }
     const category = await Category.findByIdAndUpdate(
@@ -171,6 +168,28 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     );
     if (!category) throw new Error('category_not_found');
     res.status(200).json({ success: true, data: category });
+  } catch (error: any) {
+    throw error;
+  }
+});
+
+export const statusChange = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id, status } = req.body;
+    if (
+      !id ||
+      !status ||
+      ![STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)
+    ) {
+      throw new Error('invalid_request');
+    }
+    const category = await Category.findById(id);
+    if (!category) throw new Error('category_not_found');
+    await Category.findByIdAndUpdate(id, { status });
+    res.status(200).json({
+      success: true,
+      message: t('status_changed'),
+    });
   } catch (error: any) {
     throw error;
   }

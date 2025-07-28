@@ -1,5 +1,5 @@
 import expressAsyncHandler from 'express-async-handler';
-import { Comment } from '../models/comments.model';
+import { Comment } from '../models/comment.model';
 import mongoose from 'mongoose';
 import { Reel } from '../models/reel.model';
 import { COMMENT_TYPE, LIKE_TYPE } from '../config/enums';
@@ -48,11 +48,14 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error('comment_creation_failed');
       }
-      const commentData = await fetchComments(userId, { _id: comment._id, status: STATUS_TYPE.active });
-      const totalComments = await Comment.countDocuments({
+      const commentData = await fetchComments(userId, {
+        _id: comment._id,
+        status: STATUS_TYPE.active,
+      });
+      const totalComments = await countActiveCommentsWithActiveUsers({
         reel: new mongoose.Types.ObjectId(String(reel)),
         status: STATUS_TYPE.active,
-      }).exec();
+      });
       const newReply =
         commentData[0].replies[commentData[0].replies.length - 1];
       const io = WebSocket.getInstance();
@@ -73,11 +76,14 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error('comment_creation_failed');
       }
-      const commentData = await fetchComments(userId, { _id: comment._id, status: STATUS_TYPE.active });
-      const totalComments = await Comment.countDocuments({
+      const commentData = await fetchComments(userId, {
+        _id: comment._id,
+        status: STATUS_TYPE.active,
+      });
+      const totalComments = await countActiveCommentsWithActiveUsers({
         reel: new mongoose.Types.ObjectId(String(reel)),
         status: STATUS_TYPE.active,
-      }).exec();
+      });
 
       const io = WebSocket.getInstance();
       io.of('reel').to(reel.toString()).emit('newComment', {
@@ -116,11 +122,17 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
 
     const comments = await fetchComments(
       userId,
-      { reel: new mongoose.Types.ObjectId(String(reelId)), status: STATUS_TYPE.active },
+      {
+        reel: new mongoose.Types.ObjectId(String(reelId)),
+        status: STATUS_TYPE.active,
+      },
       { skip, limit }
     );
 
-    const total = await Comment.countDocuments({ reel: reelId, status: STATUS_TYPE.active });
+    const total = await countActiveCommentsWithActiveUsers({
+      reel: reelId,
+      status: STATUS_TYPE.active,
+    });
     res.status(200).json({
       success: true,
       data: {
@@ -177,14 +189,17 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
     }
     let comment;
     if (!replyId) {
-      comment = await Comment.findOneAndUpdate({
-        _id: new mongoose.Types.ObjectId(String(commentId)),
-        commentedBy: new mongoose.Types.ObjectId(String(userId)),
-      }, {
-        $set: {
-          status: STATUS_TYPE.deleted,
+      comment = await Comment.findOneAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(String(commentId)),
+          commentedBy: new mongoose.Types.ObjectId(String(userId)),
         },
-      });
+        {
+          $set: {
+            status: STATUS_TYPE.deleted,
+          },
+        }
+      );
     } else {
       comment = await Comment.findOneAndUpdate(
         {
@@ -208,7 +223,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    const totalComments = await Comment.countDocuments({
+    const totalComments = await countActiveCommentsWithActiveUsers({
       reel: new mongoose.Types.ObjectId(String(reel?.id)),
       status: STATUS_TYPE.active,
     });
@@ -356,6 +371,80 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+export const statusChange = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id, status, commentId } = req.body;
+    if (
+      !id ||
+      !status ||
+      ![STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)
+    ) {
+      throw new Error('invalid_request');
+    }
+    if (commentId) {
+      const comment = await Comment.findById(commentId);
+      if (!comment) throw new Error('comment_not_found');
+      const reply = await Comment.findOneAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(String(commentId)),
+          'replies._id': new mongoose.Types.ObjectId(String(id)),
+        },
+        {
+          $set: {
+            'replies.$.status': status,
+          },
+        }
+      );
+      if (!reply) throw new Error('reply_not_found');
+    } else {
+      const comment = await Comment.findById(id);
+      if (!comment) throw new Error('comment_not_found');
+      await Comment.findByIdAndUpdate(id, { status });
+    }
+    res.status(200).json({
+      success: true,
+      message: t('status_changed'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
+export const blockComment = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { id, commentId } = req.body;
+    if (!id) {
+      throw new Error('invalid_request');
+    }
+    if (commentId) {
+      const comment = await Comment.findById(commentId);
+      if (!comment) throw new Error('comment_not_found');
+      const reply = await Comment.findOneAndUpdate(
+        {
+          _id: new mongoose.Types.ObjectId(String(commentId)),
+          'replies._id': new mongoose.Types.ObjectId(String(id)),
+        },
+        {
+          $set: {
+            'replies.$.status': STATUS_TYPE.blocked,
+          },
+        }
+      );
+      if (!reply) throw new Error('reply_not_found');
+    } else {
+      const comment = await Comment.findById(id);
+      if (!comment) throw new Error('comment_not_found');
+      await Comment.findByIdAndUpdate(id, {
+        status: STATUS_TYPE.blocked,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: t('data_blocked'),
+    });
+  } catch (error: any) {
+    throw error;
+  }
+});
 
 export const fetchComments = async (
   userId: string,
@@ -383,6 +472,11 @@ export const fetchComments = async (
     },
     { $unwind: '$commentedBy' },
     {
+      $match: {
+        'commentedBy.status': STATUS_TYPE.active,
+      },
+    },
+    {
       $lookup: {
         from: 'users',
         localField: 'replies.repliedBy',
@@ -402,7 +496,30 @@ export const fetchComments = async (
               $filter: {
                 input: { $ifNull: ['$replies', []] },
                 as: 'reply',
-                cond: { $eq: ['$$reply.status', 'active'] },
+                cond: {
+                  $and: [
+                    { $eq: ['$$reply.status', STATUS_TYPE.active] },
+                    {
+                      $gt: [
+                        {
+                          $size: {
+                            $filter: {
+                              input: '$replyUsers',
+                              as: 'u',
+                              cond: {
+                                $and: [
+                                  { $eq: ['$$u._id', '$$reply.repliedBy'] },
+                                  { $eq: ['$$u.status', STATUS_TYPE.active] },
+                                ],
+                              },
+                            },
+                          },
+                        },
+                        0,
+                      ],
+                    }
+                  ],
+                },
               },
             },
             as: 'reply',
@@ -499,4 +616,26 @@ export const fetchComments = async (
 
   const results = await Comment.aggregate(pipeline).exec();
   return results;
+};
+
+export const countActiveCommentsWithActiveUsers = async (query: any) => {
+  const result = await Comment.aggregate([
+    { $match: query },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'commentedBy',
+        foreignField: '_id',
+        as: 'commentedBy',
+      },
+    },
+    { $unwind: '$commentedBy' },
+    {
+      $match: {
+        'commentedBy.status': STATUS_TYPE.active,
+      },
+    },
+    { $count: 'total' },
+  ]).exec();
+  return result[0]?.total || 0;
 };

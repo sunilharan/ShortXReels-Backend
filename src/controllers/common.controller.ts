@@ -47,7 +47,7 @@ export const getRoles = expressAsyncHandler(async (req: any, res) => {
   try {
     const roles = await Role.find();
     res.status(200).send({
-      status: true,
+      success: true,
       data: roles,
     });
   } catch (error: any) {

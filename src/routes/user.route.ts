@@ -9,7 +9,7 @@ import {
   refreshToken,
   currentUser,
   logout,
-  deleteUser,
+  deleteAccount,
   updateUser,
   sendOtp,
   verifyOtp,
@@ -18,9 +18,13 @@ import {
   nameExist,
   getSavedReels,
   saveUnsaveReel,
+  statusChange,
+  blockUser,
+  deleteUser,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
+import { adminOnly } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -35,7 +39,7 @@ router.put('/resetPassword', resetPassword);
 router.use(authenticate);
 router.get('/currentUser', currentUser);
 router.post('/logout', logout);
-router.delete('/deleteUser', deleteUser);
+router.delete('/', deleteAccount);
 router.put(
   '/updateProfile',
   uploadFiles({
@@ -47,4 +51,9 @@ router.put(
 router.put('/changePassword', changePassword);
 router.get('/getSavedReels', getSavedReels);
 router.post('/saveUnsaveReel', saveUnsaveReel);
+router.use(adminOnly);
+router.post('/status', statusChange);
+router.post('/block', blockUser);
+router.delete('/:id', deleteUser);
+
 export default router;

@@ -1,17 +1,21 @@
-/user/{id}:
-  delete:
+/user/block:
+  post:
     tags: ["User"]
-    summary: "Delete a user"
+    summary: "Block a User"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
     responses:
       200:
-        description: "User deleted successfully"
+        description: "User blocked successfully"
         content:
           application/json:
             schema:
@@ -25,11 +29,8 @@
         description: "Bad Request"
       401:
         description: "Unauthorized"
-      403:
-        description: "Forbidden"
       404:
-        description: "Not Found"
-      409:
-        description: "Conflict"
+        description: "User not found"
       500:
         description: "Internal Server Error"
+        

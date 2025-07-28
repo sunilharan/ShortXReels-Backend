@@ -32,7 +32,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     throw new Error('email_invalid');
   }
   const emailExists = await User.findOne({
-    $or: [{ email: { $regex: email, $options: 'i' } }, { name: email }],
+    $or: [{ email: { $regex: `^${email}$`, $options: 'i' } }, { name: email }],
     $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
   }).exec();
   if (emailExists) {
@@ -40,7 +40,7 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     throw new Error('email_exist');
   }
   const nameExists = await User.findOne({
-    $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+    $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
     $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
   }).exec();
   if (nameExists) {
@@ -89,11 +89,11 @@ export const validateUpdateUser = expressAsyncHandler(
     }
     if (name && !name.trim()) {
       res.status(400);
-      throw new Error('name_invalid');
+      throw new Error('name_required');
     }
     if (name) {
       const nameExists = await User.findOne({
-        $or: [{ name: name }, { email: { $regex: name, $options: 'i' } }],
+        $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
         _id: { $ne: userId },
         status: { $ne: STATUS_TYPE.deleted },
       }).exec();

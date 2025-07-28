@@ -18,9 +18,6 @@
               image:
                 type: string
                 format: binary
-              status:
-                type: string
-                enum: ["active", "inactive"]
               oldImage:
                 type: string
     responses:

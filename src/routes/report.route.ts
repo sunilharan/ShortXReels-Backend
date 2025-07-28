@@ -5,16 +5,16 @@ import {
   deleteReport,
   getReports,
   validateReport,
-  getOffenderUsers,
+  getReportedUsers
 } from '../controllers/report.controller';
 
 const router = Router();
 
 router.use(authenticate);
 router.post('/', createReport);
-router.delete('/:id', adminOnly, deleteReport);
-router.get('/', adminOnly, getReports);
-router.put('/', adminOnly, validateReport);
-router.get('/offenders', adminOnly, getOffenderUsers);
-
+router.use(adminOnly);
+router.delete('/:id', deleteReport);
+router.get('/', getReports);
+router.post('/acceptReject', validateReport);
+router.get('/users', getReportedUsers);
 export default router;
