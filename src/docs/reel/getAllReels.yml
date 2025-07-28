@@ -27,17 +27,17 @@
         schema:
           type: string
       - in: query
-        name: sort
-        required: false
-        schema:
-          type: string
-          enum: ['asc', 'desc']
-      - in: query
         name: sortBy
         required: false
         schema:
           type: string
           enum: ['createdAt', 'totalViews', 'totalLikes', 'totalComments']
+      - in: query
+        name: sortOrder
+        required: false
+        schema:
+          type: string
+          enum: ['asc', 'desc']
       - in: query
         name: status
         required: false

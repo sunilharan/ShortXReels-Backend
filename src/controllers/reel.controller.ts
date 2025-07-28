@@ -516,7 +516,7 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const page = parseInt(req.query.page) || 1;
     const skip = (page - 1) * limit;
-    const sortType = req.query.sortType;
+    const sortOrder = req.query.sortOrder;
     const sortBy = req.query.sortBy;
     const status = req.query.status;
     const search = req.query.search;
@@ -524,9 +524,9 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
     const profileUserId = req.query.profileUserId;
     let matchQuery: any = {};
     let sortQuery: any = {};
-    if (sortType && sortBy && (sortType === 'asc' || sortType === 'desc') && (sortBy === 'createdAt' || sortBy === 'totalViews' || sortBy === 'totalLikes' || sortBy === 'totalComments')) {
+    if (sortOrder && sortBy && (sortOrder === 'asc' || sortOrder === 'desc') && (sortBy === 'createdAt' || sortBy === 'totalViews' || sortBy === 'totalLikes' || sortBy === 'totalComments')) {
       sortQuery = {
-        [sortBy]: sortType === 'asc' ? 1 : -1,
+        [sortBy]: sortOrder === 'asc' ? 1 : -1,
       };
     }else{
       sortQuery = { createdAt: -1 };
