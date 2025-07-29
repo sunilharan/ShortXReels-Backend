@@ -1,7 +1,7 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import mongoose from 'mongoose';
-import { REPORT_STATUS, STATUS_TYPE } from '../config/enums';
+import { REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import { Comment } from '../models/comment.model';
@@ -84,6 +84,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     const alreadyReported = await Report.findOne(alreadyReportedQuery).exec();
 
     if (!alreadyReported) {
+      createData.updatedBy = userId;
       await Report.create(createData);
     }
     res.status(201).json({
@@ -106,28 +107,34 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const result = req.query.result;
     const status = req.query.status;
     const reportType = req.query.reportType;
+    const reportedBy = req.query.reportedBy;
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
 
     const matchQuery: any = {};
-    if (search) {
-      matchQuery.$or = [
-        { reason: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } },
-      ];
-    }
     if (startDate && endDate) {
       matchQuery.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
-    if (reportType) matchQuery.reportType = reportType;
+    if (reportType) {
+      if (reportType === REPORT_TYPE.reel) {
+        matchQuery.reportType = REPORT_TYPE.reel;
+      } else if (reportType === REPORT_TYPE.comment) {
+        matchQuery.reportType = {
+          $in: [REPORT_TYPE.comment, REPORT_TYPE.reply],
+        };
+      }
+    }
     if (result) {
       matchQuery.result = result;
     }
     if (status) {
       matchQuery.status = status;
+    }
+    if (reportedBy) {
+      matchQuery.reportedBy = new mongoose.Types.ObjectId(String(reportedBy));
     }
     const reportAggregations = getReportsAggregate();
 
@@ -323,20 +330,38 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
         },
       },
       {
-        $sort: {
-          createdAt: -1,
+        $match: search
+          ? {
+              $or: [
+                { reason: { $regex: search, $options: 'i' } },
+                { notes: { $regex: search, $options: 'i' } },
+                { 'reel.caption': { $regex: search, $options: 'i' } },
+                { 'comment.content': { $regex: search, $options: 'i' } },
+              ],
+            }
+          : {},
+      },
+      {
+        $facet: {
+          reports: [
+            {
+              $sort: {
+                createdAt: -1,
+              },
+            },
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          pagination: [{ $count: 'total' }],
         },
       },
-      { $skip: skip },
-      { $limit: limit },
     ]);
-
-    const total = await Report.countDocuments(matchQuery);
+    const total = reportsAggregate[0]?.pagination[0]?.total || 0;
 
     res.status(200).json({
       success: true,
       data: {
-        reports: reportsAggregate,
+        reports: reportsAggregate[0].reports,
         totalRecords: total,
         totalPages: Math.ceil(total / limit),
       },
@@ -362,6 +387,8 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
       },
       {
         status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
       }
     ).exec();
 
@@ -421,15 +448,25 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       if (report.reportType === 'reel') {
         await Reel.findByIdAndUpdate(report.reel, {
           status: STATUS_TYPE.blocked,
+          updatedBy: userId,
+          updatedAt: new Date().toISOString(),
         }).exec();
       } else if (report.reportType === 'comment') {
         await Comment.findByIdAndUpdate(report.comment, {
           status: STATUS_TYPE.blocked,
+          updatedBy: userId,
+          updatedAt: new Date().toISOString(),
         }).exec();
       } else if (report.reportType === 'reply') {
         await Comment.findOneAndUpdate(
           { _id: report.comment, 'replies._id': report.reply },
-          { $set: { 'replies.$.status': STATUS_TYPE.blocked } }
+          {
+            $set: {
+              'replies.$.status': STATUS_TYPE.blocked,
+              'replies.$.updatedBy': userId,
+              'replies.$.updatedAt': new Date().toISOString(),
+            },
+          }
         ).exec();
       }
     }
@@ -441,14 +478,18 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.body;
     if (!id) {
       throw new Error('invalid_request');
     }
     const report = await Report.findByIdAndUpdate(id, {
       status: STATUS_TYPE.blocked,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
     });
     if (!report) throw new Error('report_not_found');
     res.status(200).json({
@@ -459,6 +500,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const getReportsAggregate = () => {
   return [
     {
@@ -558,6 +600,158 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
   const skip = (page - 1) * limit;
   const search = req.query.search;
   const status = req.query.status;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+  let sortBy = req.query.sortBy;
+  let sortOrder = req.query.sortOrder;
+  let sort: any = {};
+  if (sortBy && sortOrder) {
+    sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+    if (
+      ![
+        'totalReports',
+        'totalPendingReports',
+        'totalAcceptedReports',
+        'totalRejectedReports',
+      ].includes(sortBy) ||
+      !['asc', 'desc'].includes(sortOrder)
+    ) {
+      sort = { totalReports: sortOrder === 'desc' ? -1 : 1 };
+    }
+  } else {
+    sort = { totalReports: -1 };
+  }
+  const matchQuery: any = {};
+  if (startDate && endDate) {
+    matchQuery.createdAt = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  }
+  if (status) matchQuery.status = status;
+
+  const reportAggregations = getReportsAggregate();
+  const data = await Report.aggregate([
+    { $match: matchQuery },
+    ...reportAggregations,
+    {
+      $addFields: {
+        offender: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$reportType', 'reel'] },
+                then: '$reel.createdBy._id',
+              },
+              {
+                case: { $eq: ['$reportType', 'comment'] },
+                then: '$comment.createdBy._id',
+              },
+              {
+                case: { $eq: ['$reportType', 'reply'] },
+                then: '$replyObj.createdBy._id',
+              },
+            ],
+            default: null,
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: '$offender',
+        totalReports: { $sum: 1 },
+        totalPendingReports: {
+          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.pending] }, 1, 0] },
+        },
+        totalAcceptedReports: {
+          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.accepted] }, 1, 0] },
+        },
+        totalRejectedReports: {
+          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.rejected] }, 1, 0] },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    {
+      $unwind: '$user',
+    },
+    {
+      $project: {
+        _id: 0,
+        id: '$_id',
+        totalReports: 1,
+        totalPendingReports: 1,
+        totalAcceptedReports: 1,
+        totalRejectedReports: 1,
+        name: '$user.name',
+        displayName: '$user.displayName',
+        description: '$user.description',
+        email: '$user.email',
+        phone: '$user.phone',
+        gender: '$user.gender',
+        status: '$user.status',
+        createdAt: '$user.createdAt',
+        updatedAt: '$user.updatedAt',
+        profile: {
+          $cond: {
+            if: {
+              $or: [
+                { $eq: ['$user.profile', null] },
+                { $eq: ['$user.profile', ''] },
+                { $not: ['$user.profile'] },
+              ],
+            },
+            then: '$$REMOVE',
+            else: {
+              $concat: [config.host + '/profile/', '$user.profile'],
+            },
+          },
+        },
+      },
+    },
+    {
+      $match: search
+        ? {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } },
+              { displayName: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } },
+              { phone: { $regex: search, $options: 'i' } },
+              { gender: { $regex: search, $options: 'i' } },
+            ],
+          }
+        : {},
+    },
+    { $sort: sort ? sort : { totalReports: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+  ]);
+
+  res.json({
+    success: true,
+    data: data,
+  });
+});
+
+export const getReportsByUser = expressAsyncHandler(async (req: any, res) => {
+  const id = req.query.id;
+  if (!id) {
+    throw new Error('invalid_request');
+  }
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+  const search = req.query.search;
+  const status = req.query.status;
   const reportType = req.query.reportType;
   const startDate = req.query.startDate;
   const endDate = req.query.endDate;
@@ -593,7 +787,13 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
       $lte: new Date(endDate),
     };
   }
-  if (reportType) matchQuery.reportType = reportType;
+  if (reportType) {
+    if (reportType === REPORT_TYPE.reel) {
+      matchQuery.reportType = REPORT_TYPE.reel;
+    } else if (reportType === REPORT_TYPE.comment) {
+      matchQuery.reportType = { $in: [REPORT_TYPE.comment, REPORT_TYPE.reply] };
+    }
+  }
   if (status) matchQuery.status = status;
 
   const reportAggregations = getReportsAggregate();
@@ -624,19 +824,8 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
       },
     },
     {
-      $group: {
-        _id: '$offender',
-        reports: { $push: '$$ROOT' },
-        totalReports: { $sum: 1 },
-        totalPendingReports: {
-          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.pending] }, 1, 0] },
-        },
-        totalAcceptedReports: {
-          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.accepted] }, 1, 0] },
-        },
-        totalRejectedReports: {
-          $sum: { $cond: [{ $eq: ['$result', REPORT_STATUS.rejected] }, 1, 0] },
-        },
+      $match: {
+        offender: new mongoose.Types.ObjectId(String(id)), 
       },
     },
     {
@@ -658,23 +847,6 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
         totalPendingReports: 1,
         totalAcceptedReports: 1,
         totalRejectedReports: 1,
-        name: '$user.name',
-        status: '$user.status',
-        profile: {
-          $cond: {
-            if: {
-              $or: [
-                { $eq: ['$user.profile', null] },
-                { $eq: ['$user.profile', ''] },
-                { $not: ['$user.profile'] },
-              ],
-            },
-            then: '$$REMOVE',
-            else: {
-              $concat: [config.host + '/profile/', '$user.profile'],
-            },
-          },
-        },
         reports: {
           $map: {
             input: '$reports',

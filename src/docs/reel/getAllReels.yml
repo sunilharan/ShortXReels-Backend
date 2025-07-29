@@ -45,7 +45,7 @@
           type: string
           enum: ['active', 'inactive', 'deleted']
       - in: query
-        name: profileUserId
+        name: createdBy
         required: false
         schema:
           type: string
@@ -107,6 +107,11 @@
                           createdAt:
                             type: string
                             format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          updatedBy:
+                            type: string
                     totalRecords:
                       type: number
                     totalPages:

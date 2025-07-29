@@ -27,7 +27,7 @@
         name: reportType
         schema:
           type: string
-          enum: ['reel', 'comment', 'reply']
+          enum: ['reel', 'comment']
       - in: query
         name: startDate
         schema:
@@ -69,67 +69,6 @@
                         type: string
                       status:
                         type: string
-                      reports:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            reason:
-                              type: string
-                            reportType:
-                              type: string
-                            status:
-                              type: string
-                            reviewedAt:
-                              type: string
-                              format: date-time
-                            reviewedBy:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                name:
-                                  type: string
-                                profile:
-                                  type: string
-                            notes:
-                              type: string
-                            createdAt:
-                              type: string
-                              format: date-time
-                            updatedAt:
-                              type: string
-                              format: date-time
-                            reel:
-                              type: object
-                              properties:
-                                id:
-                                  type: string
-                                caption:
-                                  type: string
-                                thumbnail:
-                                  type: string
-                                mediaType:
-                                  type: string
-                                status:
-                                  type: string
-                                media:
-                                  oneOf:
-                                    - type: array
-                                      items:
-                                        type: string
-                                        format: uri
-                                    - type: string
-                            comment:
-                              type: object
-                              nullable: true
-                              properties:
-                                id:
-                                  type: string
-                                content:
-                                  type: string
-                                status:
-                                  type: string
                       totalReports:
                         type: number
                       totalPendingReports:

@@ -30,6 +30,7 @@ export const getEncodeData = expressAsyncHandler(async (req: any, res) => {
     message: '',
   });
 });
+
 export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
   try {
     const { data } = req.body;

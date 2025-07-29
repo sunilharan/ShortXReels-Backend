@@ -32,7 +32,11 @@
         name: reportType
         schema:
           type: string
-          enum: ["reel", "comment", "reply"]
+          enum: ["reel", "comment"]
+      - in: query
+        name: reportedBy
+        schema:
+          type: string
       - in: query
         name: startDate
         schema:
@@ -131,6 +135,8 @@
                           updatedAt:
                             type: string
                             format: date-time
+                          updatedBy:
+                            type: string
                     totalRecords:
                       type: number
                     totalPages:

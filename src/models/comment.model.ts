@@ -8,7 +8,9 @@ export interface IReply extends Document {
   content: string;
   likedBy: PopulatedDoc<Document<ObjectId> & IUser>[];
   status: STATUS_TYPE;
+  updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IComment extends Document {
@@ -18,6 +20,7 @@ export interface IComment extends Document {
   likedBy: PopulatedDoc<Document<ObjectId> & IUser>[];
   replies: IReply[];
   status: STATUS_TYPE;
+  updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,13 +32,20 @@ export const commentSchema = new Schema<IComment>(
     content: { type: String, required: true },
     likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     replies: [
       {
         repliedBy: { type: Schema.Types.ObjectId, ref: 'User' },
         content: { type: String },
         likedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-        status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
+        status: {
+          type: String,
+          enum: STATUS_TYPE,
+          default: STATUS_TYPE.active,
+        },
         createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+        updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
       },
     ],
   },

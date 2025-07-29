@@ -64,6 +64,11 @@
                                 createdAt:
                                   type: string
                                   format: date-time
+                                updatedAt:
+                                  type: string
+                                  format: date-time
+                                updatedBy:
+                                  type: string
                                 isLiked:
                                   type: boolean
                                 isSaved:
@@ -86,6 +91,8 @@
                           createdAt:
                             type: string
                             format: date-time
+                          updatedBy:
+                            type: string
                           isLiked:
                             type: boolean
                           totalLikes:

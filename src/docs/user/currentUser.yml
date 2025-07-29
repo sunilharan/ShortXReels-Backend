@@ -71,6 +71,10 @@
                     updatedAt:
                       type: string
                       format: date-time
+                    createdBy:
+                      type: string
+                    updatedBy:
+                      type: string
       400:
         description: "Bad Request"
       401:

@@ -1,10 +1,10 @@
 /reel/getByUser:
   get:
-    tags: ["Reel"]
+    tags: ['Reel']
     summary: Get reels by user
     description: Retrieve all reels created by the authenticated user.
     parameters:
-      - $ref: "#/components/parameters/AcceptLanguage"
+      - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
         name: page
         schema:
@@ -23,7 +23,7 @@
         name: sortType
         schema:
           type: string
-          enum: ["popular", "latest", "oldest"]
+          enum: ['popular', 'latest', 'oldest']
     responses:
       '200':
         description: Success
@@ -104,6 +104,11 @@
                           createdAt:
                             type: string
                             format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          updatedBy:
+                            type: string
                     totalRecords:
                       type: number
                       example: 10
@@ -111,10 +116,10 @@
                       type: number
                       example: 1
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

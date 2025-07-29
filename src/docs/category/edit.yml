@@ -47,6 +47,24 @@
                     updatedAt:
                       type: string
                       format: date-time
+                    createdBy:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
+                    updatedBy:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        profile:
+                          type: string
       400:
         description: "Bad Request"
       401:

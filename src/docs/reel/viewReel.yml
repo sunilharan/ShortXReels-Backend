@@ -1,7 +1,7 @@
 /reel/view/{id}:
   post:
     tags: ['Reel']
-    summary: 'View a reel'
+    summary: 'Add view to a reel'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: path

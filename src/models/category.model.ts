@@ -1,11 +1,16 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, PopulatedDoc, ObjectId } from 'mongoose';
 import { config } from '../config/config';
 import { STATUS_TYPE } from '../config/enums';
+import { IUser } from './user.model';
 
 export interface ICategory extends Document {
   name: string;
   status: STATUS_TYPE;
   image: string;
+  createdBy: PopulatedDoc<Document<ObjectId> & IUser>;
+  updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const categorySchema = new Schema(
@@ -23,6 +28,8 @@ export const categorySchema = new Schema(
       enum: Object.values(STATUS_TYPE),
       default: STATUS_TYPE.active,
     },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true,

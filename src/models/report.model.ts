@@ -16,6 +16,7 @@ export interface IReport extends Document {
   result: REPORT_STATUS;
   notes: string;
   reviewedAt: Date;
+  updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +34,7 @@ export const reportSchema = new Schema<IReport>(
     result: { type: String, enum: REPORT_STATUS, default: REPORT_STATUS.pending },
     notes: { type: String, default: '' },
     reviewedAt: { type: Date },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true,

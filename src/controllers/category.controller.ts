@@ -54,6 +54,8 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
+      .populate('createdBy', 'name profile')
+      .populate('updatedBy', 'name profile')
       .exec();
 
     const total = await Category.countDocuments(matchQuery).exec();
@@ -74,6 +76,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
 export const createCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name } = req.body;
+    const userId = req.user.id;
     const image = req.files?.image?.[0];
 
     if (!name) {
@@ -98,7 +101,12 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
     rename(image.path, filePath, async (err) => {
       if (err) throw new Error('file_upload_failed');
 
-      const category = await Category.create({ name, image: image.filename });
+      const category = await Category.create({
+        name,
+        image: image.filename,
+        createdBy: userId,
+        updatedBy: userId,
+      });
       res.status(201).json({ success: true, data: category });
     });
   } catch (error: any) {
@@ -109,12 +117,15 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
 export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     if (!id) {
       res.status(400);
       throw new Error('invalid_request');
     }
     const category = await Category.findByIdAndUpdate(id, {
       status: STATUS_TYPE.deleted,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
     }).exec();
     if (!category) {
       res.status(404);
@@ -131,6 +142,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
 
 export const editCategory = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, name, oldImage } = req.body;
     const image = req.files?.image?.[0];
 
@@ -161,11 +173,13 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     }
     const category = await Category.findByIdAndUpdate(
       id,
-      { ...updateData },
+      { ...updateData, updatedBy: userId, updatedAt: new Date().toISOString() },
       {
         new: true,
       }
-    );
+    )
+      .populate('createdBy', 'name profile')
+      .populate('updatedBy', 'name profile');
     if (!category) throw new Error('category_not_found');
     res.status(200).json({ success: true, data: category });
   } catch (error: any) {
@@ -175,6 +189,7 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
 
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, status } = req.body;
     if (
       !id ||
@@ -185,7 +200,11 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     }
     const category = await Category.findById(id);
     if (!category) throw new Error('category_not_found');
-    await Category.findByIdAndUpdate(id, { status });
+    await Category.findByIdAndUpdate(id, {
+      status,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       success: true,
       message: t('status_changed'),

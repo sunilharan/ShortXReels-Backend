@@ -96,6 +96,11 @@
                           createdAt:
                             type: string
                             format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          updatedBy:
+                            type: string
                     totalRecords:
                       type: number
                     totalPages:

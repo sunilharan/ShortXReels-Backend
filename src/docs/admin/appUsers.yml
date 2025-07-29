@@ -84,3 +84,17 @@
                         type: string
                       updatedAt:
                         type: string
+                      createdBy:
+                        type: string
+                      updatedBy:
+                        type: string
+      400:
+        description: 'Bad Request'
+      401:
+        description: 'Unauthorized'
+      404:
+        description: 'User not found'
+      409:
+        description: 'Conflict'
+      500:
+        description: 'Internal Server Error'

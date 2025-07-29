@@ -8,8 +8,6 @@ import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
-import { Comment } from '../models/comment.model';
-import { Report } from '../models/report.model';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
@@ -228,7 +226,25 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           from: 'comments',
           let: { id: '$_id' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$reel', '$$id'] } } },
+            {
+              $match: {
+                $expr: { $eq: ['$reel', '$$id'] },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'commentedBy',
+                foreignField: '_id',
+                as: 'commentedByUser',
+              },
+            },
+            { $unwind: '$commentedByUser' },
+            {
+              $match: {
+                'commentedByUser.status': STATUS_TYPE.active,
+              },
+            },
             { $count: 'count' },
           ],
           as: 'comments',
@@ -371,7 +387,25 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           from: 'comments',
           let: { id: '$_id' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$reel', '$$id'] } } },
+            {
+              $match: {
+                $expr: { $eq: ['$reel', '$$id'] },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'commentedBy',
+                foreignField: '_id',
+                as: 'commentedByUser',
+              },
+            },
+            { $unwind: '$commentedByUser' },
+            {
+              $match: {
+                'commentedByUser.status': STATUS_TYPE.active,
+              },
+            },
             { $count: 'count' },
           ],
           as: 'comments',
@@ -521,14 +555,22 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
     const status = req.query.status;
     const search = req.query.search;
     const category = req.query.category;
-    const profileUserId = req.query.profileUserId;
+    const createdBy = req.query.createdBy;
     let matchQuery: any = {};
     let sortQuery: any = {};
-    if (sortOrder && sortBy && (sortOrder === 'asc' || sortOrder === 'desc') && (sortBy === 'createdAt' || sortBy === 'totalViews' || sortBy === 'totalLikes' || sortBy === 'totalComments')) {
+    if (
+      sortOrder &&
+      sortBy &&
+      (sortOrder === 'asc' || sortOrder === 'desc') &&
+      (sortBy === 'createdAt' ||
+        sortBy === 'totalViews' ||
+        sortBy === 'totalLikes' ||
+        sortBy === 'totalComments')
+    ) {
       sortQuery = {
         [sortBy]: sortOrder === 'asc' ? 1 : -1,
       };
-    }else{
+    } else {
       sortQuery = { createdAt: -1 };
     }
     if (status) {
@@ -540,8 +582,8 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
     if (category) {
       matchQuery.categories = { $in: [new mongoose.Types.ObjectId(category)] };
     }
-    if (profileUserId) {
-      matchQuery.createdBy = new mongoose.Types.ObjectId(profileUserId);
+    if (createdBy) {
+      matchQuery.createdBy = new mongoose.Types.ObjectId(createdBy);
     }
     const reels = await fetchReels(
       userId,
@@ -605,6 +647,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     if (thumbnail) {
       reelData.thumbnail = moveFile(thumbnail, 'thumbnails');
     }
+    reelData.updatedBy = userId;
 
     const reel = await Reel.create(reelData);
     const populated = await Reel.findById(reel.id)
@@ -640,6 +683,8 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             status: STATUS_TYPE.deleted,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
           },
         }
       ).exec();
@@ -652,6 +697,8 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             status: STATUS_TYPE.deleted,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
           },
         }
       ).exec();
@@ -660,26 +707,6 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    await Comment.updateMany(
-      {
-        reel: new mongoose.Types.ObjectId(String(id)),
-      },
-      {
-        $set: {
-          status: STATUS_TYPE.deleted,
-        },
-      }
-    ).exec();
-    await Report.updateMany(
-      {
-        reel: new mongoose.Types.ObjectId(String(id)),
-      },
-      {
-        $set: {
-          status: STATUS_TYPE.deleted,
-        },
-      }
-    ).exec();
     res.status(200).json({
       success: true,
       message: t('reel_deleted'),
@@ -869,8 +896,10 @@ export const viewReel = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, status } = req.body;
     if (
       !id ||
@@ -881,7 +910,11 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     }
     const reel = await Reel.findById(id);
     if (!reel) throw new Error('reel_not_found');
-    await Reel.findByIdAndUpdate(id, { status });
+    await Reel.findByIdAndUpdate(id, {
+      status,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       success: true,
       message: t('status_changed'),
@@ -890,15 +923,21 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const blockReel = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.body;
     if (!id) {
       throw new Error('invalid_request');
     }
     const reel = await Reel.findById(id);
     if (!reel) throw new Error('reel_not_found');
-    await Reel.findByIdAndUpdate(id, { status: STATUS_TYPE.blocked });
+    await Reel.findByIdAndUpdate(id, {
+      status: STATUS_TYPE.blocked,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       success: true,
       message: t('data_blocked'),
@@ -907,6 +946,7 @@ export const blockReel = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const fetchReels = async (
   userId: string,
   matchQuery: any,
@@ -941,6 +981,20 @@ export const fetchReels = async (
                   { $eq: ['$status', STATUS_TYPE.active] },
                 ],
               },
+            },
+          },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'commentedBy',
+              foreignField: '_id',
+              as: 'commentedByUser',
+            },
+          },
+          { $unwind: '$commentedByUser' },
+          {
+            $match: {
+              'commentedByUser.status': STATUS_TYPE.active,
             },
           },
           { $count: 'count' },

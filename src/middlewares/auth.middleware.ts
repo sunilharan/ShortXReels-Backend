@@ -47,6 +47,7 @@ export const adminOnly = expressAsyncHandler(async (req: any, res, next) => {
   }
   next();
 });
+
 export const superAdminOnly = expressAsyncHandler(async (req: any, res, next) => {
   const userRole = req.role;
   if (userRole !== UserRole.SuperAdmin) {

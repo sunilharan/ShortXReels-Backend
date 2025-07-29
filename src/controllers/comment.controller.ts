@@ -36,10 +36,15 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       const reply = {
         repliedBy: userId,
         content,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString()
       };
       await Comment.findByIdAndUpdate(
         commentId,
-        { $addToSet: { replies: reply } },
+        { $addToSet: { replies: reply }, 
+          updatedBy: userId,
+          updatedAt: new Date().toISOString()
+        },
         { new: true }
       ).exec();
 
@@ -71,6 +76,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         commentedBy: userId,
         reel,
         content,
+        updatedBy: userId,
       });
       if (!comment) {
         res.status(400);
@@ -197,6 +203,8 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             status: STATUS_TYPE.deleted,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
           },
         }
       );
@@ -210,6 +218,8 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             'replies.$.status': STATUS_TYPE.deleted,
+            'replies.$.updatedBy': userId,
+            'replies.$.updatedAt': new Date().toISOString(),
           },
         }
       );
@@ -371,8 +381,10 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, status, commentId } = req.body;
     if (
       !id ||
@@ -392,6 +404,8 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             'replies.$.status': status,
+            'replies.$.updatedBy': userId,
+            'replies.$.updatedAt': new Date().toISOString(),
           },
         }
       );
@@ -409,8 +423,10 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const blockComment = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, commentId } = req.body;
     if (!id) {
       throw new Error('invalid_request');
@@ -426,6 +442,8 @@ export const blockComment = expressAsyncHandler(async (req: any, res) => {
         {
           $set: {
             'replies.$.status': STATUS_TYPE.blocked,
+            'replies.$.updatedBy': userId,
+            'replies.$.updatedAt': new Date().toISOString(),
           },
         }
       );
@@ -435,6 +453,8 @@ export const blockComment = expressAsyncHandler(async (req: any, res) => {
       if (!comment) throw new Error('comment_not_found');
       await Comment.findByIdAndUpdate(id, {
         status: STATUS_TYPE.blocked,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
       });
     }
     res.status(200).json({
@@ -517,7 +537,7 @@ export const fetchComments = async (
                         },
                         0,
                       ],
-                    }
+                    },
                   ],
                 },
               },

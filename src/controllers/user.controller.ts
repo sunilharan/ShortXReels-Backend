@@ -12,7 +12,7 @@ import { sendMail } from '../utils/sendMail';
 import { ICategory } from '../models/category.model';
 import { config } from '../config/config';
 import { Reel } from '../models/reel.model';
-import { fetchReels } from './reel.controller';
+import { countActiveReelsWithActiveUsers, fetchReels } from './reel.controller';
 import { rename } from 'fs';
 import { Comment } from '../models/comment.model';
 import { Report } from '../models/report.model';
@@ -151,7 +151,11 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       },
       config.jwtRefreshExpire
     );
-    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken } });
+    await User.findByIdAndUpdate(user.id, {
+      $push: { token: accessToken },
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
+    });
     const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
@@ -220,7 +224,11 @@ export const adminLogin = expressAsyncHandler(async (req: any, res) => {
       },
       config.jwtRefreshExpire
     );
-    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken } });
+    await User.findByIdAndUpdate(user.id, {
+      $push: { token: accessToken },
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
+    });
     const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
@@ -269,7 +277,11 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
       },
       config.jwtRefreshExpire
     );
-    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken } });
+    await User.findByIdAndUpdate(user.id, {
+      $push: { token: accessToken },
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       success: true,
       data: {
@@ -390,6 +402,8 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
         throw new Error('password_same');
       }
       user.password = newPassword;
+      user.updatedBy = user.id;
+      user.updatedAt = new Date();
       await user.save();
       await Otp.deleteMany({ userId: user.id });
       res.status(200).json({
@@ -429,6 +443,8 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
     const token = req.headers.authorization.split(' ')[1];
     const user = await User.findByIdAndUpdate(userId, {
       $pull: { token: token },
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
     })
       .populate<{ role: IRole }>('role')
       .exec();
@@ -451,6 +467,8 @@ export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
     const user = await User.findByIdAndUpdate(userId, {
       status: STATUS_TYPE.deleted,
       $unset: { token: '' },
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
     });
     if (!user) {
       res.status(404);
@@ -516,7 +534,8 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
         removeFile(userData.oldProfile, 'files/profiles');
       }
     }
-
+    updateData.updatedBy = userId;
+    updateData.updatedAt = new Date().toISOString();
     const user = await User.findByIdAndUpdate(userId, updateData, { new: true })
       .populate('role')
       .populate('interests', 'name image')
@@ -573,6 +592,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       throw new Error('password_same');
     }
     user.password = newPassword;
+    (user.updatedBy = userId), (user.updatedAt = new Date());
     await user.save();
     res.status(200).json({
       success: true,
@@ -585,6 +605,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
 export const adminRegister = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { name, email, password, phone, gender, birthDate, displayName } =
       req.body;
     const profile = req.files?.profile?.[0];
@@ -629,6 +650,9 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
     let user = await User.create({
       ...userData,
       role: role?.id,
+      createdBy: userId,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
     });
     if (!user) {
       res.status(400);
@@ -684,7 +708,7 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
 
     let user = await User.findByIdAndUpdate(
       userId,
-      { ...updateData },
+      { ...updateData, updatedBy: userId, updatedAt: new Date().toISOString() },
       { new: true }
     ).exec();
     if (!user) {
@@ -704,6 +728,7 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
 
 export const adminDelete = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
     if (!id) {
       res.status(400);
@@ -711,25 +736,50 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
     }
     let user = await User.findByIdAndUpdate(
       id,
-      { status: STATUS_TYPE.deleted },
+      {
+        status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      },
       { new: true }
     ).exec();
     if (!user) {
       res.status(400);
       throw new Error('invalid_request');
     }
-    await Reel.updateMany({ user: id }, { status: STATUS_TYPE.deleted }).exec();
+    await Reel.updateMany(
+      { user: id },
+      {
+        status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }
+    ).exec();
     await Comment.updateMany(
       { user: id },
-      { status: STATUS_TYPE.deleted }
+      {
+        status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }
     ).exec();
     await Comment.updateMany(
       { 'replies._id': id },
-      { $set: { 'replies.$.status': STATUS_TYPE.deleted } }
+      {
+        $set: {
+          'replies.$.status': STATUS_TYPE.deleted,
+          'replies.$.updatedBy': userId,
+          'replies.$.updatedAt': new Date().toISOString(),
+        },
+      }
     ).exec();
     await Report.updateMany(
       { user: id },
-      { status: STATUS_TYPE.deleted }
+      {
+        status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }
     ).exec();
     res.status(200).json({
       success: true,
@@ -792,6 +842,7 @@ const getUsersByRole = async (req: any, res: any, roleName: string) => {
     },
   });
 };
+
 export const adminGetAppUsers = expressAsyncHandler(async (req: any, res) => {
   return getUsersByRole(req, res, UserRole.User);
 });
@@ -828,13 +879,19 @@ export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
           $addToSet: {
             savedReels: new mongoose.Types.ObjectId(String(reelId)),
           },
+          updatedBy: userId,
+          updatedAt: new Date().toISOString(),
         },
         { new: true }
       ).exec();
     } else if (action === SAVE_TYPE.unsave && alreadySaved) {
       user = await User.findByIdAndUpdate(
         userId,
-        { $pull: { savedReels: new mongoose.Types.ObjectId(String(reelId)) } },
+        {
+          $pull: { savedReels: new mongoose.Types.ObjectId(String(reelId)) },
+          updatedBy: userId,
+          updatedAt: new Date().toISOString(),
+        },
         { new: true }
       ).exec();
     }
@@ -863,7 +920,7 @@ export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
       { skip, limit },
       user.savedReels
     );
-    const totalRecords = await Reel.countDocuments(matchQuery);
+    const totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
     const totalPages = Math.ceil(totalRecords / limit);
     res.status(200).json({
       success: true,
@@ -897,7 +954,11 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
       if (user.profile) {
         await removeFile(user.profile, 'files/profiles');
       }
-      await User.findByIdAndUpdate(userId, { $unset: { profile: '' } }).exec();
+      await User.findByIdAndUpdate(userId, {
+        $unset: { profile: '' },
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }).exec();
       res.status(200).json({
         success: true,
         message: t('profile_removed'),
@@ -910,6 +971,7 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
 
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id, status } = req.body;
     const role = req.role;
 
@@ -923,7 +985,11 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     if (role === UserRole.Admin && user.role.name !== UserRole.User) {
       throw new Error('forbidden');
     }
-    await User.findByIdAndUpdate(id, { status });
+    await User.findByIdAndUpdate(id, {
+      status,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       status: true,
       message: t('status_changed'),
@@ -935,15 +1001,18 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
 
 export const blockUser = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.body;
-    const role = req.role;
-
     const user = await User.findById(id).populate<{ role: IRole }>('role');
     if (!user) throw new Error('user_not_found');
     if (user.role.name !== UserRole.User) {
       throw new Error('forbidden');
     }
-    await User.findByIdAndUpdate(id, { status: STATUS_TYPE.blocked });
+    await User.findByIdAndUpdate(id, {
+      status: STATUS_TYPE.blocked,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    });
     res.status(200).json({
       status: true,
       message: t('data_blocked'),
@@ -952,10 +1021,11 @@ export const blockUser = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const deleteUser = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
-    const role = req.role;
     if (!id) {
       res.status(400);
       throw new Error('invalid_request');
@@ -972,7 +1042,11 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
     }
     await User.findByIdAndUpdate(
       id,
-      { status: STATUS_TYPE.deleted },
+      {
+        status: STATUS_TYPE.deleted,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      },
       { new: true }
     )
       .populate<{ role: IRole }>('role')
