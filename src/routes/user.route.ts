@@ -19,7 +19,7 @@ import {
   getSavedReels,
   saveUnsaveReel,
   statusChange,
-  blockUser,
+  blockUnblockUser,
   deleteUser,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
@@ -53,7 +53,7 @@ router.get('/getSavedReels', getSavedReels);
 router.post('/saveUnsaveReel', saveUnsaveReel);
 router.use(adminOnly);
 router.post('/status', statusChange);
-router.post('/block', blockUser);
+router.post('/blockUnblock', blockUnblockUser);
 router.delete('/:id', deleteUser);
 
 export default router;

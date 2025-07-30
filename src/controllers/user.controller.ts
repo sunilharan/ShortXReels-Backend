@@ -837,7 +837,6 @@ const getUsersByRole = async (req: any, res: any, roleName: string) => {
     data: {
       users,
       totalRecords: total,
-      totalUsers: total,
       totalPages: Math.ceil(total / limit),
     },
   });
@@ -999,23 +998,41 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const blockUser = expressAsyncHandler(async (req: any, res) => {
+export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { id } = req.body;
+    const { id, isBlocked } = req.body;
+    if (!id || typeof isBlocked !== 'boolean') {
+      throw new Error('invalid_request');
+    }
     const user = await User.findById(id).populate<{ role: IRole }>('role');
     if (!user) throw new Error('user_not_found');
     if (user.role.name !== UserRole.User) {
       throw new Error('forbidden');
     }
-    await User.findByIdAndUpdate(id, {
-      status: STATUS_TYPE.blocked,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    });
+
+    if (Boolean(isBlocked) === true) {
+      if (user.status === STATUS_TYPE.blocked) {
+        throw new Error('data_already_blocked');
+      }
+      await User.findByIdAndUpdate(id, {
+        status: STATUS_TYPE.blocked,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      });
+    } else if (Boolean(isBlocked) === false) {
+      if (user.status !== STATUS_TYPE.blocked) {
+        throw new Error('data_not_blocked');
+      }
+      await User.findByIdAndUpdate(id, {
+        status: STATUS_TYPE.active,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      });
+    }
     res.status(200).json({
-      status: true,
-      message: t('data_blocked'),
+      success: true,
+      message: t(Boolean(isBlocked) ? 'data_blocked' : 'data_unblocked'),
     });
   } catch (error: any) {
     throw error;

@@ -1,7 +1,7 @@
 /reel/view/{id}:
   get:
     tags: ["Reel"]
-    summary: "Stream a reel video"
+    summary: "Stream(play) a reel video , send token in query"
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: path
@@ -15,6 +15,11 @@
         schema:
           type: string
           description: "Range of bytes to stream, e.g., 'bytes=0-0'"
+      - in: query
+        name: at
+        required: false
+        schema:
+          type: string
     responses:
       200:
         description: "Reel video streamed successfully"

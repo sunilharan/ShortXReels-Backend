@@ -1,7 +1,7 @@
-/comment/block:
+/reel/blockUnblock:
   post:
-    tags: ['Comment']
-    summary: 'Block a Comment'
+    tags: ['Reel']
+    summary: 'Block or Unblock a Reel'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -13,11 +13,12 @@
             properties:
               id:
                 type: string
-              commentId:
-                type: string
+              isBlocked:
+                type: boolean
+                enum: [true, false]
     responses:
       200:
-        description: 'Comment blocked successfully'
+        description: 'Reel blocked successfully'
         content:
           application/json:
             schema:

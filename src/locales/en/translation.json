@@ -76,5 +76,8 @@
   "forbidden": "Access forbidden.",
   "save_unsave_reel": "Reel saved/unsaved successfully.",
   "status_changed": "Status changed successfully.",
-  "data_blocked": "Data blocked successfully."
+  "data_blocked": "Data blocked successfully.",
+  "data_unblocked": "Data unblocked successfully.",
+  "data_already_blocked": "Data already blocked.",
+  "data_not_blocked": "Data is not blocked."
 }

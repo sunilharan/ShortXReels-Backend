@@ -15,7 +15,7 @@ export const connectDB = async () => {
   try {
     const conn = await mongoose.connect(config.databaseUrl);
     console.log('MongoDB connected: ', conn.connection.host);
-    createInitial();
+    await createInitial();
   } catch (error) {
     console.error('MongoDB connection error:', error);
     process.exit(1);
@@ -23,55 +23,64 @@ export const connectDB = async () => {
 };
 
 const createInitial = async () => {
-  Role.estimatedDocumentCount()
-    .then((count) => {
-      if (count === 0) {
-        ROLES.forEach((role) => {
-          Role.create({
-            name: role,
-          }).catch();
-        });
-      }
-    })
-    .then(async () => {
-      const user = await User.findOne({
-        email: DEFAULT_SUPER_ADMIN.email,
-      }).catch((err) => {
-        console.log('error', err);
-      });
-      if (!user) {
-        const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
-        if (!role) {
-          return;
+  try {
+    const roleCount = await Role.estimatedDocumentCount();
+    if (roleCount === 0) {
+      for (const role of ROLES) {
+        try {
+          await Role.create({ name: role });
+        } catch (err) {
+          console.error(`Failed to create role '${role}':`, err);
         }
-        User.create({
+      }
+    }
+
+    let user: any = null;
+    try {
+      user = await User.findOne({ email: DEFAULT_SUPER_ADMIN.email });
+    } catch (err) {
+      console.error('Error finding super admin user:', err);
+    }
+
+    if (!user) {
+      const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
+      if (!role) {
+        console.error('SuperAdmin role not found');
+        return;
+      }
+
+      try {
+        user = await User.create({
           name: DEFAULT_SUPER_ADMIN.name,
           email: DEFAULT_SUPER_ADMIN.email,
           password: DEFAULT_SUPER_ADMIN.password,
           displayName: DEFAULT_SUPER_ADMIN.displayName,
-          role: role?.id,
+          role: role.id,
           status: STATUS_TYPE.active,
           gender: GENDER_TYPE.male,
           birthDate: new Date('1990-01-01'),
-        }).catch();
+        });
+      } catch (err) {
+        console.error('Error creating super admin user:', err);
       }
-    })
-    .catch((err) => {
-      console.log('error', err);
-    });
-    
-  Category.estimatedDocumentCount()
-    .then((count) => {
-      if (count === 0) {
-        CATEGORIES.forEach((category) => {
-          Category.create({
+    }
+
+    const categoryCount = await Category.estimatedDocumentCount();
+    if (categoryCount === 0) {
+      for (const category of CATEGORIES) {
+        try {
+          await Category.create({
             name: category,
             image: `${category}.jpg`,
-          }).catch();
-        });
+            createdBy: user?.id,
+            updatedBy: user?.id,
+          });
+        } catch (err) {
+          console.error(`Failed to create category '${category}':`, err);
+        }
       }
-    })
-    .catch((err) => {
-      console.log('error', err);
-    });
+    }
+  } catch (err) {
+    console.error('Error in createInitial:', err);
+  }
 };

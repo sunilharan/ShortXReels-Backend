@@ -22,7 +22,7 @@ export const getEncodeData = expressAsyncHandler(async (req: any, res) => {
   });
   const decrypted = decipher.toString(enc.Utf8);
   res.status(200).send({
-    status: true,
+    success: true,
     data: {
       encData: cipher.toString(),
       decData: decrypted,
@@ -35,7 +35,7 @@ export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
   try {
     const { data } = req.body;
     res.status(200).send({
-      status: true,
+      success: true,
       data: decryptData(data),
       message: '',
     });

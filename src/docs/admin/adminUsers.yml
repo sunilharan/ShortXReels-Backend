@@ -38,56 +38,63 @@
                 success:
                   type: boolean
                 data:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      email:
-                        type: string
-                      phone:
-                        type: string
-                      gender:
-                        type: string
-                      birthDate:
-                        type: string
-                      displayName:
-                        type: string
-                      description:
-                        type: string
-                      status:
-                        type: string
-                        enum:
-                          - active
-                          - inactive
-                          - deleted
-                      notification:
-                        type: object
-                        properties:
-                          social:
-                            type: boolean
-                          subscription:
-                            type: boolean
-                          recommendation:
-                            type: boolean
-                      role:
+                  type: object
+                  properties:
+                    users:
+                      type: array
+                      items:
                         type: object
                         properties:
                           id:
                             type: string
                           name:
                             type: string
-                      createdAt:
-                        type: string
-                      updatedAt:
-                        type: string
-                      createdBy:
-                        type: string
-                      updatedBy:
-                        type: string
+                          email:
+                            type: string
+                          phone:
+                            type: string
+                          gender:
+                            type: string
+                          birthDate:
+                            type: string
+                          displayName:
+                            type: string
+                          description:
+                            type: string
+                          status:
+                            type: string
+                            enum:
+                              - active
+                              - inactive
+                              - deleted
+                          notification:
+                            type: object
+                            properties:
+                              social:
+                                type: boolean
+                              subscription:
+                                type: boolean
+                              recommendation:
+                                type: boolean
+                          role:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                          createdAt:
+                            type: string
+                          updatedAt:
+                            type: string
+                          createdBy:
+                            type: string
+                          updatedBy:
+                            type: string
+                    totalRecords:
+                      type: integer 
+                    totalPages:
+                      type: integer        
       400:
         description: 'Bad Request'
       401:

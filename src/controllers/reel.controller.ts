@@ -543,7 +543,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const allReels = expressAsyncHandler(async (req: any, res) => {
+async function getReelsByRole(req: any, res: any, role: string) {
   try {
     const userId = req.user.id;
     const savedReels = req?.user?.savedReels;
@@ -562,10 +562,9 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
       sortOrder &&
       sortBy &&
       (sortOrder === 'asc' || sortOrder === 'desc') &&
-      (sortBy === 'createdAt' ||
-        sortBy === 'totalViews' ||
-        sortBy === 'totalLikes' ||
-        sortBy === 'totalComments')
+      ['createdAt', 'totalViews', 'totalLikes', 'totalComments'].includes(
+        sortBy
+      )
     ) {
       sortQuery = {
         [sortBy]: sortOrder === 'asc' ? 1 : -1,
@@ -580,7 +579,9 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
       matchQuery.caption = { $regex: search, $options: 'i' };
     }
     if (category) {
-      matchQuery.categories = { $in: [new mongoose.Types.ObjectId(category)] };
+      matchQuery.categories = {
+        $in: [new mongoose.Types.ObjectId(category)],
+      };
     }
     if (createdBy) {
       matchQuery.createdBy = new mongoose.Types.ObjectId(createdBy);
@@ -588,20 +589,40 @@ export const allReels = expressAsyncHandler(async (req: any, res) => {
     const reels = await fetchReels(
       userId,
       matchQuery,
-      { skip, limit, sortQuery },
+      {
+        skip,
+        limit,
+        sortQuery,
+        role,
+        onlyActive: false,
+      },
       savedReels
     );
-    const totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
 
+    const totalRecords = await countActiveReelsWithActiveUsers(
+      matchQuery,
+      false,
+      role
+    );
     res.status(200).json({
       success: true,
-      data: reels,
-      totalRecords,
-      totalPages: Math.ceil(totalRecords / limit),
+      data: {
+        reels,
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+      },
     });
   } catch (error: any) {
     throw error;
   }
+}
+
+export const userReels = expressAsyncHandler(async (req: any, res) => {
+  await getReelsByRole(req, res, UserRole.User);
+});
+
+export const adminReels = expressAsyncHandler(async (req: any, res) => {
+  await getReelsByRole(req, res, UserRole.Admin);
 });
 
 export const createReel = expressAsyncHandler(async (req: any, res) => {
@@ -924,23 +945,37 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const blockReel = expressAsyncHandler(async (req: any, res) => {
+export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { id } = req.body;
-    if (!id) {
+    const { id, isBlocked } = req.body;
+    if (!id || typeof isBlocked !== 'boolean') {
       throw new Error('invalid_request');
     }
     const reel = await Reel.findById(id);
     if (!reel) throw new Error('reel_not_found');
-    await Reel.findByIdAndUpdate(id, {
-      status: STATUS_TYPE.blocked,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    });
+    if (Boolean(isBlocked) === true) {
+      if (reel.status === STATUS_TYPE.blocked) {
+        throw new Error('data_already_blocked');
+      }
+      await Reel.findByIdAndUpdate(id, {
+        status: STATUS_TYPE.blocked,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      });
+    } else if (Boolean(isBlocked) === false) {
+      if (reel.status !== STATUS_TYPE.blocked) {
+        throw new Error('data_not_blocked');
+      }
+      await Reel.findByIdAndUpdate(id, {
+        status: STATUS_TYPE.active,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      });
+    }
     res.status(200).json({
       success: true,
-      message: t('data_blocked'),
+      message: t(Boolean(isBlocked) ? 'data_blocked' : 'data_unblocked'),
     });
   } catch (error: any) {
     throw error;
@@ -950,10 +985,30 @@ export const blockReel = expressAsyncHandler(async (req: any, res) => {
 export const fetchReels = async (
   userId: string,
   matchQuery: any,
-  options: { skip?: number; limit?: number; sortQuery?: any } = {},
+  options: {
+    skip?: number;
+    limit?: number;
+    sortQuery?: any;
+    onlyActive?: boolean;
+    role?: string;
+  } = {},
   savedReels: any = []
 ) => {
-  const { skip = 0, limit = 10, sortQuery = { createdAt: -1 } } = options;
+  const {
+    skip = 0,
+    limit = 10,
+    sortQuery = { createdAt: -1 },
+    onlyActive = true,
+    role,
+  } = options;
+
+  const userStatusMatch = onlyActive
+    ? { 'createdBy.status': STATUS_TYPE.active }
+    : {};
+  const commentUserStatusMatch = onlyActive
+    ? { 'commentedByUser.status': STATUS_TYPE.active }
+    : {};
+  const roleMatch = role ? { 'role.name': role } : {};
   const results = await Reel.aggregate([
     { $match: matchQuery },
     {
@@ -966,8 +1021,16 @@ export const fetchReels = async (
     },
     { $unwind: '$createdBy' },
     {
-      $match: { 'createdBy.status': STATUS_TYPE.active },
+      $lookup: {
+        from: 'roles',
+        localField: 'createdBy.role',
+        foreignField: '_id',
+        as: 'role',
+      },
     },
+    { $unwind: '$role' },
+    { $match: userStatusMatch },
+    { $match: roleMatch },
     {
       $lookup: {
         from: 'comments',
@@ -978,7 +1041,9 @@ export const fetchReels = async (
               $expr: {
                 $and: [
                   { $eq: ['$reel', '$$reelId'] },
-                  { $eq: ['$status', STATUS_TYPE.active] },
+                  ...(onlyActive
+                    ? [{ $eq: ['$status', STATUS_TYPE.active] }]
+                    : []),
                 ],
               },
             },
@@ -992,11 +1057,7 @@ export const fetchReels = async (
             },
           },
           { $unwind: '$commentedByUser' },
-          {
-            $match: {
-              'commentedByUser.status': STATUS_TYPE.active,
-            },
-          },
+          { $match: commentUserStatusMatch },
           { $count: 'count' },
         ],
         as: 'commentStats',
@@ -1094,10 +1155,18 @@ export const fetchReels = async (
     ...(skip ? [{ $skip: skip }] : []),
     { $limit: limit },
   ]).exec();
+
   return results;
 };
 
-export const countActiveReelsWithActiveUsers = async (query: any) => {
+export const countActiveReelsWithActiveUsers = async (
+  query: any,
+  onlyActive?: boolean,
+  role?: string
+) => {
+  const userStatusMatch =
+    onlyActive !== false ? { 'createdBy.status': STATUS_TYPE.active } : {};
+  const roleMatch = role ? { 'role.name': role } : {};
   const result = await Reel.aggregate([
     { $match: query },
     {
@@ -1110,11 +1179,18 @@ export const countActiveReelsWithActiveUsers = async (query: any) => {
     },
     { $unwind: '$createdBy' },
     {
-      $match: {
-        'createdBy.status': STATUS_TYPE.active,
+      $lookup: {
+        from: 'roles',
+        localField: 'createdBy.role',
+        foreignField: '_id',
+        as: 'role',
       },
     },
+    { $unwind: '$role' },
+    { $match: userStatusMatch },
+    { $match: roleMatch },
     { $count: 'total' },
   ]).exec();
+
   return result[0]?.total || 0;
 };

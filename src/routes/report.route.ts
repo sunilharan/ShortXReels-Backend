@@ -6,7 +6,6 @@ import {
   getReports,
   validateReport,
   getReportedUsers,
-  getReportsByUser
 } from '../controllers/report.controller';
 
 const router = Router();
@@ -18,5 +17,4 @@ router.delete('/:id', deleteReport);
 router.get('/', getReports);
 router.post('/acceptReject', validateReport);
 router.get('/users', getReportedUsers);
-router.get('/byUserId', getReportsByUser);
 export default router;

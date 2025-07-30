@@ -37,13 +37,14 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
         repliedBy: userId,
         content,
         updatedBy: userId,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
       await Comment.findByIdAndUpdate(
         commentId,
-        { $addToSet: { replies: reply }, 
+        {
+          $addToSet: { replies: reply },
           updatedBy: userId,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         },
         { new: true }
       ).exec();
@@ -424,47 +425,81 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const blockComment = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const { id, commentId } = req.body;
-    if (!id) {
-      throw new Error('invalid_request');
-    }
-    if (commentId) {
-      const comment = await Comment.findById(commentId);
-      if (!comment) throw new Error('comment_not_found');
-      const reply = await Comment.findOneAndUpdate(
-        {
-          _id: new mongoose.Types.ObjectId(String(commentId)),
-          'replies._id': new mongoose.Types.ObjectId(String(id)),
-        },
-        {
-          $set: {
-            'replies.$.status': STATUS_TYPE.blocked,
-            'replies.$.updatedBy': userId,
-            'replies.$.updatedAt': new Date().toISOString(),
-          },
+export const blockUnblockComment = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id, isBlocked, commentId } = req.body;
+      if (!id || typeof isBlocked !== 'boolean') {
+        throw new Error('invalid_request');
+      }
+      if (commentId) {
+        const comment = await Comment.findById(commentId);
+        if (!comment) throw new Error('comment_not_found');
+        if (Boolean(isBlocked) === true) {    
+          const reply = await Comment.findOneAndUpdate(
+            {
+              _id: new mongoose.Types.ObjectId(String(commentId)),
+              'replies._id': new mongoose.Types.ObjectId(String(id)),
+            },
+            {
+              $set: {
+                'replies.$.status': STATUS_TYPE.blocked,
+                'replies.$.updatedBy': userId,
+                'replies.$.updatedAt': new Date().toISOString(),
+              },
+            }
+          );
+          if (!reply) throw new Error('reply_not_found');
+        } else if (Boolean(isBlocked) === false) {
+          const reply = await Comment.findOneAndUpdate(
+            {
+              _id: new mongoose.Types.ObjectId(String(commentId)),
+              'replies._id': new mongoose.Types.ObjectId(String(id)),
+            },
+            {
+              $set: {
+                'replies.$.status': STATUS_TYPE.blocked,
+                'replies.$.updatedBy': userId,
+                'replies.$.updatedAt': new Date().toISOString(),
+              },
+            }
+          );
+          if (!reply) throw new Error('reply_not_found');
         }
-      );
-      if (!reply) throw new Error('reply_not_found');
-    } else {
-      const comment = await Comment.findById(id);
-      if (!comment) throw new Error('comment_not_found');
-      await Comment.findByIdAndUpdate(id, {
-        status: STATUS_TYPE.blocked,
-        updatedBy: userId,
-        updatedAt: new Date().toISOString(),
+      } else {
+        const comment = await Comment.findById(id);
+        if (!comment) throw new Error('comment_not_found');
+
+        if (Boolean(isBlocked) === true) {
+          if (comment.status === STATUS_TYPE.blocked) {
+            throw new Error('data_already_blocked');
+          }
+          await Comment.findByIdAndUpdate(id, {
+            status: STATUS_TYPE.blocked,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
+          });
+        }else if(Boolean(isBlocked) === false){
+          if (comment.status !== STATUS_TYPE.blocked) {
+            throw new Error('data_not_blocked');
+          }
+          await Comment.findByIdAndUpdate(id, {
+            status: STATUS_TYPE.active,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+      res.status(200).json({
+        success: true,
+        message: t('data_blocked'),
       });
+    } catch (error: any) {
+      throw error;
     }
-    res.status(200).json({
-      success: true,
-      message: t('data_blocked'),
-    });
-  } catch (error: any) {
-    throw error;
   }
-});
+);
 
 export const fetchComments = async (
   userId: string,

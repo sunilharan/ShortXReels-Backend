@@ -1,9 +1,9 @@
 /report/users:
   get:
-    tags: ['Report']
+    tags: ["Report"]
     summary: Get reported users based on there content reported by other users
     parameters:
-      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: "#/components/parameters/AcceptLanguage"
       - in: query
         name: page
         schema:
@@ -22,12 +22,7 @@
         name: status
         schema:
           type: string
-          enum: ['active', 'inactive', 'deleted']
-      - in: query
-        name: reportType
-        schema:
-          type: string
-          enum: ['reel', 'comment']
+          enum: ["active", "inactive", "deleted", "blocked"]
       - in: query
         name: startDate
         schema:
@@ -40,12 +35,18 @@
         name: sortBy
         schema:
           type: string
-          enum: ['totalReports', 'totalPendingReports', 'totalAcceptedReports', 'totalRejectedReports']
+          enum:
+            [
+              "totalReports",
+              "totalPendingReports",
+              "totalAcceptedReports",
+              "totalRejectedReports",
+            ]
       - in: query
         name: sortOrder
         schema:
           type: string
-          enum: ['asc', 'desc']
+          enum: ["asc", "desc"]
     responses:
       200:
         description: Successfully retrieved offenders.
@@ -57,31 +58,57 @@
                 success:
                   type: boolean
                 data:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      profile:
-                        type: string
-                      status:
-                        type: string
-                      totalReports:
-                        type: number
-                      totalPendingReports:
-                        type: number
-                      totalAcceptedReports:
-                        type: number
-                      totalRejectedReports:
-                        type: number
+                  type: object
+                  properties:
+                    users:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          email:
+                            type: string
+                          phone:
+                            type: string
+                          displayName:
+                            type: string
+                          description:
+                            type: string
+                          status:
+                            type: string
+                            enum: ["active", "inactive", "deleted"]
+                          profile:
+                            type: string
+                            format: uri
+                          totalReports:
+                            type: integer
+                          totalPendingReports:
+                            type: integer
+                          totalAcceptedReports:
+                            type: integer
+                          totalRejectedReports:
+                            type: integer
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          updatedBy:
+                            type: string
+                            nullable: true
+                    totalRecords:
+                      type: integer
+                    totalPages:
+                      type: integer
       400:
-        description: 'Bad Request'
+        description: "Bad Request"
       401:
-        description: 'Unauthorized'
+        description: "Unauthorized"
       404:
-        description: 'Not Found'
+        description: "Not Found"
       500:
-        description: 'Internal Server Error'
+        description: "Internal Server Error"

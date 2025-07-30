@@ -6,13 +6,14 @@ import {
   createReel,
   deleteReel,
   likeUnlikeReel,
-  allReels,
+  userReels,
+  adminReels,
   streamReelVideo,
   dashboardReels,
   getReelsByUser,
   viewReel,
   statusChange,
-  blockReel,
+  blockUnblockReel,
 } from '../controllers/reel.controller';
 import { validateCreateReel } from '../middlewares/reel.middleware';
 
@@ -37,8 +38,9 @@ router.delete('/:id', deleteReel);
 router.post('/likeUnlike', likeUnlikeReel);
 router.post('/view/:id', viewReel);
 router.use(adminOnly);
-router.post('/block', blockReel);
+router.post('/blockUnblock', blockUnblockReel);
 router.post('/status', statusChange);
-router.get('/all', allReels);
+router.get('/userReels', userReels);
+router.get('/adminReels', adminReels);
 
 export default router;

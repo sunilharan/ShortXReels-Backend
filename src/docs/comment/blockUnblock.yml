@@ -1,7 +1,7 @@
-/user/block:
+/comment/blockUnblock:
   post:
-    tags: ["User"]
-    summary: "Block a User"
+    tags: ['Comment']
+    summary: 'Block or Unblock a Comment'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -13,9 +13,14 @@
             properties:
               id:
                 type: string
+              isBlocked:
+                type: boolean
+                enum: [true, false]
+              commentId:
+                type: string
     responses:
       200:
-        description: "User blocked successfully"
+        description: 'Comment blocked successfully'
         content:
           application/json:
             schema:
@@ -26,11 +31,12 @@
                 message:
                   type: string
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
+      403:
+        description: 'Forbidden'
       404:
-        description: "User not found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
-        
+        description: 'Internal Server Error'

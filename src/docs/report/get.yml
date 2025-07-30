@@ -1,7 +1,7 @@
 /report:
   get:
     summary: Get all reports
-    tags: ['Report']
+    tags: ["Report"]
     parameters:
       - $ref: "#/components/parameters/AcceptLanguage"
       - in: query
@@ -34,6 +34,10 @@
           type: string
           enum: ["reel", "comment"]
       - in: query
+        name: userId
+        schema:
+          type: string
+      - in: query
         name: reportedBy
         schema:
           type: string
@@ -60,6 +64,17 @@
                 data:
                   type: object
                   properties:
+                    user:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                        profile:
+                          type: string
                     reports:
                       type: array
                       items:
@@ -84,14 +99,36 @@
                                 enum: ["image", "video"]
                               thumbnail:
                                 type: string
+                              createdBy:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  profile:
+                                    type: string
                           comment:
                             type: object
                             nullable: true
                             properties:
                               id:
                                 type: string
+                              commentId:
+                                type: string
+                              commentContent:
+                                type: string
                               content:
                                 type: string
+                              createdBy:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  profile:
+                                    type: string
                           reportedBy:
                             type: object
                             properties:

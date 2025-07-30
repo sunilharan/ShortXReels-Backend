@@ -1,7 +1,7 @@
-/reel/all:
+/reel/userReels:
   get:
     tags: ['Reel']
-    summary: 'Get all reels'
+    summary: 'Get all user reels'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
@@ -43,7 +43,7 @@
         required: false
         schema:
           type: string
-          enum: ['active', 'inactive', 'deleted']
+          enum: ['active', 'inactive', 'deleted', 'blocked']
       - in: query
         name: createdBy
         required: false

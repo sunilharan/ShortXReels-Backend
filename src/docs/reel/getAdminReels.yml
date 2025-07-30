@@ -1,33 +1,57 @@
-/reel/getByUser:
+/reel/adminReels:
   get:
     tags: ['Reel']
-    summary: Get reels by user
-    description: Retrieve all reels created by the authenticated user.
+    summary: 'Get all admin reels'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
         name: page
+        required: true
         schema:
-          type: number
+          type: integer
           default: 1
       - in: query
         name: limit
-        schema:
-          type: number
-          default: 10
-      - in: query
-        name: userId
         required: true
         schema:
-          type: string
+          type: integer
+          default: 10
       - in: query
-        name: sortType
+        name: search
+        required: false
         schema:
           type: string
-          enum: ['popular', 'latest', 'oldest']
+      - in: query
+        name: category
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: sortBy
+        required: false
+        schema:
+          type: string
+          enum: ['createdAt', 'totalViews', 'totalLikes', 'totalComments']
+      - in: query
+        name: sortOrder
+        required: false
+        schema:
+          type: string
+          enum: ['asc', 'desc']
+      - in: query
+        name: status
+        required: false
+        schema:
+          type: string
+          enum: ['active', 'inactive', 'deleted', 'blocked']
+      - in: query
+        name: createdBy
+        required: false
+        schema:
+          type: string
     responses:
-      '200':
-        description: Success
+      200:
+        description: 'Reels fetched successfully'
         content:
           application/json:
             schema:
@@ -35,31 +59,9 @@
               properties:
                 success:
                   type: boolean
-                  example: true
                 data:
                   type: object
                   properties:
-                    id:
-                      type: string
-                    name:
-                      type: string
-                    email:
-                      type: string
-                    phone:
-                      type: string
-                    gender:
-                      type: string
-                    birthDate:
-                      type: string
-                      format: date-time
-                    status:
-                      type: string
-                    profile:
-                      type: string
-                    displayName:
-                      type: string
-                    description:
-                      type: string
                     reels:
                       type: array
                       items:
@@ -68,7 +70,7 @@
                           id:
                             type: string
                           createdBy:
-                            type: string
+                            type: object
                             properties:
                               id:
                                 type: string
@@ -112,10 +114,8 @@
                             type: string
                     totalRecords:
                       type: number
-                      example: 10
                     totalPages:
                       type: number
-                      example: 1
       400:
         description: 'Bad Request'
       401:
