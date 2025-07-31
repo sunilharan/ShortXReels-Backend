@@ -1,0 +1,191 @@
+/admin/dashboardDetails:
+  get:
+    tags: ['Admin']
+    summary: 'Get admin dashboard stats'
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: number
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: number
+          default: 3
+      - name: startDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: endDate
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: ['active', 'inactive', 'deleted', 'blocked']
+    responses:
+      200:
+        description: 'Admin dashboard stats retrieved successfully'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    users:
+                      type: object
+                      properties:
+                        totalRecords:
+                          type: integer
+                        totalPages:
+                          type: integer
+                        filtered:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              email:
+                                type: string
+                              status:
+                                type: string
+                                enum: [active, inactive, deleted, blocked]
+                              profile:
+                                type: string
+                                format: uri
+                                nullable: true
+                    reels:
+                      type: object
+                      properties:
+                        totalRecords:
+                          type: integer
+                        totalPages:
+                          type: integer
+                        top:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              caption:
+                                type: string
+                              id:
+                                type: string
+                              viewCount:
+                                type: integer
+                              likeCount:
+                                type: integer
+                    comments:
+                      type: object
+                      properties:
+                        totalRecords:
+                          type: integer
+                        totalPages:
+                          type: integer
+                        top:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              content:
+                                type: string
+                              id:
+                                type: string
+                              likeCount:
+                                type: integer
+                              replyCount:
+                                type: integer
+                    reports:
+                      type: object
+                      properties:
+                        totalRecords:
+                          type: integer
+                        totalPages:
+                          type: integer
+                        mostReported:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              count:
+                                type: integer
+                              reportType:
+                                type: string
+                              id:
+                                type: string
+                              reel:
+                                type: object
+                                properties:
+                                  caption:
+                                    type: string
+                                  media:
+                                    type: array
+                                    items:
+                                      type: string
+                                      format: uri
+                                  mediaType:
+                                    type: string
+                                  thumbnail:
+                                    type: string
+                                    format: uri
+                              comment:
+                                type: object
+                                nullable: true
+                                properties:
+                                  content:
+                                    type: string
+                                  commentId:
+                                    type: string
+                                  commentContent:
+                                    type: string
+                    categories:
+                      type: object
+                      properties:
+                        totalRecords:
+                          type: integer
+                        totalPages:
+                          type: integer
+                        topUsed:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              count:
+                                type: integer
+                              id:
+                                type: string
+                              name:
+                                type: string
+      400:
+        description: 'Bad Request'
+      401:
+        description: 'Unauthorized'
+      404:
+        description: 'User not found'
+      409:
+        description: 'Conflict'
+      500:
+        description: 'Internal Server Error'

@@ -17,11 +17,24 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   const removeReels = JSON.parse(req.query.removeReelIds || '[]');
   const categoryId = req.query.categoryId || '';
   const addReels = JSON.parse(req.query.addReelIds || '[]');
-
+  const isAdmin = req.query.isAdmin;
+  const role = req.role;
   const matchQuery: any = {
     status: STATUS_TYPE.active,
-    createdBy: { $ne: new mongoose.Types.ObjectId(String(userId)) },
   };
+
+  if (role === UserRole.User) {
+    matchQuery.createdBy = { $ne: new mongoose.Types.ObjectId(String(userId)) };
+  } else if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+    if (isAdmin === 'true' || isAdmin === 'false') {
+      matchQuery.isAdmin = isAdmin === 'true';
+    }
+    if (categoryId && categoryId !== 'recommended') {
+      matchQuery.categories = {
+        $in: [new mongoose.Types.ObjectId(String(categoryId))],
+      };
+    }
+  }
   if (removeReels.length) {
     matchQuery._id = {
       $nin: removeReels.map(
@@ -65,6 +78,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
 
     totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
   } else if (categoryId) {
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
     const primaryQuery = {
       ...matchQuery,
       categories: { $in: [new mongoose.Types.ObjectId(String(categoryId))] },
@@ -76,24 +90,19 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       savedReels
     );
     reels = [...reels, ...primaryReels];
-
-    totalRecords = await countActiveReelsWithActiveUsers(primaryQuery);
-
-    if (reels.length < limit) {
+    if (reels.length < limit && role === UserRole.User) {
       const fallbackQuery = {
         ...matchQuery,
         categories: { $nin: [new mongoose.Types.ObjectId(String(categoryId))] },
       };
       const fallbackLimit = limit - reels.length;
-      reels = [
-        ...reels,
-        ...(await fetchReels(
-          userId,
-          fallbackQuery,
-          { skip: 0, limit: fallbackLimit },
-          savedReels
-        )),
-      ];
+      const fallbackReels = await fetchReels(
+        userId,
+        fallbackQuery,
+        { skip: 0, limit: fallbackLimit },
+        savedReels
+      );
+      reels = [...reels, ...fallbackReels];
     }
   } else {
     reels = [
@@ -635,7 +644,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     } = req.body;
     const files = req.files || {};
     const userId = req.user.id;
-
+    const role = req.role;
     const categories = JSON.parse(rawCategories).map(
       (id: string) => new mongoose.Types.ObjectId(id)
     );
@@ -667,6 +676,9 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
 
     if (thumbnail) {
       reelData.thumbnail = moveFile(thumbnail, 'thumbnails');
+    }
+    if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+      reelData.isAdmin = true;
     }
     reelData.updatedBy = userId;
 
@@ -1160,7 +1172,7 @@ export const fetchReels = async (
 };
 
 export const countActiveReelsWithActiveUsers = async (
-  query: any,
+  query?: any,
   onlyActive?: boolean,
   role?: string
 ) => {

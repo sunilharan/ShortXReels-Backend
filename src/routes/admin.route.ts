@@ -10,6 +10,7 @@ import {
   adminDelete,
   adminGetAppUsers,
   adminGetAdminUsers,
+  adminDashboardDetails,
   adminRemoveProfilePicture,
 } from '../controllers/user.controller';
 import {
@@ -26,6 +27,7 @@ router.post('/login', adminLogin);
 router.use(authenticate);
 router.use(adminOnly);
 router.get('/users', adminGetAppUsers);
+router.get('/dashboardDetails', adminDashboardDetails);
 router.delete('/removeProfilePicture/:id', adminRemoveProfilePicture);
 
 router.use(superAdminOnly);

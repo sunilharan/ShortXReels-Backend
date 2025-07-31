@@ -117,8 +117,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
 
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = moment(startDate).startOf('day').toDate();
+      const newEndDate = moment(endDate).endOf('day').toDate();
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
@@ -669,8 +669,8 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     }
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = moment(startDate).startOf('day').toDate();
+      const newEndDate = moment(endDate).endOf('day').toDate();
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,

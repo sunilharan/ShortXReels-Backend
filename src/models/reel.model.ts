@@ -15,6 +15,7 @@ export interface IReel extends Document {
   likedBy: PopulatedDoc<IUser & Document>[];
   categories: PopulatedDoc<ICategory & Document>[];
   status: STATUS_TYPE;
+  isAdmin: boolean;
   updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +43,7 @@ const reelSchema = new Schema<IReel>(
       enum: Object.values(STATUS_TYPE),
       default: STATUS_TYPE.active,
     },
+    isAdmin: { type: Boolean, default: false },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   {
@@ -51,6 +53,7 @@ const reelSchema = new Schema<IReel>(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
+        delete ret.isAdmin;
         if (ret.media && ret.mediaType === MEDIA_TYPE.video) {
           ret.media = `${config.host}/api/reel/view/${ret.id}`;
         } else if (ret.mediaType === MEDIA_TYPE.image && ret.media.length > 0) {

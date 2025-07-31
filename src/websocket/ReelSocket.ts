@@ -8,14 +8,12 @@ class ReelSocket implements SocketInterface {
 
   middlewareImplementation(socket: Socket, next: any) {
     socket.on('joinRoom', (id) => {
-      console.log('User joined room', id);
       if (id) {
         socket.join(id);
         socket.emit('joinedRoom', `User joined ${id}`);
       } 
     });
     socket.on('leaveRoom', (id) => {
-      console.log('User left room', id);
       if (socket.rooms.has(id)) {
         socket.leave(id);
         socket.emit('leftRoom', `User left ${id}`);

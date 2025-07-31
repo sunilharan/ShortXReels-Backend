@@ -16,6 +16,7 @@ import { countActiveReelsWithActiveUsers, fetchReels } from './reel.controller';
 import { rename } from 'fs';
 import { Comment } from '../models/comment.model';
 import { Report } from '../models/report.model';
+import moment from 'moment';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -126,9 +127,9 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_username_or_password');
     }
-    if (!password) {
-      res.status(400);
-      throw new Error('password_required');
+    if (user.role.name !== UserRole.User) {
+      res.status(403);
+      throw new Error('forbidden');
     }
     let newPassword = decryptData(password);
     newPassword = newPassword?.password?.split('-');
@@ -1076,3 +1077,353 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
+export const adminDashboardDetails = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 3;
+      const skip = (page - 1) * limit;
+      const startDate = req.query.startDate;
+      const endDate = req.query.endDate;
+      const search = req.query.search;
+      const status = req.query.status;
+      const matchQuery: any = {};
+      if (startDate && endDate) {
+        const newStartDate = moment(startDate).startOf('day').toDate();
+        const newEndDate = moment(endDate).endOf('day').toDate();
+        matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+      }
+      if (status) {
+        matchQuery.status = status;
+      }
+      const usersAgg = await User.aggregate([
+        { $match: matchQuery },
+        {
+          $project: {
+            _id: 0,
+            id: '$_id',
+            name: 1,
+            email: 1,
+            profile: {
+              $cond: {
+                if: {
+                  $not: ['$profile'],
+                },
+                then: '$$REMOVE',
+                else: {
+                  $concat: [config.host + '/profile/', '$profile'],
+                },
+              },
+            },
+            status: 1,
+          },
+        },
+        {
+          $match: search
+            ? {
+                $or: [
+                  { name: { $regex: search, $options: 'i' } },
+                  { email: { $regex: search, $options: 'i' } },
+                ],
+              }
+            : {},
+        },
+        {
+          $facet: {
+            users: [{ $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]);
+      const totalUsers = usersAgg[0]?.pagination[0]?.total || 0;
+      const filteredUsers = usersAgg[0]?.users || [];
+      const reelAgg = await Reel.aggregate([
+        { $match: matchQuery },
+        {
+          $project: {
+            _id: 0,
+            id: '$_id',
+            caption: 1,
+            viewCount: { $size: '$viewedBy' },
+            likeCount: { $size: '$likedBy' },
+          },
+        },
+        {
+          $match: search
+            ? {
+                caption: { $regex: search, $options: 'i' },
+              }
+            : {},
+        },
+        { $sort: { viewCount: -1 } },
+        {
+          $facet: {
+            topReels: [{ $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]);
+
+      const topReels = reelAgg[0]?.topReels || [];
+      const totalReels = reelAgg[0]?.pagination[0]?.total || 0;
+
+      const commentAgg = await Comment.aggregate([
+        { $match: matchQuery },
+        {
+          $project: {
+            _id: 0,
+            id: '$_id',
+            content: 1,
+            likeCount: { $size: '$likedBy' },
+            replyCount: { $size: '$replies' },
+          },
+        },
+        {
+          $match: search
+            ? {
+                content: { $regex: search, $options: 'i' },
+              }
+            : {},
+        },
+        { $sort: { likeCount: -1 } },
+        {
+          $facet: {
+            topComments: [{ $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]);
+
+      const topComments = commentAgg[0]?.topComments || [];
+      const totalComments = commentAgg[0]?.pagination[0]?.total || 0;
+
+      const reportsAgg = await Report.aggregate([
+        { $match: matchQuery },
+        {
+          $group: {
+            _id: {
+              reel: '$reel',
+              comment: {
+                $cond: [
+                  { $in: ['$reportType', ['comment', 'reply']] },
+                  '$comment',
+                  '$$REMOVE',
+                ],
+              },
+              reply: {
+                $cond: [
+                  { $eq: ['$reportType', 'reply'] },
+                  '$reply',
+                  '$$REMOVE',
+                ],
+              },
+              reportType: '$reportType',
+            },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $lookup: {
+            from: 'reels',
+            localField: '_id.reel',
+            foreignField: '_id',
+            as: 'reel',
+          },
+        },
+        { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'comments',
+            localField: '_id.comment',
+            foreignField: '_id',
+            as: 'comment',
+          },
+        },
+        { $unwind: { path: '$comment', preserveNullAndEmptyArrays: true } },
+        {
+          $addFields: {
+            replyObject: {
+              $first: {
+                $filter: {
+                  input: '$comment.replies',
+                  as: 'rep',
+                  cond: { $eq: ['$$rep._id', '$_id.reply'] },
+                },
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            count: 1,
+            reel: {
+              caption: '$reel.caption',
+              media: {
+                $cond: [
+                  { $eq: ['$reel.mediaType', 'image'] },
+                  {
+                    $map: {
+                      input: '$reel.media',
+                      as: 'img',
+                      in: {
+                        $concat: [config.host, '/reel/', '$$img'],
+                      },
+                    },
+                  },
+                  {
+                    $concat: [
+                      config.host,
+                      '/api/reel/view/',
+                      { $toString: '$reel._id' },
+                    ],
+                  },
+                ],
+              },
+              mediaType: '$reel.mediaType',
+              thumbnail: {
+                $cond: [
+                  { $ifNull: ['$reel.thumbnail', false] },
+                  {
+                    $concat: [config.host, '/thumbnail/', '$reel.thumbnail'],
+                  },
+                  '$$REMOVE',
+                ],
+              },
+            },
+            reportType: {
+              $cond: {
+                if: { $eq: ['$_id.reportType', 'reel'] },
+                then: 'reel',
+                else: 'comment',
+              },
+            },
+            id: {
+              $cond: [
+                { $eq: ['$_id.reportType', 'reel'] },
+                '$_id.reel',
+                {
+                  $cond: [
+                    { $in: ['$_id.reportType', ['comment', 'reply']] },
+                    '$_id.comment',
+                    null,
+                  ],
+                },
+              ],
+            },
+            comment: {
+              $cond: [
+                { $eq: ['$_id.reportType', 'reply'] },
+                {
+                  content: '$replyObject.content',
+                  commentId: '$comment._id',
+                  commentContent: '$comment.content',
+                },
+                {
+                  $cond: [
+                    { $eq: ['$_id.reportType', 'comment'] },
+                    {
+                      content: '$comment.content',
+                    },
+                    '$$REMOVE',
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $match: search
+            ? {
+                $or: [
+                  { 'reel.caption': { $regex: search, $options: 'i' } },
+                  { 'comment.content': { $regex: search, $options: 'i' } },
+                  {
+                    'comment.commentContent': { $regex: search, $options: 'i' },
+                  },
+                ],
+              }
+            : {},
+        },
+        { $sort: { count: -1 } },
+        {
+          $facet: {
+            mostReportedItems: [{ $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]);
+
+      const mostReportedItems = reportsAgg[0]?.mostReportedItems || [];
+      const totalReports = reportsAgg[0]?.pagination[0]?.total || 0;
+
+      const categoryAgg = await Reel.aggregate([
+        { $match: matchQuery },
+        { $unwind: '$categories' },
+        { $group: { _id: '$categories', count: { $sum: 1 } } },
+        {
+          $lookup: {
+            from: 'categories',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'category',
+          },
+        },
+        { $unwind: '$category' },
+        {
+          $project: {
+            _id: 0,
+            id: '$_id',
+            name: '$category.name',
+            count: 1,
+          },
+        },
+        { $match: search ? { name: { $regex: search, $options: 'i' } } : {} },
+        { $sort: { count: -1 } },
+        {
+          $facet: {
+            topCategories: [{ $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]);
+
+      const topCategories = categoryAgg[0]?.topCategories || [];
+      const totalCategories = categoryAgg[0]?.pagination[0]?.total || 0;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          users: {
+            totalRecords: totalUsers,
+            totalPages: Math.ceil(totalUsers / limit),
+            filtered: filteredUsers,
+          },
+          reels: {
+            totalRecords: totalReels,
+            totalPages: Math.ceil(totalReels / limit),
+            top: topReels,
+          },
+          comments: {
+            totalRecords: totalComments,
+            totalPages: Math.ceil(totalComments / limit),
+            top: topComments,
+          },
+          reports: {
+            totalRecords: totalReports,
+            totalPages: Math.ceil(totalReports / limit),
+            mostReported: mostReportedItems,
+          },
+          categories: {
+            totalRecords: totalCategories,
+            totalPages: Math.ceil(totalCategories / limit),
+            topUsed: topCategories,
+          },
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+);
