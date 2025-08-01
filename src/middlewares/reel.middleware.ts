@@ -62,7 +62,7 @@ export const validateCreateReel = expressAsyncHandler(
         throw new Error('thumbnail_required');
       }
       next();
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   }

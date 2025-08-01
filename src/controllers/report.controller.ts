@@ -95,7 +95,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       data: true,
       message: t('report_created'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -117,8 +117,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
 
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(endDate).endOf('day').toDate();
+      const newStartDate = moment(startDate).toDate();
+      const newEndDate = moment(endDate).toDate();
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
@@ -196,22 +196,16 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               id: '$reel.createdBy._id',
               name: '$reel.createdBy.name',
               profile: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ne: ['$reel.createdBy.profile', null] },
-                      { $ne: ['$reel.createdBy.profile', ''] },
-                      { $ifNull: ['$reel.createdBy.profile', false] },
-                    ],
-                  },
-                  {
+                $cond: {
+                  if: { $not: ['$reel.createdBy.profile'] },
+                  then: '$$REMOVE',
+                  else: {
                     $concat: [
                       config.host + '/profile/',
                       '$reel.createdBy.profile',
                     ],
                   },
-                  '$$REMOVE',
-                ],
+                },
               },
             },
           },
@@ -227,22 +221,16 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                   id: '$replyObj.createdBy._id',
                   name: '$replyObj.createdBy.name',
                   profile: {
-                    $cond: [
-                      {
-                        $and: [
-                          { $ne: ['$replyObj.createdBy.profile', null] },
-                          { $ne: ['$replyObj.createdBy.profile', ''] },
-                          { $ifNull: ['$replyObj.createdBy.profile', false] },
-                        ],
-                      },
-                      {
+                    $cond: {
+                      if: { $not: ['$replyObj.createdBy.profile'] },
+                      then: '$$REMOVE',
+                      else: {
                         $concat: [
                           config.host + '/profile/',
                           '$replyObj.createdBy.profile',
                         ],
                       },
-                      '$$REMOVE',
-                    ],
+                    },
                   },
                 },
               },
@@ -256,24 +244,16 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                       id: '$comment.createdBy._id',
                       name: '$comment.createdBy.name',
                       profile: {
-                        $cond: [
-                          {
-                            $and: [
-                              { $ne: ['$comment.createdBy.profile', null] },
-                              { $ne: ['$comment.createdBy.profile', ''] },
-                              {
-                                $ifNull: ['$comment.createdBy.profile', false],
-                              },
-                            ],
-                          },
-                          {
+                        $cond: {
+                          if: { $not: ['$comment.createdBy.profile'] },
+                          then: '$$REMOVE',
+                          else: {
                             $concat: [
                               config.host + '/profile/',
                               '$comment.createdBy.profile',
                             ],
                           },
-                          '$$REMOVE',
-                        ],
+                        },
                       },
                     },
                   },
@@ -286,61 +266,53 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
             id: '$reportedBy._id',
             name: '$reportedBy.name',
             profile: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$reportedBy.profile', null] },
-                    { $ne: ['$reportedBy.profile', ''] },
-                    { $ifNull: ['$reportedBy.profile', false] },
-                  ],
-                },
-                {
+              $cond: {
+                if: { $not: ['$reportedBy.profile'] },
+                then: '$$REMOVE',
+                else: {
                   $concat: [config.host + '/profile/', '$reportedBy.profile'],
                 },
-                '$$REMOVE',
-              ],
+              },
             },
           },
           reason: 1,
           reportType: 1,
           status: 1,
           reviewedBy: {
-            $cond: [
-              { $ifNull: ['$reviewedAt', false] },
-              {
+            $cond: {
+              if: { $not: ['$reviewedAt'] },
+              then: '$$REMOVE',
+              else: {
                 id: '$reviewedBy._id',
                 name: '$reviewedBy.name',
                 profile: {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ne: ['$reviewedBy.profile', null] },
-                        { $ne: ['$reviewedBy.profile', ''] },
-                        { $ifNull: ['$reviewedBy.profile', false] },
-                      ],
-                    },
-                    {
+                  $cond: {
+                    if: { $not: ['$reviewedBy.profile'] },
+                    then: '$$REMOVE',
+                    else: {
                       $concat: [
                         config.host + '/profile/',
                         '$reviewedBy.profile',
                       ],
                     },
-                    '$$REMOVE',
-                  ],
+                  },
                 },
               },
-              '$$REMOVE',
-            ],
+            },
           },
           reviewedAt: {
-            $cond: [
-              { $ifNull: ['$reviewedAt', false] },
-              '$reviewedAt',
-              '$$REMOVE',
-            ],
+            $cond: {
+              if: { $not: ['$reviewedAt'] },
+              then: '$$REMOVE',
+              else: '$reviewedAt',
+            },
           },
           notes: {
-            $cond: [{ $ifNull: ['$notes', false] }, '$notes', '$$REMOVE'],
+            $cond: {
+              if: { $not: ['$notes'] },
+              then: '$$REMOVE',
+              else: '$notes',
+            },
           },
           result: 1,
           createdAt: 1,
@@ -411,7 +383,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: data,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -446,7 +418,7 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('report_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -480,9 +452,11 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
         new: true,
       }
     )
-      .populate('reportedBy', 'name profile')
-      .populate('reel', 'caption video')
-      .populate('reviewedBy', 'name profile')
+      .populate([
+        { path: 'reportedBy', select: 'name profile' },
+        { path: 'reel', select: 'caption video' },
+        { path: 'reviewedBy', select: 'name profile' },
+      ])
       .exec();
 
     if (!report) {
@@ -519,7 +493,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('report_validated'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -541,7 +515,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('data_blocked'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -669,8 +643,8 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     }
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(endDate).endOf('day').toDate();
+      const newStartDate = moment(startDate).toDate();
+      const newEndDate = moment(endDate).toDate();
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
@@ -778,13 +752,7 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
           updatedBy: '$user.updatedBy',
           profile: {
             $cond: {
-              if: {
-                $or: [
-                  { $eq: ['$user.profile', null] },
-                  { $eq: ['$user.profile', ''] },
-                  { $not: ['$user.profile'] },
-                ],
-              },
+              if: { $not: ['$user.profile'] },
               then: '$$REMOVE',
               else: {
                 $concat: [config.host + '/profile/', '$user.profile'],

@@ -105,7 +105,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('comment_created'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -149,7 +149,7 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -164,10 +164,10 @@ export const getById = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     const comment = await Comment.findById(commentId)
-      .populate('commentedBy', 'name profile')
-      .populate('likedBy', 'name profile')
-      .populate('replies.repliedBy', 'name profile')
-      .populate('replies.likedBy', 'name profile')
+      .populate(
+        ['commentedBy', 'likedBy', 'replies.repliedBy', 'replies.likedBy'],
+        'name profile'
+      )
       .sort({ createdAt: -1 })
       .exec();
     if (!comment) {
@@ -179,7 +179,7 @@ export const getById = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: comment,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -255,7 +255,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
       data: totalComments,
       message: t('comment_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -378,7 +378,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
         message: t('like_unlike_success'),
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -420,7 +420,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('status_changed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -436,7 +436,7 @@ export const blockUnblockComment = expressAsyncHandler(
       if (commentId) {
         const comment = await Comment.findById(commentId);
         if (!comment) throw new Error('comment_not_found');
-        if (Boolean(isBlocked) === true) {    
+        if (Boolean(isBlocked) === true) {
           const reply = await Comment.findOneAndUpdate(
             {
               _id: new mongoose.Types.ObjectId(String(commentId)),
@@ -480,7 +480,7 @@ export const blockUnblockComment = expressAsyncHandler(
             updatedBy: userId,
             updatedAt: new Date().toISOString(),
           });
-        }else if(Boolean(isBlocked) === false){
+        } else if (Boolean(isBlocked) === false) {
           if (comment.status !== STATUS_TYPE.blocked) {
             throw new Error('data_not_blocked');
           }
@@ -495,7 +495,7 @@ export const blockUnblockComment = expressAsyncHandler(
         success: true,
         message: t('data_blocked'),
       });
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   }
@@ -610,22 +610,16 @@ export const fetchComments = async (
                     id: '$$user._id',
                     name: '$$user.name',
                     profile: {
-                      $cond: [
-                        {
-                          $or: [
-                            { $eq: ['$$user.profile', null] },
-                            { $eq: ['$$user.profile', ''] },
-                            { $not: ['$$user.profile'] },
-                          ],
-                        },
-                        '$$REMOVE',
-                        {
+                      $cond: {
+                        if: { $not: ['$$user.profile'] },
+                        then: '$$REMOVE',
+                        else: {
                           $concat: [
                             config.host + '/profile/',
                             '$$user.profile',
                           ],
                         },
-                      ],
+                      },
                     },
                   },
                 },
@@ -650,19 +644,13 @@ export const fetchComments = async (
           id: '$commentedBy._id',
           name: '$commentedBy.name',
           profile: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: ['$commentedBy.profile', null] },
-                  { $eq: ['$commentedBy.profile', ''] },
-                  { $not: ['$commentedBy.profile'] },
-                ],
-              },
-              '$$REMOVE',
-              {
+            $cond: {
+              if: { $not: ['$commentedBy.profile'] },
+              then: '$$REMOVE',
+              else: {
                 $concat: [config.host + '/profile/', '$commentedBy.profile'],
               },
-            ],
+            },
           },
         },
       },

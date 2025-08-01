@@ -21,6 +21,7 @@ import {
   statusChange,
   blockUnblockUser,
   deleteUser,
+  // createSuperAdmin,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
@@ -29,6 +30,7 @@ import { adminOnly } from '../middlewares/auth.middleware';
 const router = Router();
 
 router.post('/register', validateRegister, register);
+// router.post('/superAdmin', createSuperAdmin);
 router.get('/nameExist/:name', nameExist);
 router.post('/login', login);
 router.post('/refreshToken', refreshToken);

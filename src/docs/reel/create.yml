@@ -92,6 +92,12 @@
                             type: string
                           profile:
                             type: string
+                    totalViews:
+                      type: number
+                    totalLikes:
+                      type: number
+                    totalComments:
+                      type: number
                     likedBy:
                       type: array
                       items:

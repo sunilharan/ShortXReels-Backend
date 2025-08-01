@@ -32,7 +32,7 @@ export const reportSchema = new Schema<IReport>(
     status: { type: String, enum: STATUS_TYPE, default: STATUS_TYPE.active },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     result: { type: String, enum: REPORT_STATUS, default: REPORT_STATUS.pending },
-    notes: { type: String, default: '' },
+    notes: { type: String,  },
     reviewedAt: { type: Date },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },

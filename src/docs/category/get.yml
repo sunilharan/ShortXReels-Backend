@@ -36,47 +36,49 @@
                 success:
                   type: boolean
                 data:
-                  categories:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        image:
-                          type: string
-                        status:
-                          type: string
-                        createdAt:
-                          type: string
-                          format: date-time
-                        updatedAt:
-                          type: string
-                          format: date-time
-                        createdBy:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            name:
-                              type: string
-                            profile:
-                              type: string
-                        updatedBy:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            name:
-                              type: string
-                            profile:
-                              type: string
-                  totalRecords:
-                    type: integer
-                  totalPages:
-                    type: integer
+                  type: object
+                  properties:
+                    categories:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          image:
+                            type: string
+                          status:
+                            type: string
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          createdBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          updatedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                    totalRecords:
+                      type: integer
+                    totalPages:
+                      type: integer
       400:
         description: 'Bad Request'
       401:

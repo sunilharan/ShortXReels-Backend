@@ -4,8 +4,18 @@ import mongoose from 'mongoose';
 import { User } from '../models/user.model';
 import { decryptData, generateToken, verifyToken } from '../utils/encrypt';
 import { Role, IRole } from '../models/role.model';
-import { UserRole, removeFile } from '../config/constants';
-import { STATUS_TYPE, SAVE_TYPE } from '../config/enums';
+import {
+  UserRole,
+  emailRegex,
+  passwordRegex,
+  removeFile,
+} from '../config/constants';
+import {
+  STATUS_TYPE,
+  SAVE_TYPE,
+  GENDER_TYPE,
+  REPORT_STATUS,
+} from '../config/enums';
 import { Otp } from '../models/otp.model';
 import crypto from 'crypto';
 import { sendMail } from '../utils/sendMail';
@@ -58,8 +68,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('user_register_failed');
     }
-    user = await user.populate('role');
-    user = await user.populate('interests');
+    user = await user.populate(['role', 'interests']);
     const roleName =
       typeof user.role === 'object' && user.role !== null && 'name' in user.role
         ? (user.role as IRole).name
@@ -80,7 +89,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: { ...user.toJSON(), accessToken, refreshToken },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -100,7 +109,7 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: !!user,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -166,7 +175,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
         refreshToken,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -239,7 +248,7 @@ export const adminLogin = expressAsyncHandler(async (req: any, res) => {
         refreshToken,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -290,7 +299,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
         refreshToken,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -319,7 +328,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
       data: otp?.otp,
       message: t('otp_sent_to_email'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -356,7 +365,7 @@ export const verifyOtp = expressAsyncHandler(async (req: any, res) => {
       data: token,
       message: t('otp_verified'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -413,7 +422,7 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
         message: t('password_changed'),
       });
     }
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -433,7 +442,7 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: user,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -457,7 +466,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('user_logged_out'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -495,7 +504,7 @@ export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('user_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -538,14 +547,16 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
     updateData.updatedBy = userId;
     updateData.updatedAt = new Date().toISOString();
     const user = await User.findByIdAndUpdate(userId, updateData, { new: true })
-      .populate('role')
-      .populate('interests', 'name image')
+      .populate([
+        { path: 'role', select: 'name' },
+        { path: 'interests', select: 'name image' },
+      ])
       .exec();
 
     if (!user) throw new Error('user_not_found');
 
     res.status(200).json({ success: true, data: user });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -599,7 +610,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('password_changed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -659,13 +670,15 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('user_register_failed');
     }
-    user = await user.populate('role');
-    user = await user.populate('interests');
+    user = await user.populate([
+      { path: 'role', select: 'name' },
+      { path: 'interests', select: 'name image' },
+    ]);
     res.status(200).json({
       success: true,
       data: user,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -716,13 +729,15 @@ export const adminEdit = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    user = await user.populate('role');
-    user = await user.populate('interests');
+    user = await user.populate([
+      { path: 'role', select: 'name' },
+      { path: 'interests', select: 'name image' },
+    ]);
     res.status(200).json({
       success: true,
       data: user,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -786,7 +801,7 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('user_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -899,7 +914,7 @@ export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('save_unsave_reel'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -930,7 +945,7 @@ export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
         totalPages,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -963,7 +978,7 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
         success: true,
         message: t('profile_removed'),
       });
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   }
@@ -991,10 +1006,10 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       updatedAt: new Date().toISOString(),
     });
     res.status(200).json({
-      status: true,
+      success: true,
       message: t('status_changed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -1035,7 +1050,7 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t(Boolean(isBlocked) ? 'data_blocked' : 'data_unblocked'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -1073,7 +1088,7 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('user_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -1081,344 +1096,426 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
 export const adminDashboardDetails = expressAsyncHandler(
   async (req: any, res) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 3;
-      const skip = (page - 1) * limit;
-      const startDate = req.query.startDate;
-      const endDate = req.query.endDate;
-      const search = req.query.search;
-      const status = req.query.status;
-      const matchQuery: any = {};
-      if (startDate && endDate) {
-        const newStartDate = moment(startDate).startOf('day').toDate();
-        const newEndDate = moment(endDate).endOf('day').toDate();
-        matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
-      }
-      if (status) {
-        matchQuery.status = status;
-      }
+      const currentMonthStart = moment().startOf('month').toDate();
+      const previousMonthStart = moment()
+        .subtract(1, 'month')
+        .startOf('month')
+        .toDate();
+      const currentMonthEnd = moment().endOf('month').toDate();
+      const previousMonthEnd = moment()
+        .subtract(1, 'month')
+        .endOf('month')
+        .toDate();
       const usersAgg = await User.aggregate([
-        { $match: matchQuery },
         {
-          $project: {
-            _id: 0,
-            id: '$_id',
-            name: 1,
-            email: 1,
-            profile: {
-              $cond: {
-                if: {
-                  $not: ['$profile'],
-                },
-                then: '$$REMOVE',
-                else: {
-                  $concat: [config.host + '/profile/', '$profile'],
-                },
-              },
-            },
-            status: 1,
+          $lookup: {
+            from: 'roles',
+            localField: 'role',
+            foreignField: '_id',
+            as: 'role',
           },
         },
         {
-          $match: search
-            ? {
-                $or: [
-                  { name: { $regex: search, $options: 'i' } },
-                  { email: { $regex: search, $options: 'i' } },
-                ],
-              }
-            : {},
+          $unwind: '$role',
+        },
+        {
+          $match: {
+            'role.name': UserRole.User,
+          },
         },
         {
           $facet: {
-            users: [{ $skip: skip }, { $limit: limit }],
-            pagination: [{ $count: 'total' }],
+            totalUsers: [
+              {
+                $count: 'count',
+              },
+            ],
+            currentMonthCount: [
+              {
+                $match: {
+                  createdAt: {
+                    $gte: currentMonthStart,
+                    $lte: currentMonthEnd,
+                  },
+                },
+              },
+              {
+                $count: 'count',
+              },
+            ],
+            previousMonthCount: [
+              {
+                $match: {
+                  createdAt: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd,
+                  },
+                },
+              },
+              {
+                $count: 'count',
+              },
+            ],
           },
         },
       ]);
-      const totalUsers = usersAgg[0]?.pagination[0]?.total || 0;
-      const filteredUsers = usersAgg[0]?.users || [];
+      const totalUsers = usersAgg[0]?.totalUsers[0]?.count || 0;
+      const currentMonthUserCount =
+        usersAgg[0]?.currentMonthCount[0]?.count || 0;
+      const previousMonthUserCount =
+        usersAgg[0]?.previousMonthCount[0]?.count || 0;
+
+      let percentageDifferenceUserCount;
+      if (previousMonthUserCount === 0) {
+        percentageDifferenceUserCount = currentMonthUserCount === 0 ? 0 : 100;
+      } else {
+        percentageDifferenceUserCount =
+          ((currentMonthUserCount - previousMonthUserCount) /
+            previousMonthUserCount) *
+          100;
+      }
+
       const reelAgg = await Reel.aggregate([
-        { $match: matchQuery },
-        {
-          $project: {
-            _id: 0,
-            id: '$_id',
-            caption: 1,
-            viewCount: { $size: '$viewedBy' },
-            likeCount: { $size: '$likedBy' },
-          },
-        },
-        {
-          $match: search
-            ? {
-                caption: { $regex: search, $options: 'i' },
-              }
-            : {},
-        },
-        { $sort: { viewCount: -1 } },
         {
           $facet: {
-            topReels: [{ $skip: skip }, { $limit: limit }],
-            pagination: [{ $count: 'total' }],
-          },
-        },
-      ]);
-
-      const topReels = reelAgg[0]?.topReels || [];
-      const totalReels = reelAgg[0]?.pagination[0]?.total || 0;
-
-      const commentAgg = await Comment.aggregate([
-        { $match: matchQuery },
-        {
-          $project: {
-            _id: 0,
-            id: '$_id',
-            content: 1,
-            likeCount: { $size: '$likedBy' },
-            replyCount: { $size: '$replies' },
-          },
-        },
-        {
-          $match: search
-            ? {
-                content: { $regex: search, $options: 'i' },
-              }
-            : {},
-        },
-        { $sort: { likeCount: -1 } },
-        {
-          $facet: {
-            topComments: [{ $skip: skip }, { $limit: limit }],
-            pagination: [{ $count: 'total' }],
-          },
-        },
-      ]);
-
-      const topComments = commentAgg[0]?.topComments || [];
-      const totalComments = commentAgg[0]?.pagination[0]?.total || 0;
-
-      const reportsAgg = await Report.aggregate([
-        { $match: matchQuery },
-        {
-          $group: {
-            _id: {
-              reel: '$reel',
-              comment: {
-                $cond: [
-                  { $in: ['$reportType', ['comment', 'reply']] },
-                  '$comment',
-                  '$$REMOVE',
-                ],
+            totalReels: [
+              {
+                $count: 'count',
               },
-              reply: {
-                $cond: [
-                  { $eq: ['$reportType', 'reply'] },
-                  '$reply',
-                  '$$REMOVE',
-                ],
-              },
-              reportType: '$reportType',
-            },
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $lookup: {
-            from: 'reels',
-            localField: '_id.reel',
-            foreignField: '_id',
-            as: 'reel',
-          },
-        },
-        { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
-        {
-          $lookup: {
-            from: 'comments',
-            localField: '_id.comment',
-            foreignField: '_id',
-            as: 'comment',
-          },
-        },
-        { $unwind: { path: '$comment', preserveNullAndEmptyArrays: true } },
-        {
-          $addFields: {
-            replyObject: {
-              $first: {
-                $filter: {
-                  input: '$comment.replies',
-                  as: 'rep',
-                  cond: { $eq: ['$$rep._id', '$_id.reply'] },
+            ],
+            topUsers: [
+              {
+                $match: {
+                  status: 'active',
                 },
               },
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            count: 1,
-            reel: {
-              caption: '$reel.caption',
-              media: {
-                $cond: [
-                  { $eq: ['$reel.mediaType', 'image'] },
-                  {
-                    $map: {
-                      input: '$reel.media',
-                      as: 'img',
-                      in: {
-                        $concat: [config.host, '/reel/', '$$img'],
+              {
+                $group: {
+                  _id: '$createdBy',
+                  totalReels: { $sum: 1 },
+                  totalViews: { $sum: { $size: '$viewedBy' } },
+                  totalLikes: { $sum: { $size: '$likedBy' } },
+                },
+              },
+
+              {
+                $sort: {
+                  totalViews: -1,
+                  totalReels: -1,
+                  totalLikes: -1,
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: '_id',
+                  foreignField: '_id',
+                  as: 'user',
+                },
+              },
+              {
+                $unwind: '$user',
+              },
+              {
+                $project: {
+                  _id: 0,
+                  id: '$user._id',
+                  name: '$user.name',
+                  totalReels: '$totalReels',
+                  totalViews: '$totalViews',
+                  totalLikes: '$totalLikes',
+                  profile: {
+                    $cond: {
+                      if: { $not: ['$user.profile'] },
+                      then: '$$REMOVE',
+                      else: {
+                        $concat: [config.host + '/profile/', '$user.profile'],
                       },
                     },
                   },
-                  {
-                    $concat: [
-                      config.host,
-                      '/api/reel/view/',
-                      { $toString: '$reel._id' },
+                },
+              },
+              {
+                $limit: 10,
+              },
+            ],
+            topReels: [
+              {
+                $match: {
+                  status: STATUS_TYPE.active,
+                },
+              },
+              {
+                $addFields: {
+                  totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
+                  totalViews: { $size: { $ifNull: ['$viewedBy', []] } },
+                },
+              },
+              {
+                $sort: {
+                  totalViews: -1,
+                  totalLikes: -1,
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'createdBy',
+                  foreignField: '_id',
+                  as: 'createdBy',
+                },
+              },
+              {
+                $unwind: '$createdBy',
+              },
+              {
+                $project: {
+                  _id: 0,
+                  id: '$_id',
+                  caption: 1,
+                  totalLikes: 1,
+                  totalViews: 1,
+                  createdBy: {
+                    id: '$createdBy._id',
+                    name: '$createdBy.name',
+                    profile: {
+                      $cond: {
+                        if: { $not: ['$createdBy.profile'] },
+                        then: '$$REMOVE',
+                        else: {
+                          $concat: [
+                            config.host + '/profile/',
+                            '$createdBy.profile',
+                          ],
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                $limit: 10,
+              },
+            ],
+            currentMonthCount: [
+              {
+                $match: {
+                  createdAt: {
+                    $gte: currentMonthStart,
+                    $lte: currentMonthEnd,
+                  },
+                },
+              },
+              {
+                $count: 'count',
+              },
+            ],
+            previousMonthCount: [
+              {
+                $match: {
+                  createdAt: {
+                    $gte: previousMonthStart,
+                    $lte: previousMonthEnd,
+                  },
+                },
+              },
+              {
+                $count: 'count',
+              },
+            ],
+          },
+        },
+      ]);
+      const totalReels = reelAgg[0]?.totalReels[0]?.count || 0;
+      const topUsers = reelAgg[0]?.topUsers || [];
+      const topReels = reelAgg[0]?.topReels || [];
+      const currentMonthReelCount =
+        reelAgg[0]?.currentMonthCount[0]?.count || 0;
+      const previousMonthReelCount =
+        reelAgg[0]?.previousMonthCount[0]?.count || 0;
+      let percentageDifferenceReelCount;
+      if (previousMonthReelCount === 0) {
+        percentageDifferenceReelCount = currentMonthReelCount === 0 ? 0 : 100;
+      } else {
+        percentageDifferenceReelCount =
+          ((currentMonthReelCount - previousMonthReelCount) /
+            previousMonthReelCount) *
+          100;
+      }
+
+      const reportsAgg = await Report.aggregate([
+        {
+          $facet: {
+            pagination: [{ $count: 'total' }],
+            recentReports: [
+              {
+                $match: {
+                  result: REPORT_STATUS.pending,
+                  status: STATUS_TYPE.active,
+                },
+              },
+              {
+                $lookup: {
+                  from: 'reels',
+                  localField: 'reel',
+                  foreignField: '_id',
+                  as: 'reel',
+                },
+              },
+              { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
+              {
+                $lookup: {
+                  from: 'comments',
+                  localField: 'comment',
+                  foreignField: '_id',
+                  as: 'comment',
+                },
+              },
+              {
+                $unwind: { path: '$comment', preserveNullAndEmptyArrays: true },
+              },
+              {
+                $addFields: {
+                  replyObject: {
+                    $first: {
+                      $filter: {
+                        input: '$comment.replies',
+                        as: 'rep',
+                        cond: { $eq: ['$$rep._id', '$reply'] },
+                      },
+                    },
+                  },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  reportType: 1,
+                  id: '$_id',
+                  reel: {
+                    $cond: [
+                      { $not: ['$reel._id'] },
+                      '$$REMOVE',
+                      {
+                        id: '$reel._id',
+                        caption: '$reel.caption',
+                        media: {
+                          $cond: [
+                            { $eq: ['$reel.mediaType', 'image'] },
+                            {
+                              $cond: [
+                                { $isArray: '$reel.media' },
+                                {
+                                  $map: {
+                                    input: '$reel.media',
+                                    as: 'img',
+                                    in: {
+                                      $concat: [config.host, '/reel/', '$$img'],
+                                    },
+                                  },
+                                },
+                                {
+                                  $cond: [
+                                    { $ne: ['$reel.media', null] },
+                                    [
+                                      {
+                                        $concat: [
+                                          config.host,
+                                          '/reel/',
+                                          '$reel.media',
+                                        ],
+                                      },
+                                    ],
+                                    '$$REMOVE',
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              $cond: [
+                                { $eq: ['$reel.mediaType', 'video'] },
+                                {
+                                  $concat: [
+                                    config.host,
+                                    '/api/reel/view/',
+                                    { $toString: '$reel._id' },
+                                  ],
+                                },
+                                '$$REMOVE',
+                              ],
+                            },
+                          ],
+                        },
+                        mediaType: '$reel.mediaType',
+                        thumbnail: {
+                          $cond: [
+                            { $ifNull: ['$reel.thumbnail', false] },
+                            {
+                              $concat: [
+                                config.host,
+                                '/thumbnail/',
+                                '$reel.thumbnail',
+                              ],
+                            },
+                            '$$REMOVE',
+                          ],
+                        },
+                      },
                     ],
                   },
-                ],
-              },
-              mediaType: '$reel.mediaType',
-              thumbnail: {
-                $cond: [
-                  { $ifNull: ['$reel.thumbnail', false] },
-                  {
-                    $concat: [config.host, '/thumbnail/', '$reel.thumbnail'],
+                  comment: {
+                    $cond: [
+                      { $eq: ['$reportType', 'reply'] },
+                      {
+                        id: '$replyObject._id',
+                        content: '$replyObject.content',
+                        commentId: '$comment._id',
+                        commentContent: '$comment.content',
+                      },
+                      {
+                        $cond: [
+                          { $eq: ['$reportType', 'comment'] },
+                          {
+                            id: '$comment._id',
+                            content: '$comment.content',
+                          },
+                          '$$REMOVE',
+                        ],
+                      },
+                    ],
                   },
-                  '$$REMOVE',
-                ],
+                },
               },
-            },
-            reportType: {
-              $cond: {
-                if: { $eq: ['$_id.reportType', 'reel'] },
-                then: 'reel',
-                else: 'comment',
-              },
-            },
-            id: {
-              $cond: [
-                { $eq: ['$_id.reportType', 'reel'] },
-                '$_id.reel',
-                {
-                  $cond: [
-                    { $in: ['$_id.reportType', ['comment', 'reply']] },
-                    '$_id.comment',
-                    null,
-                  ],
-                },
-              ],
-            },
-            comment: {
-              $cond: [
-                { $eq: ['$_id.reportType', 'reply'] },
-                {
-                  content: '$replyObject.content',
-                  commentId: '$comment._id',
-                  commentContent: '$comment.content',
-                },
-                {
-                  $cond: [
-                    { $eq: ['$_id.reportType', 'comment'] },
-                    {
-                      content: '$comment.content',
-                    },
-                    '$$REMOVE',
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        {
-          $match: search
-            ? {
-                $or: [
-                  { 'reel.caption': { $regex: search, $options: 'i' } },
-                  { 'comment.content': { $regex: search, $options: 'i' } },
-                  {
-                    'comment.commentContent': { $regex: search, $options: 'i' },
-                  },
-                ],
-              }
-            : {},
-        },
-        { $sort: { count: -1 } },
-        {
-          $facet: {
-            mostReportedItems: [{ $skip: skip }, { $limit: limit }],
-            pagination: [{ $count: 'total' }],
+              { $sort: { createdAt: -1 } },
+              { $limit: 10 },
+            ],
           },
         },
       ]);
 
-      const mostReportedItems = reportsAgg[0]?.mostReportedItems || [];
       const totalReports = reportsAgg[0]?.pagination[0]?.total || 0;
-
-      const categoryAgg = await Reel.aggregate([
-        { $match: matchQuery },
-        { $unwind: '$categories' },
-        { $group: { _id: '$categories', count: { $sum: 1 } } },
-        {
-          $lookup: {
-            from: 'categories',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'category',
-          },
-        },
-        { $unwind: '$category' },
-        {
-          $project: {
-            _id: 0,
-            id: '$_id',
-            name: '$category.name',
-            count: 1,
-          },
-        },
-        { $match: search ? { name: { $regex: search, $options: 'i' } } : {} },
-        { $sort: { count: -1 } },
-        {
-          $facet: {
-            topCategories: [{ $skip: skip }, { $limit: limit }],
-            pagination: [{ $count: 'total' }],
-          },
-        },
-      ]);
-
-      const topCategories = categoryAgg[0]?.topCategories || [];
-      const totalCategories = categoryAgg[0]?.pagination[0]?.total || 0;
+      const recentReports = reportsAgg[0]?.recentReports || [];
 
       res.status(200).json({
         success: true,
         data: {
           users: {
             totalRecords: totalUsers,
-            totalPages: Math.ceil(totalUsers / limit),
-            filtered: filteredUsers,
+            topUsers: topUsers,
+            currentMonthCount: currentMonthUserCount,
+            previousMonthCount: previousMonthUserCount,
+            percentageDifferenceUserCount: percentageDifferenceUserCount,
           },
           reels: {
             totalRecords: totalReels,
-            totalPages: Math.ceil(totalReels / limit),
-            top: topReels,
-          },
-          comments: {
-            totalRecords: totalComments,
-            totalPages: Math.ceil(totalComments / limit),
-            top: topComments,
+            topReels: topReels,
+            currentMonthCount: currentMonthReelCount,
+            previousMonthCount: previousMonthReelCount,
+            percentageDifferenceReelCount: percentageDifferenceReelCount,
           },
           reports: {
             totalRecords: totalReports,
-            totalPages: Math.ceil(totalReports / limit),
-            mostReported: mostReportedItems,
-          },
-          categories: {
-            totalRecords: totalCategories,
-            totalPages: Math.ceil(totalCategories / limit),
-            topUsed: topCategories,
+            recentReports: recentReports,
           },
         },
       });
@@ -1427,3 +1524,62 @@ export const adminDashboardDetails = expressAsyncHandler(
     }
   }
 );
+
+// export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
+//   try {
+//     const { name, email, password } = req.body;
+//     if (!name.trim()) {
+//       throw new Error('name_required');
+//     }
+//     if (!email) {
+//       throw new Error('email_required');
+//     }
+//     if (!password) {
+//       throw new Error('password_required');
+//     }
+//     if (!emailRegex.test(email)) {
+//       throw new Error('email_invalid');
+//     }
+//     let newPassword = decryptData(password);
+//     newPassword = newPassword?.password?.split('-');
+//     if (newPassword?.length > 1) {
+//       newPassword = newPassword[1];
+//     }
+//     if (!passwordRegex.test(newPassword) || !newPassword) {
+//       throw new Error('password_invalid');
+//     }
+//     const emailExists = await User.findOne({
+//       $or: [
+//         { email: { $regex: `^${email}$`, $options: 'i' } },
+//         { name: email },
+//       ],
+//       $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+//     }).exec();
+//     if (emailExists) {
+//       res.status(409);
+//       throw new Error('email_exist');
+//     }
+//     const nameExists = await User.findOne({
+//       $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
+//       $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+//     }).exec();
+//     if (nameExists) {
+//       res.status(409);
+//       throw new Error('name_exist');
+//     }
+//     const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
+//     const user = await User.create({
+//       name,
+//       email,
+//       password: newPassword,
+//       role: role?._id,
+//       status: STATUS_TYPE.active,
+//     });
+//     res.status(201).json({
+//       success: true,
+//       message: 'Super admin created successfully',
+//     });
+//   } catch (error) {
+//     throw error;
+//   }
+// });

@@ -54,13 +54,6 @@ export const CATEGORIES = [
   CategoriesType.entertainment,
 ];
 
-export const DEFAULT_SUPER_ADMIN = {
-  email: 'superadmin@gmail.com',
-  password: 'Admin12@',
-  name: 'superadmin',
-  displayName: 'Moderator',
-};
-
 export const removeFile = async (
   filePath: string | undefined | null,
   folderName: string

@@ -51,8 +51,15 @@ i18next
       preload: ['en', 'hi', 'gu'],
       backend: {
         loadPath: __dirname + '/locales/{{lng}}/translation.json',
+        allowMultiLoading: false,
       },
+      detection: {
+        order: ['header', 'querystring'],
+        caches: false,
+      },
+      saveMissing: false,
       debug: false,
+      initImmediate: false,
     },
     (err, t) => {
       if (err) console.log(err);
@@ -81,7 +88,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 const httpServer = createServer(app);
-const SOCKET_PORT: any = config.socketPort || 5001;
+const SOCKET_PORT: number = Number(config.socketPort) || 5001;
 httpServer.listen(SOCKET_PORT, () =>
   console.log(`Socket server is running on port ${SOCKET_PORT}.`)
 );

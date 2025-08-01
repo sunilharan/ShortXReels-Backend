@@ -39,7 +39,7 @@ export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
       data: decryptData(data),
       message: '',
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -51,7 +51,7 @@ export const getRoles = expressAsyncHandler(async (req: any, res) => {
       success: true,
       data: roles,
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });

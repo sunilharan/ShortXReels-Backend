@@ -15,7 +15,7 @@ export const getActiveCategories = expressAsyncHandler(
         success: true,
         data: categories,
       });
-    } catch (error: any) {
+    } catch (error) {
       throw error;
     }
   }
@@ -54,8 +54,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
-      .populate('createdBy', 'name profile')
-      .populate('updatedBy', 'name profile')
+      .populate(['createdBy','updatedBy'], 'name profile')
       .exec();
 
     const total = await Category.countDocuments(matchQuery).exec();
@@ -68,7 +67,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -109,7 +108,7 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
       });
       res.status(201).json({ success: true, data: category });
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -135,7 +134,7 @@ export const deleteCategory = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('category_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -178,11 +177,10 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
         new: true,
       }
     )
-      .populate('createdBy', 'name profile')
-      .populate('updatedBy', 'name profile');
+      .populate(['createdBy','updatedBy'], 'name profile');
     if (!category) throw new Error('category_not_found');
     res.status(200).json({ success: true, data: category });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -209,7 +207,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('status_changed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });

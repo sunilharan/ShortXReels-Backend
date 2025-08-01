@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
+import moment from 'moment';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
@@ -17,7 +18,6 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   const removeReels = JSON.parse(req.query.removeReelIds || '[]');
   const categoryId = req.query.categoryId || '';
   const addReels = JSON.parse(req.query.addReelIds || '[]');
-  const isAdmin = req.query.isAdmin;
   const role = req.role;
   const matchQuery: any = {
     status: STATUS_TYPE.active,
@@ -26,9 +26,6 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   if (role === UserRole.User) {
     matchQuery.createdBy = { $ne: new mongoose.Types.ObjectId(String(userId)) };
   } else if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
-    if (isAdmin === 'true' || isAdmin === 'false') {
-      matchQuery.isAdmin = isAdmin === 'true';
-    }
     if (categoryId && categoryId !== 'recommended') {
       matchQuery.categories = {
         $in: [new mongoose.Types.ObjectId(String(categoryId))],
@@ -69,16 +66,16 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
   } else if (categoryId === 'recommended') {
     reels = [
       ...reels,
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
   } else if (categoryId) {
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
     const primaryQuery = {
       ...matchQuery,
       categories: { $in: [new mongoose.Types.ObjectId(String(categoryId))] },
@@ -110,7 +107,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
     ];
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
+    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
   }
 
   const reelsMap = new Map<string, any>();
@@ -336,13 +333,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
                 name: '$creator.name',
                 profile: {
                   $cond: {
-                    if: {
-                      $or: [
-                        { $eq: ['$creator.profile', null] },
-                        { $eq: ['$creator.profile', ''] },
-                        { $not: ['$creator.profile'] },
-                      ],
-                    },
+                    if: { $not: ['$creator.profile'] },
                     then: '$$REMOVE',
                     else: {
                       $concat: [config.host + '/profile/', '$creator.profile'],
@@ -494,13 +485,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
             name: '$creator.name',
             profile: {
               $cond: {
-                if: {
-                  $or: [
-                    { $eq: ['$creator.profile', null] },
-                    { $eq: ['$creator.profile', ''] },
-                    { $not: ['$creator.profile'] },
-                  ],
-                },
+                if: { $not: ['$creator.profile'] },
                 then: '$$REMOVE',
                 else: {
                   $concat: [config.host + '/profile/', '$creator.profile'],
@@ -546,13 +531,13 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
       })
       .filter((bucket: any) => bucket.reels.length > 0);
 
-    res.json({ success: true, data: finalReels });
+    res.status(200).json({ success: true, data: finalReels });
   } catch (error) {
     throw error;
   }
 });
 
-async function getReelsByRole(req: any, res: any, role: string) {
+async function getReelsByRole(req: any, res: any, role?: string) {
   try {
     const userId = req.user.id;
     const savedReels = req?.user?.savedReels;
@@ -565,6 +550,8 @@ async function getReelsByRole(req: any, res: any, role: string) {
     const search = req.query.search;
     const category = req.query.category;
     const createdBy = req.query.createdBy;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
     let matchQuery: any = {};
     let sortQuery: any = {};
     if (
@@ -595,6 +582,20 @@ async function getReelsByRole(req: any, res: any, role: string) {
     if (createdBy) {
       matchQuery.createdBy = new mongoose.Types.ObjectId(createdBy);
     }
+    if (startDate && endDate) {
+      const newStartDate = moment(startDate).toDate();
+      const newEndDate = moment(endDate).toDate();
+      matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    } else if (startDate) {
+      const newStartDate = moment(startDate).startOf('day').toDate();
+      const newEndDate = moment(startDate).endOf('day').toDate();
+      matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    }
+    if (role === UserRole.User) {
+      matchQuery.isAdmin = false;
+    } else {
+      matchQuery.isAdmin = true;
+    }
     const reels = await fetchReels(
       userId,
       matchQuery,
@@ -602,16 +603,16 @@ async function getReelsByRole(req: any, res: any, role: string) {
         skip,
         limit,
         sortQuery,
-        role,
         onlyActive: false,
+        addCategories: true,
+        addStatus: true,
       },
       savedReels
     );
 
     const totalRecords = await countActiveReelsWithActiveUsers(
       matchQuery,
-      false,
-      role
+      false
     );
     res.status(200).json({
       success: true,
@@ -621,7 +622,7 @@ async function getReelsByRole(req: any, res: any, role: string) {
         totalPages: Math.ceil(totalRecords / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 }
@@ -631,7 +632,7 @@ export const userReels = expressAsyncHandler(async (req: any, res) => {
 });
 
 export const adminReels = expressAsyncHandler(async (req: any, res) => {
-  await getReelsByRole(req, res, UserRole.Admin);
+  await getReelsByRole(req, res);
 });
 
 export const createReel = expressAsyncHandler(async (req: any, res) => {
@@ -677,21 +678,35 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     if (thumbnail) {
       reelData.thumbnail = moveFile(thumbnail, 'thumbnails');
     }
+
     if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
       reelData.isAdmin = true;
     }
     reelData.updatedBy = userId;
 
     const reel = await Reel.create(reelData);
-    const populated = await Reel.findById(reel.id)
-      .populate('createdBy', 'name profile')
-      .populate('categories', 'name image')
-      .populate('likedBy', 'name profile')
-      .populate('viewedBy', 'name profile')
-      .exec();
 
-    res.status(201).json({ success: true, data: populated });
-  } catch (error: any) {
+    const populated = await reel.populate([
+      { path: 'createdBy', select: 'name profile' },
+      { path: 'categories', select: 'name image' },
+      { path: 'likedBy', select: 'name profile' },
+      { path: 'viewedBy', select: 'name profile' },
+    ]);
+
+    if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+      res.status(201).json({
+        success: true,
+        data: {
+          ...populated?.toJSON(),
+          totalViews: 0,
+          totalLikes: 0,
+          totalComments: 0,
+        },
+      });
+    } else if (role === UserRole.User) {
+      res.status(201).json({ success: true, data: populated });
+    }
+  } catch (error) {
     throw error;
   }
 });
@@ -744,7 +759,7 @@ export const deleteReel = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('reel_deleted'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -808,7 +823,7 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
       },
       message: t('like_unlike_success'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -925,7 +940,7 @@ export const viewReel = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('reel_viewed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -952,7 +967,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t('status_changed'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -989,7 +1004,7 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
       success: true,
       message: t(Boolean(isBlocked) ? 'data_blocked' : 'data_unblocked'),
     });
-  } catch (error: any) {
+  } catch (error) {
     throw error;
   }
 });
@@ -1002,6 +1017,8 @@ export const fetchReels = async (
     limit?: number;
     sortQuery?: any;
     onlyActive?: boolean;
+    addCategories?: boolean;
+    addStatus?: boolean;
     role?: string;
   } = {},
   savedReels: any = []
@@ -1011,15 +1028,11 @@ export const fetchReels = async (
     limit = 10,
     sortQuery = { createdAt: -1 },
     onlyActive = true,
+    addCategories = false,
+    addStatus = false,
     role,
   } = options;
 
-  const userStatusMatch = onlyActive
-    ? { 'createdBy.status': STATUS_TYPE.active }
-    : {};
-  const commentUserStatusMatch = onlyActive
-    ? { 'commentedByUser.status': STATUS_TYPE.active }
-    : {};
   const roleMatch = role ? { 'role.name': role } : {};
   const results = await Reel.aggregate([
     { $match: matchQuery },
@@ -1041,7 +1054,7 @@ export const fetchReels = async (
       },
     },
     { $unwind: '$role' },
-    { $match: userStatusMatch },
+    { $match: onlyActive ? { 'createdBy.status': STATUS_TYPE.active } : {} },
     { $match: roleMatch },
     {
       $lookup: {
@@ -1069,7 +1082,11 @@ export const fetchReels = async (
             },
           },
           { $unwind: '$commentedByUser' },
-          { $match: commentUserStatusMatch },
+          {
+            $match: onlyActive
+              ? { 'commentedByUser.status': STATUS_TYPE.active }
+              : {},
+          },
           { $count: 'count' },
         ],
         as: 'commentStats',
@@ -1119,6 +1136,14 @@ export const fetchReels = async (
       },
     },
     {
+      $lookup: {
+        from: 'categories',
+        localField: 'categories',
+        foreignField: '_id',
+        as: 'categories',
+      },
+    },
+    {
       $project: {
         _id: 0,
         id: '$_id',
@@ -1130,6 +1155,22 @@ export const fetchReels = async (
         totalViews: 1,
         totalLikes: 1,
         totalComments: 1,
+        status: addStatus ? '$status' : '$$REMOVE',
+        categories: addCategories
+          ? {
+              $map: {
+                input: '$categories',
+                as: 'category',
+                in: {
+                  id: '$$category._id',
+                  name: '$$category.name',
+                  image: {
+                    $concat: [config.host + '/category/', '$$category.image'],
+                  },
+                },
+              },
+            }
+          : '$$REMOVE',
         isLiked: {
           $in: [new mongoose.Types.ObjectId(String(userId)), '$likedBy'],
         },
@@ -1146,13 +1187,7 @@ export const fetchReels = async (
           name: '$createdBy.name',
           profile: {
             $cond: {
-              if: {
-                $or: [
-                  { $eq: ['$createdBy.profile', null] },
-                  { $eq: ['$createdBy.profile', ''] },
-                  { $not: ['$createdBy.profile'] },
-                ],
-              },
+              if: { $not: ['$createdBy.profile'] },
               then: '$$REMOVE',
               else: {
                 $concat: [config.host + '/profile/', '$createdBy.profile'],
@@ -1173,12 +1208,8 @@ export const fetchReels = async (
 
 export const countActiveReelsWithActiveUsers = async (
   query?: any,
-  onlyActive?: boolean,
-  role?: string
+  onlyActive?: boolean
 ) => {
-  const userStatusMatch =
-    onlyActive !== false ? { 'createdBy.status': STATUS_TYPE.active } : {};
-  const roleMatch = role ? { 'role.name': role } : {};
   const result = await Reel.aggregate([
     { $match: query },
     {
@@ -1190,17 +1221,7 @@ export const countActiveReelsWithActiveUsers = async (
       },
     },
     { $unwind: '$createdBy' },
-    {
-      $lookup: {
-        from: 'roles',
-        localField: 'createdBy.role',
-        foreignField: '_id',
-        as: 'role',
-      },
-    },
-    { $unwind: '$role' },
-    { $match: userStatusMatch },
-    { $match: roleMatch },
+    { $match: onlyActive ? { 'createdBy.status': STATUS_TYPE.active } : {} },
     { $count: 'total' },
   ]).exec();
 

@@ -49,6 +49,18 @@
         required: false
         schema:
           type: string
+      - in: query
+        name: startDate
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: endDate
+        required: false
+        schema:
+          type: string
+          format: date-time
     responses:
       200:
         description: 'Reels fetched successfully'
@@ -94,6 +106,20 @@
                           duration:
                             type: number
                             description: 'Duration in seconds (only for videos)'
+                          status:
+                            type: string
+                            enum: ['active', 'inactive', 'deleted', 'blocked']
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                image:
+                                  type: string
                           totalLikes:
                             type: number
                           totalComments:
