@@ -9,6 +9,7 @@ import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
 import moment from 'moment';
+import { yearMonthChartAggregation } from './common.controller';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
@@ -550,8 +551,8 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     const search = req.query.search;
     const category = req.query.category;
     const createdBy = req.query.createdBy;
-    const startDate = req.query.startDate;
-    const endDate = req.query.endDate;
+    const startDate = Date.parse(req.query.startDate);
+    const endDate = Date.parse(req.query.endDate);
     let matchQuery: any = {};
     let sortQuery: any = {};
     if (
@@ -1008,6 +1009,152 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
+export const topReelsAggregation = (): any[] => {
+  const reelAggregation = [
+    {
+      $match: {
+        status: STATUS_TYPE.active,
+      },
+    },
+    {
+      $addFields: {
+        totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
+        totalViews: { $size: { $ifNull: ['$viewedBy', []] } },
+      },
+    },
+    {
+      $sort: {
+        totalViews: -1,
+        totalLikes: -1,
+      },
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'createdBy',
+        foreignField: '_id',
+        as: 'createdBy',
+      },
+    },
+    {
+      $unwind: '$createdBy',
+    },
+    {
+      $project: {
+        _id: 0,
+        id: '$_id',
+        caption: 1,
+        totalLikes: 1,
+        totalViews: 1,
+        media: {
+          $cond: [
+            { $isArray: '$media' },
+            {
+              $map: {
+                input: '$media',
+                as: 'm',
+                in: { $concat: [config.host + '/reel/', '$$m'] },
+              },
+            },
+            {
+              $concat: [config.host + '/api/reel/view/', { $toString: '$_id' }],
+            },
+          ],
+        },
+        thumbnail: {
+          $concat: [config.host + '/thumbnail/', '$thumbnail'],
+        },
+        createdBy: {
+          id: '$createdBy._id',
+          name: '$createdBy.name',
+          profile: {
+            $cond: {
+              if: { $not: ['$createdBy.profile'] },
+              then: '$$REMOVE',
+              else: {
+                $concat: [config.host + '/profile/', '$createdBy.profile'],
+              },
+            },
+          },
+        },
+      },
+    },
+  ];
+  return reelAggregation;
+};
+
+export const topReels = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const dateQuery: any = {};
+    const { startDate, endDate } = req.query;
+    if (startDate && endDate) {
+      const newStartDate = moment(startDate).toDate();
+      const newEndDate = moment(endDate).toDate();
+      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    } else if (startDate) {
+      const newStartDate = moment(startDate).startOf('day').toDate();
+      const newEndDate = moment(startDate).endOf('day').toDate();
+      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    }
+    const reelsAgg = topReelsAggregation();
+    const reelsPipeline: any[] = [
+      {
+        $match: dateQuery,
+      },
+      {
+        $facet: {
+          topReels: [
+            ...reelsAgg,
+            {
+              $skip: skip,
+            },
+            {
+              $limit: limit,
+            },
+          ],
+          pagination: [
+            {
+              $count: 'total',
+            },
+          ],
+        },
+      },
+    ];
+    const reelsData = await Reel.aggregate(reelsPipeline);
+    const reels = reelsData[0]?.topReels || [];
+    const totalRecords = reelsData[0]?.pagination[0]?.total || 0;
+    const totalPages = Math.ceil(totalRecords / limit) || 0;
+    res.status(200).json({
+      success: true,
+      data: {
+        reels,
+        totalRecords,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
+});
+
+export const reelsYearMonthChart = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const year = req.query.year || new Date().getFullYear();
+      const data = await yearMonthChartAggregation(year, Reel);
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+);
 
 export const fetchReels = async (
   userId: string,

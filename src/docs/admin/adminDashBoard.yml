@@ -4,6 +4,11 @@
     summary: 'Get admin dashboard stats'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
     responses:
       200:
         description: 'Admin dashboard stats retrieved successfully'
@@ -14,7 +19,6 @@
               properties:
                 success:
                   type: boolean
-                  example: true
                 data:
                   type: object
                   properties:
@@ -23,7 +27,7 @@
                       properties:
                         totalRecords:
                           type: integer
-                        topUsers:
+                        top:
                           type: array
                           items:
                             type: object
@@ -46,14 +50,14 @@
                           type: integer
                         previousMonthCount:
                           type: integer
-                        percentageDifferenceUserCount:
+                        percentageDifference:
                           type: number
                     reels:
                       type: object
                       properties:
                         totalRecords:
                           type: integer
-                        topReels:
+                        top:
                           type: array
                           items:
                             type: object
@@ -66,6 +70,14 @@
                                 type: integer
                               totalViews:
                                 type: integer
+                              media:
+                                oneOf:
+                                  - type: string
+                                  - type: array
+                                    items:
+                                      type: string
+                              thumbnail:
+                                type: string
                               createdBy:
                                 type: object
                                 properties:
@@ -77,18 +89,32 @@
                                     type: string
                                     format: uri
                                     nullable: true
+                        chartData:
+                          type: object
+                          properties:
+                            monthlyCount:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  count:
+                                    type: integer
+                                  month:
+                                    type: integer
+                            totalRecords:
+                              type: integer
                         currentMonthCount:
                           type: integer
                         previousMonthCount:
                           type: integer
-                        percentageDifferenceReelCount:
+                        percentageDifference:
                           type: number
                     reports:
                       type: object
                       properties:
                         totalRecords:
                           type: integer
-                        recentReports:
+                        reelReports:
                           type: array
                           items:
                             type: object
@@ -112,6 +138,32 @@
                                         items:
                                           type: string
                                           format: uri
+                                  mediaType:
+                                    type: string
+                                  thumbnail:
+                                    type: string
+                                    format: uri
+                        commentReports:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              reportType:
+                                type: string
+                              id:
+                                type: string
+                              reel:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  caption:
+                                    type: string
+                                  media:
+                                    type: array
+                                    items:
+                                      type: string
+                                      format: uri
                                   mediaType:
                                     type: string
                                   thumbnail:

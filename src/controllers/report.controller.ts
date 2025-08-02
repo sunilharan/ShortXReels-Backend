@@ -112,8 +112,8 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const reportType = req.query.reportType;
     const reportedBy = req.query.reportedBy;
     const reportedTo = req.query.userId;
-    const startDate = req.query.startDate;
-    const endDate = req.query.endDate;
+    const startDate = Date.parse(req.query.startDate);
+    const endDate = Date.parse(req.query.endDate);
 
     const matchQuery: any = {};
     if (startDate && endDate) {
@@ -620,8 +620,8 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search;
     const status = req.query.status;
-    const startDate = req.query.startDate;
-    const endDate = req.query.endDate;
+    const startDate = Date.parse(req.query.startDate);
+    const endDate = Date.parse(req.query.endDate);
     let sortBy = req.query.sortBy;
     let sortOrder = req.query.sortOrder;
     let sort: any = {};

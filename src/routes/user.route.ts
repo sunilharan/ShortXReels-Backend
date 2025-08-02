@@ -21,6 +21,7 @@ import {
   statusChange,
   blockUnblockUser,
   deleteUser,
+  topUsers,
   // createSuperAdmin,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
@@ -57,5 +58,7 @@ router.use(adminOnly);
 router.post('/status', statusChange);
 router.post('/blockUnblock', blockUnblockUser);
 router.delete('/:id', deleteUser);
+
+router.get('/topUsers', topUsers);
 
 export default router;

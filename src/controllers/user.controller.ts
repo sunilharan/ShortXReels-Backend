@@ -10,12 +10,7 @@ import {
   passwordRegex,
   removeFile,
 } from '../config/constants';
-import {
-  STATUS_TYPE,
-  SAVE_TYPE,
-  GENDER_TYPE,
-  REPORT_STATUS,
-} from '../config/enums';
+import { STATUS_TYPE, SAVE_TYPE, GENDER_TYPE } from '../config/enums';
 import { Otp } from '../models/otp.model';
 import crypto from 'crypto';
 import { sendMail } from '../utils/sendMail';
@@ -1093,438 +1088,121 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const adminDashboardDetails = expressAsyncHandler(
-  async (req: any, res) => {
-    try {
-      const currentMonthStart = moment().startOf('month').toDate();
-      const previousMonthStart = moment()
-        .subtract(1, 'month')
-        .startOf('month')
-        .toDate();
-      const currentMonthEnd = moment().endOf('month').toDate();
-      const previousMonthEnd = moment()
-        .subtract(1, 'month')
-        .endOf('month')
-        .toDate();
-      const usersAgg = await User.aggregate([
-        {
-          $lookup: {
-            from: 'roles',
-            localField: 'role',
-            foreignField: '_id',
-            as: 'role',
+export const topUsersAggregation = (): any[] => {
+  const userAggregation: any[] = [
+    {
+      $match: {
+        status: STATUS_TYPE.active,
+      },
+    },
+    {
+      $group: {
+        _id: '$createdBy',
+        totalReels: { $sum: 1 },
+        totalViews: { $sum: { $size: '$viewedBy' } },
+        totalLikes: { $sum: { $size: '$likedBy' } },
+      },
+    },
+    {
+      $sort: {
+        totalViews: -1,
+        totalReels: -1,
+        totalLikes: -1,
+      },
+    },
+    {
+      $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'user',
+      },
+    },
+    {
+      $unwind: '$user',
+    },
+    {
+      $project: {
+        _id: 0,
+        id: '$user._id',
+        name: '$user.name',
+        totalReels: '$totalReels',
+        totalViews: '$totalViews',
+        totalLikes: '$totalLikes',
+        profile: {
+          $cond: {
+            if: { $not: ['$user.profile'] },
+            then: '$$REMOVE',
+            else: {
+              $concat: [config.host + '/profile/', '$user.profile'],
+            },
           },
         },
-        {
-          $unwind: '$role',
-        },
-        {
-          $match: {
-            'role.name': UserRole.User,
-          },
-        },
-        {
-          $facet: {
-            totalUsers: [
-              {
-                $count: 'count',
-              },
-            ],
-            currentMonthCount: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: currentMonthStart,
-                    $lte: currentMonthEnd,
-                  },
-                },
-              },
-              {
-                $count: 'count',
-              },
-            ],
-            previousMonthCount: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd,
-                  },
-                },
-              },
-              {
-                $count: 'count',
-              },
-            ],
-          },
-        },
-      ]);
-      const totalUsers = usersAgg[0]?.totalUsers[0]?.count || 0;
-      const currentMonthUserCount =
-        usersAgg[0]?.currentMonthCount[0]?.count || 0;
-      const previousMonthUserCount =
-        usersAgg[0]?.previousMonthCount[0]?.count || 0;
+      },
+    },
+  ];
+  return userAggregation;
+};
 
-      let percentageDifferenceUserCount;
-      if (previousMonthUserCount === 0) {
-        percentageDifferenceUserCount = currentMonthUserCount === 0 ? 0 : 100;
-      } else {
-        percentageDifferenceUserCount =
-          ((currentMonthUserCount - previousMonthUserCount) /
-            previousMonthUserCount) *
-          100;
-      }
-
-      const reelAgg = await Reel.aggregate([
-        {
-          $facet: {
-            totalReels: [
-              {
-                $count: 'count',
-              },
-            ],
-            topUsers: [
-              {
-                $match: {
-                  status: 'active',
-                },
-              },
-              {
-                $group: {
-                  _id: '$createdBy',
-                  totalReels: { $sum: 1 },
-                  totalViews: { $sum: { $size: '$viewedBy' } },
-                  totalLikes: { $sum: { $size: '$likedBy' } },
-                },
-              },
-
-              {
-                $sort: {
-                  totalViews: -1,
-                  totalReels: -1,
-                  totalLikes: -1,
-                },
-              },
-              {
-                $lookup: {
-                  from: 'users',
-                  localField: '_id',
-                  foreignField: '_id',
-                  as: 'user',
-                },
-              },
-              {
-                $unwind: '$user',
-              },
-              {
-                $project: {
-                  _id: 0,
-                  id: '$user._id',
-                  name: '$user.name',
-                  totalReels: '$totalReels',
-                  totalViews: '$totalViews',
-                  totalLikes: '$totalLikes',
-                  profile: {
-                    $cond: {
-                      if: { $not: ['$user.profile'] },
-                      then: '$$REMOVE',
-                      else: {
-                        $concat: [config.host + '/profile/', '$user.profile'],
-                      },
-                    },
-                  },
-                },
-              },
-              {
-                $limit: 10,
-              },
-            ],
-            topReels: [
-              {
-                $match: {
-                  status: STATUS_TYPE.active,
-                },
-              },
-              {
-                $addFields: {
-                  totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
-                  totalViews: { $size: { $ifNull: ['$viewedBy', []] } },
-                },
-              },
-              {
-                $sort: {
-                  totalViews: -1,
-                  totalLikes: -1,
-                },
-              },
-              {
-                $lookup: {
-                  from: 'users',
-                  localField: 'createdBy',
-                  foreignField: '_id',
-                  as: 'createdBy',
-                },
-              },
-              {
-                $unwind: '$createdBy',
-              },
-              {
-                $project: {
-                  _id: 0,
-                  id: '$_id',
-                  caption: 1,
-                  totalLikes: 1,
-                  totalViews: 1,
-                  createdBy: {
-                    id: '$createdBy._id',
-                    name: '$createdBy.name',
-                    profile: {
-                      $cond: {
-                        if: { $not: ['$createdBy.profile'] },
-                        then: '$$REMOVE',
-                        else: {
-                          $concat: [
-                            config.host + '/profile/',
-                            '$createdBy.profile',
-                          ],
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              {
-                $limit: 10,
-              },
-            ],
-            currentMonthCount: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: currentMonthStart,
-                    $lte: currentMonthEnd,
-                  },
-                },
-              },
-              {
-                $count: 'count',
-              },
-            ],
-            previousMonthCount: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: previousMonthStart,
-                    $lte: previousMonthEnd,
-                  },
-                },
-              },
-              {
-                $count: 'count',
-              },
-            ],
-          },
-        },
-      ]);
-      const totalReels = reelAgg[0]?.totalReels[0]?.count || 0;
-      const topUsers = reelAgg[0]?.topUsers || [];
-      const topReels = reelAgg[0]?.topReels || [];
-      const currentMonthReelCount =
-        reelAgg[0]?.currentMonthCount[0]?.count || 0;
-      const previousMonthReelCount =
-        reelAgg[0]?.previousMonthCount[0]?.count || 0;
-      let percentageDifferenceReelCount;
-      if (previousMonthReelCount === 0) {
-        percentageDifferenceReelCount = currentMonthReelCount === 0 ? 0 : 100;
-      } else {
-        percentageDifferenceReelCount =
-          ((currentMonthReelCount - previousMonthReelCount) /
-            previousMonthReelCount) *
-          100;
-      }
-
-      const reportsAgg = await Report.aggregate([
-        {
-          $facet: {
-            pagination: [{ $count: 'total' }],
-            recentReports: [
-              {
-                $match: {
-                  result: REPORT_STATUS.pending,
-                  status: STATUS_TYPE.active,
-                },
-              },
-              {
-                $lookup: {
-                  from: 'reels',
-                  localField: 'reel',
-                  foreignField: '_id',
-                  as: 'reel',
-                },
-              },
-              { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
-              {
-                $lookup: {
-                  from: 'comments',
-                  localField: 'comment',
-                  foreignField: '_id',
-                  as: 'comment',
-                },
-              },
-              {
-                $unwind: { path: '$comment', preserveNullAndEmptyArrays: true },
-              },
-              {
-                $addFields: {
-                  replyObject: {
-                    $first: {
-                      $filter: {
-                        input: '$comment.replies',
-                        as: 'rep',
-                        cond: { $eq: ['$$rep._id', '$reply'] },
-                      },
-                    },
-                  },
-                },
-              },
-              {
-                $project: {
-                  _id: 0,
-                  reportType: 1,
-                  id: '$_id',
-                  reel: {
-                    $cond: [
-                      { $not: ['$reel._id'] },
-                      '$$REMOVE',
-                      {
-                        id: '$reel._id',
-                        caption: '$reel.caption',
-                        media: {
-                          $cond: [
-                            { $eq: ['$reel.mediaType', 'image'] },
-                            {
-                              $cond: [
-                                { $isArray: '$reel.media' },
-                                {
-                                  $map: {
-                                    input: '$reel.media',
-                                    as: 'img',
-                                    in: {
-                                      $concat: [config.host, '/reel/', '$$img'],
-                                    },
-                                  },
-                                },
-                                {
-                                  $cond: [
-                                    { $ne: ['$reel.media', null] },
-                                    [
-                                      {
-                                        $concat: [
-                                          config.host,
-                                          '/reel/',
-                                          '$reel.media',
-                                        ],
-                                      },
-                                    ],
-                                    '$$REMOVE',
-                                  ],
-                                },
-                              ],
-                            },
-                            {
-                              $cond: [
-                                { $eq: ['$reel.mediaType', 'video'] },
-                                {
-                                  $concat: [
-                                    config.host,
-                                    '/api/reel/view/',
-                                    { $toString: '$reel._id' },
-                                  ],
-                                },
-                                '$$REMOVE',
-                              ],
-                            },
-                          ],
-                        },
-                        mediaType: '$reel.mediaType',
-                        thumbnail: {
-                          $cond: [
-                            { $ifNull: ['$reel.thumbnail', false] },
-                            {
-                              $concat: [
-                                config.host,
-                                '/thumbnail/',
-                                '$reel.thumbnail',
-                              ],
-                            },
-                            '$$REMOVE',
-                          ],
-                        },
-                      },
-                    ],
-                  },
-                  comment: {
-                    $cond: [
-                      { $eq: ['$reportType', 'reply'] },
-                      {
-                        id: '$replyObject._id',
-                        content: '$replyObject.content',
-                        commentId: '$comment._id',
-                        commentContent: '$comment.content',
-                      },
-                      {
-                        $cond: [
-                          { $eq: ['$reportType', 'comment'] },
-                          {
-                            id: '$comment._id',
-                            content: '$comment.content',
-                          },
-                          '$$REMOVE',
-                        ],
-                      },
-                    ],
-                  },
-                },
-              },
-              { $sort: { createdAt: -1 } },
-              { $limit: 10 },
-            ],
-          },
-        },
-      ]);
-
-      const totalReports = reportsAgg[0]?.pagination[0]?.total || 0;
-      const recentReports = reportsAgg[0]?.recentReports || [];
-
-      res.status(200).json({
-        success: true,
-        data: {
-          users: {
-            totalRecords: totalUsers,
-            topUsers: topUsers,
-            currentMonthCount: currentMonthUserCount,
-            previousMonthCount: previousMonthUserCount,
-            percentageDifferenceUserCount: percentageDifferenceUserCount,
-          },
-          reels: {
-            totalRecords: totalReels,
-            topReels: topReels,
-            currentMonthCount: currentMonthReelCount,
-            previousMonthCount: previousMonthReelCount,
-            percentageDifferenceReelCount: percentageDifferenceReelCount,
-          },
-          reports: {
-            totalRecords: totalReports,
-            recentReports: recentReports,
-          },
-        },
-      });
-    } catch (error) {
-      throw error;
+export const topUsers = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const startDate = Date.parse(req.query.startDate);
+    const endDate = Date.parse(req.query.endDate);
+    const dateQuery: any = {};
+    if (startDate && endDate) {
+      const newStartDate = moment(startDate).toDate();
+      const newEndDate = moment(endDate).toDate();
+      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    } else if (startDate) {
+      const newStartDate = moment(startDate).startOf('day').toDate();
+      const newEndDate = moment(startDate).endOf('day').toDate();
+      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     }
-  }
-);
+    const aggregation = topUsersAggregation();
+    const pipeline: any[] = [
+      {
+        $match: dateQuery,
+      },
+      ...aggregation,
+      {
+        $facet: {
+          users: [
+            {
+              $skip: skip,
+            },
+            {
+              $limit: limit,
+            },
+          ],
+          pagination: [
+            {
+              $count: 'count',
+            },
+          ],
+        },
+      },
+    ];
 
+    const reelAgg = await Reel.aggregate(pipeline);
+    const users = reelAgg[0]?.users || [];
+    const totalRecords = reelAgg[0]?.pagination[0]?.count || 0;
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users,
+        totalRecords,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
+});
 // export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
 //   try {
 //     const { name, email, password } = req.body;

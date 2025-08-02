@@ -14,6 +14,8 @@ import {
   viewReel,
   statusChange,
   blockUnblockReel,
+  topReels,
+  reelsYearMonthChart,
 } from '../controllers/reel.controller';
 import { validateCreateReel } from '../middlewares/reel.middleware';
 
@@ -42,5 +44,7 @@ router.post('/blockUnblock', blockUnblockReel);
 router.post('/status', statusChange);
 router.get('/userReels', userReels);
 router.get('/adminReels', adminReels);
+router.get('/topReels', topReels);
+router.get('/reelsChart', reelsYearMonthChart);
 
 export default router;

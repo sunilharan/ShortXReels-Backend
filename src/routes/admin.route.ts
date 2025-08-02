@@ -10,7 +10,6 @@ import {
   adminDelete,
   adminGetAppUsers,
   adminGetAdminUsers,
-  adminDashboardDetails,
   adminRemoveProfilePicture,
 } from '../controllers/user.controller';
 import {
@@ -18,6 +17,7 @@ import {
   authenticate,
   superAdminOnly,
 } from '../middlewares/auth.middleware';
+import { adminDashboardDetails } from '../controllers/common.controller';
 import { uploadFiles } from '../middlewares/upload.middleware';
 
 const router = Router();
