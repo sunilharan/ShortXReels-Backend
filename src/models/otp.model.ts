@@ -1,7 +1,7 @@
 import { Schema, model, PopulatedDoc, Document, ObjectId } from 'mongoose';
 import { IUser } from './user.model';
-import moment from 'moment';
 import { config } from '../config/config';
+import { addSeconds } from 'date-fns';
 
 export interface IOtp extends Document {
   userId: PopulatedDoc<Document<ObjectId> & IUser>;
@@ -17,8 +17,8 @@ export const otpSchema = new Schema<IOtp>(
     otp: { type: String },
     expiresAt: {
       type: Date,
-      default: () => moment().add(parseInt(config.otpExpire), 'seconds').toDate()
-    },  
+      default: () => addSeconds(new Date(), parseInt(config.otpExpire)),
+    },
   },
   {
     timestamps: true,

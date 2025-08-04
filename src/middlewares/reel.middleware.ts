@@ -35,7 +35,7 @@ export const validateCreateReel = expressAsyncHandler(
 
       for (const id of categories) {
         const exists = await Category.exists({
-          _id: new mongoose.Types.ObjectId(id as string),
+          _id: new mongoose.Types.ObjectId(String(id)),
         });
         if (!exists) {
           res.status(404);

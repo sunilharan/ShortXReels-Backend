@@ -7,7 +7,7 @@ import { t } from 'i18next';
 import { Comment } from '../models/comment.model';
 import { config } from '../config/config';
 import { UserRole } from '../config/constants';
-import moment from 'moment';
+import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 import { User } from '../models/user.model';
 
 export const createReport = expressAsyncHandler(async (req: any, res) => {
@@ -112,20 +112,20 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const reportType = req.query.reportType;
     const reportedBy = req.query.reportedBy;
     const reportedTo = req.query.userId;
-    const startDate = Date.parse(req.query.startDate);
-    const endDate = Date.parse(req.query.endDate);
+    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
 
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = isValid(startDate) ? startDate : null;
+      const newEndDate = isValid(endDate) ? endDate : null;
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
       };
     } else if (startDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(startDate).endOf('day').toDate();
+      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
+      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
@@ -368,8 +368,10 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
           pagination: [{ $count: 'total' }],
         },
       },
-    ]);
-    const user = await User.findById(userId).select('name profile displayName');
+    ]).exec();
+    const user = await User.findById(userId)
+      .select('name profile displayName')
+      .exec();
     const total = reportsAggregate[0]?.pagination[0]?.total || 0;
     let data: any = {
       reports: reportsAggregate[0]?.reports || [],
@@ -509,7 +511,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       status: STATUS_TYPE.blocked,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     if (!report) throw new Error('report_not_found');
     res.status(200).json({
       success: true,
@@ -620,8 +622,8 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search;
     const status = req.query.status;
-    const startDate = Date.parse(req.query.startDate);
-    const endDate = Date.parse(req.query.endDate);
+    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
     let sortBy = req.query.sortBy;
     let sortOrder = req.query.sortOrder;
     let sort: any = {};
@@ -643,15 +645,15 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     }
     const matchQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = isValid(startDate) ? startDate : null;
+      const newEndDate = isValid(endDate) ? endDate : null;
       matchQuery.createdAt = {
         $gt: newStartDate,
         $lt: newEndDate,
       };
     } else if (startDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(startDate).endOf('day').toDate();
+      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
+      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
       matchQuery.createdAt = {
         $gte: newStartDate,
         $lte: newEndDate,
@@ -792,7 +794,7 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
           pagination: [{ $count: 'total' }],
         },
       },
-    ]);
+    ]).exec();
     const total = reportsData[0]?.pagination[0]?.total || 0;
     const data = reportsData[0]?.data || [];
     res.status(200).json({

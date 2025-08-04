@@ -9,7 +9,15 @@ import { Reel } from '../models/reel.model';
 import { Report } from '../models/report.model';
 import { UserRole } from '../config/constants';
 import { User } from '../models/user.model';
-import moment from 'moment';
+import {
+  startOfYear,
+  endOfYear,
+  format,
+  getYear,
+  subMonths,
+  endOfMonth,
+  startOfMonth,
+} from 'date-fns';
 import { topUsersAggregation } from './user.controller';
 import { topReelsAggregation } from './reel.controller';
 
@@ -54,7 +62,7 @@ export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
 
 export const getRoles = expressAsyncHandler(async (req: any, res) => {
   try {
-    const roles = await Role.find();
+    const roles = await Role.find().exec();
     res.status(200).send({
       success: true,
       data: roles,
@@ -89,128 +97,97 @@ export const checkHealth = expressAsyncHandler(async (req: any, res) => {
   });
 });
 
-export const yearMonthChartAggregation = async (year: number, model: any): Promise<any> => {
-  const startDate = moment(`${year}-01-01`).toDate();
-  const endDate = moment(`${year}-12-31`).toDate();
-  const aggregation = await model.aggregate([
-    {
-      $match: {
-        createdAt: {
-          $gte: startDate,
-          $lt: endDate,
-        },
-      },
-    },
+export const yearMonthChartAggregation = (year?: number): any[] => {
+  const findYear = year || getYear(new Date());
+
+  const startDate = startOfYear(new Date(findYear, 0));
+  const endDate = endOfYear(new Date(findYear, 0));
+
+  const monthOrder = Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(findYear, index, 1);
+    return {
+      monthNumber: index + 1,
+      month: format(date, 'MMMM'),
+    };
+  });
+
+  const aggregation = [
+    { $match: { createdAt: { $gte: startDate, $lt: endDate } } },
     {
       $group: {
-        _id: { month: { $month: '$createdAt' } },
+        _id: { $month: '$createdAt' },
         count: { $sum: 1 },
       },
     },
     {
       $project: {
         _id: 0,
-        month: '$_id.month',
+        monthNumber: '$_id',
         count: 1,
       },
     },
     {
-      $facet: {
-        data: [
-          {
-            $group: {
-              _id: null,
-              data: { $push: { month: '$month', count: '$count' } },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              months: {
-                $map: {
-                  input: Array.from({ length: 12 }, (_, i) => i + 1),
-                  as: 'm',
-                  in: {
-                    $let: {
-                      vars: {
-                        match: {
-                          $first: {
-                            $filter: {
-                              input: '$data',
-                              as: 'd',
-                              cond: { $eq: ['$$d.month', '$$m'] },
+      $group: {
+        _id: null,
+        data: { $push: '$$ROOT' },
+      },
+    },
+    {
+      $addFields: {
+        months: monthOrder,
+      },
+    },
+    {
+      $project: {
+        merged: {
+          $map: {
+            input: '$months',
+            as: 'm',
+            in: {
+              month: '$$m.month',
+              order: '$$m.monthNumber',
+              count: {
+                $let: {
+                  vars: {
+                    matched: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: '$data',
+                            as: 'd',
+                            cond: {
+                              $eq: ['$$d.monthNumber', '$$m.monthNumber'],
                             },
                           },
                         },
-                      },
-                      in: {
-                        month: '$$m',
-                        count: { $ifNull: ['$$match.count', 0] },
-                      },
+                        0,
+                      ],
                     },
                   },
+                  in: { $ifNull: ['$$matched.count', 0] },
                 },
               },
             },
           },
-          {
-            $unwind: '$months',
-          },
-          {
-            $replaceRoot: { newRoot: '$months' },
-          },
-        ],
+        },
       },
     },
-    {
-      $unwind: '$data',
-    },
-    {
-      $replaceRoot: { newRoot: '$data' },
-    },
-    {
-      $sort: { month: 1 },
-    },
-    {
-      $facet: {
-        monthsData: [],
-        pagination: [
-          {
-            $group: {
-              _id: null,
-              total: { $sum: '$count' },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              total: 1,
-            },
-          },
-        ],
-      },
-    },
-  ]);
-  return {
-    monthlyCount: aggregation[0]?.monthsData || [],
-    totalRecords: aggregation[0]?.pagination[0]?.total || 0,
-  };
+    { $unwind: '$merged' },
+    { $replaceRoot: { newRoot: '$merged' } },
+    { $sort: { order: 1 } },
+  ];
+
+  return aggregation;
 };
 
 export const adminDashboardDetails = expressAsyncHandler(
   async (req: any, res) => {
     try {
       const limit = parseInt(req.query.limit) || 5;
-      const currentMonthStart = moment().startOf('month').toDate();
-      const previousMonthStart = moment()
-        .subtract(1, 'month')
-        .startOf('month')
-        .toDate();
-      const currentMonthEnd = moment().endOf('month').toDate();
-      const previousMonthEnd = moment()
-        .subtract(1, 'month')
-        .endOf('month')
-        .toDate();
+      const currentMonthStart = startOfMonth(new Date());
+      const previousMonthStart = startOfMonth(subMonths(new Date(), 1));
+      const currentMonthEnd = endOfMonth(new Date());
+      const previousMonthEnd = endOfMonth(subMonths(new Date(), 1));
       const topUsersDataAggregation = topUsersAggregation();
       const usersAgg = await User.aggregate([
         {
@@ -264,7 +241,7 @@ export const adminDashboardDetails = expressAsyncHandler(
             ],
           },
         },
-      ]);
+      ]).exec();
       const totalUsers = usersAgg[0]?.totalUsers[0]?.count || 0;
       const currentMonthUserCount =
         usersAgg[0]?.currentMonthCount[0]?.count || 0;
@@ -281,7 +258,7 @@ export const adminDashboardDetails = expressAsyncHandler(
           100;
       }
       const topReelsDataAggregation = topReelsAggregation();
-      const currentYear = moment().year();
+      const reelChartAggregation = yearMonthChartAggregation();
       const reelAgg = await Reel.aggregate([
         {
           $facet: {
@@ -302,6 +279,24 @@ export const adminDashboardDetails = expressAsyncHandler(
                 $limit: limit,
               },
             ],
+            firstReel: [
+              {
+                $sort: {
+                  createdAt: 1,
+                },
+              },
+              {
+                $limit: 1,
+              },
+              {
+                $project: {
+                  year: {
+                    $year: '$createdAt',
+                  },
+                },
+              },
+            ],
+            chartData: reelChartAggregation,
             currentMonthCount: [
               {
                 $match: {
@@ -330,11 +325,12 @@ export const adminDashboardDetails = expressAsyncHandler(
             ],
           },
         },
-      ]);
+      ]).exec();
       const totalReels = reelAgg[0]?.totalReels[0]?.count || 0;
       const topUsersData = reelAgg[0]?.topUsers;
       const topReelsData = reelAgg[0]?.topReels;
-      const reelChartData = await yearMonthChartAggregation(currentYear, Reel);
+      const reelChartData = reelAgg[0]?.chartData;
+      const firstReelYear = reelAgg[0]?.firstReel[0].year || 0;
       const currentMonthReelCount =
         reelAgg[0]?.currentMonthCount[0]?.count || 0;
       const previousMonthReelCount =
@@ -371,10 +367,56 @@ export const adminDashboardDetails = expressAsyncHandler(
               },
               { $unwind: { path: '$reel', preserveNullAndEmptyArrays: true } },
               {
+                $lookup: {
+                  from: 'users',
+                  localField: 'reportedBy',
+                  foreignField: '_id',
+                  as: 'reportedBy',
+                },
+              },
+              {
+                $unwind: {
+                  path: '$reportedBy',
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'reel.createdBy',
+                  foreignField: '_id',
+                  as: 'reel.createdBy',
+                },
+              },
+              {
+                $unwind: {
+                  path: '$reel.createdBy',
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              { $sort: { createdAt: -1 } },
+              {
                 $project: {
                   _id: 0,
                   reportType: 1,
                   id: '$_id',
+                  reason: 1,
+                  reportedBy: {
+                    id: '$reportedBy._id',
+                    name: '$reportedBy.name',
+                    profile: {
+                      $cond: {
+                        if: { $not: ['$reportedBy.profile'] },
+                        then: '$$REMOVE',
+                        else: {
+                          $concat: [
+                            config.host + '/profile/',
+                            '$reportedBy.profile',
+                          ],
+                        },
+                      },
+                    },
+                  },
                   reel: {
                     $cond: [
                       { $not: ['$reel._id'] },
@@ -382,6 +424,24 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
+                        totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
+                        createdBy: {
+                          id: '$reel.createdBy._id',
+                          name: '$reel.createdBy.name',
+                          profile: {
+                            $cond: {
+                              if: { $not: ['$reel.createdBy.profile'] },
+                              then: '$$REMOVE',
+                              else: {
+                                $concat: [
+                                  config.host + '/profile/',
+                                  '$reel.createdBy.profile',
+                                ],
+                              },
+                            },
+                          },
+                        },
                         media: {
                           $cond: [
                             { $eq: ['$reel.mediaType', 'image'] },
@@ -448,7 +508,6 @@ export const adminDashboardDetails = expressAsyncHandler(
                   },
                 },
               },
-              { $sort: { createdAt: -1 } },
               { $limit: limit },
             ],
             commentReports: [
@@ -480,6 +539,34 @@ export const adminDashboardDetails = expressAsyncHandler(
                 $unwind: { path: '$comment', preserveNullAndEmptyArrays: true },
               },
               {
+                $lookup: {
+                  from: 'users',
+                  localField: 'reportedBy',
+                  foreignField: '_id',
+                  as: 'reportedBy',
+                },
+              },
+              {
+                $unwind: {
+                  path: '$reportedBy',
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'reel.createdBy',
+                  foreignField: '_id',
+                  as: 'reel.createdBy',
+                },
+              },
+              {
+                $unwind: {
+                  path: '$reel.createdBy',
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
                 $addFields: {
                   replyObject: {
                     $first: {
@@ -492,11 +579,29 @@ export const adminDashboardDetails = expressAsyncHandler(
                   },
                 },
               },
+              { $sort: { createdAt: -1 } },
               {
                 $project: {
                   _id: 0,
                   reportType: 1,
                   id: '$_id',
+                  reason: 1,
+                  reportedBy: {
+                    id: '$reportedBy._id',
+                    name: '$reportedBy.name',
+                    profile: {
+                      $cond: {
+                        if: { $not: ['$reportedBy.profile'] },
+                        then: '$$REMOVE',
+                        else: {
+                          $concat: [
+                            config.host + '/profile/',
+                            '$reportedBy.profile',
+                          ],
+                        },
+                      },
+                    },
+                  },
                   reel: {
                     $cond: [
                       { $not: ['$reel._id'] },
@@ -504,6 +609,24 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
+                        totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
+                        createdBy: {
+                          id: '$reel.createdBy._id',
+                          name: '$reel.createdBy.name',
+                          profile: {
+                            $cond: {
+                              if: { $not: ['$reel.createdBy.profile'] },
+                              then: '$$REMOVE',
+                              else: {
+                                $concat: [
+                                  config.host + '/profile/',
+                                  '$reel.createdBy.profile',
+                                ],
+                              },
+                            },
+                          },
+                        },
                         media: {
                           $cond: [
                             { $eq: ['$reel.mediaType', 'image'] },
@@ -591,12 +714,11 @@ export const adminDashboardDetails = expressAsyncHandler(
                   },
                 },
               },
-              { $sort: { createdAt: -1 } },
               { $limit: limit },
             ],
           },
         },
-      ]);
+      ]).exec();
 
       const totalReports = reportsAgg[0]?.pagination[0]?.total || 0;
       const reelReports = reportsAgg[0]?.reelReports || [];
@@ -616,6 +738,7 @@ export const adminDashboardDetails = expressAsyncHandler(
             totalRecords: totalReels,
             top: topReelsData,
             chartData: reelChartData,
+            firstReelYear: firstReelYear,
             currentMonthCount: currentMonthReelCount,
             previousMonthCount: previousMonthReelCount,
             percentageDifference: percentageDifferenceReelCount,

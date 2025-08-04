@@ -208,7 +208,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
             updatedAt: new Date().toISOString(),
           },
         }
-      );
+      ).exec();
     } else {
       comment = await Comment.findOneAndUpdate(
         {
@@ -223,7 +223,7 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
             'replies.$.updatedAt': new Date().toISOString(),
           },
         }
-      );
+      ).exec();
     }
     if (!comment) {
       res.status(404);
@@ -395,7 +395,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     if (commentId) {
-      const comment = await Comment.findById(commentId);
+      const comment = await Comment.findById(commentId).exec();
       if (!comment) throw new Error('comment_not_found');
       const reply = await Comment.findOneAndUpdate(
         {
@@ -409,12 +409,12 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
             'replies.$.updatedAt': new Date().toISOString(),
           },
         }
-      );
+      ).exec();
       if (!reply) throw new Error('reply_not_found');
     } else {
-      const comment = await Comment.findById(id);
+      const comment = await Comment.findById(id).exec();
       if (!comment) throw new Error('comment_not_found');
-      await Comment.findByIdAndUpdate(id, { status });
+      await Comment.findByIdAndUpdate(id, { status }).exec();
     }
     res.status(200).json({
       success: true,
@@ -434,7 +434,7 @@ export const blockUnblockComment = expressAsyncHandler(
         throw new Error('invalid_request');
       }
       if (commentId) {
-        const comment = await Comment.findById(commentId);
+        const comment = await Comment.findById(commentId).exec();
         if (!comment) throw new Error('comment_not_found');
         if (Boolean(isBlocked) === true) {
           const reply = await Comment.findOneAndUpdate(
@@ -449,7 +449,7 @@ export const blockUnblockComment = expressAsyncHandler(
                 'replies.$.updatedAt': new Date().toISOString(),
               },
             }
-          );
+          ).exec();
           if (!reply) throw new Error('reply_not_found');
         } else if (Boolean(isBlocked) === false) {
           const reply = await Comment.findOneAndUpdate(
@@ -464,11 +464,11 @@ export const blockUnblockComment = expressAsyncHandler(
                 'replies.$.updatedAt': new Date().toISOString(),
               },
             }
-          );
+          ).exec();
           if (!reply) throw new Error('reply_not_found');
         }
       } else {
-        const comment = await Comment.findById(id);
+        const comment = await Comment.findById(id).exec();
         if (!comment) throw new Error('comment_not_found');
 
         if (Boolean(isBlocked) === true) {
@@ -479,7 +479,7 @@ export const blockUnblockComment = expressAsyncHandler(
             status: STATUS_TYPE.blocked,
             updatedBy: userId,
             updatedAt: new Date().toISOString(),
-          });
+          }).exec();
         } else if (Boolean(isBlocked) === false) {
           if (comment.status !== STATUS_TYPE.blocked) {
             throw new Error('data_not_blocked');
@@ -488,7 +488,7 @@ export const blockUnblockComment = expressAsyncHandler(
             status: STATUS_TYPE.active,
             updatedBy: userId,
             updatedAt: new Date().toISOString(),
-          });
+          }).exec();
         }
       }
       res.status(200).json({

@@ -17,12 +17,12 @@ export const connectDB = async () => {
 
 const createInitial = async () => {
   try {
-    const roleCount = await Role.estimatedDocumentCount();
+    const roleCount = await Role.estimatedDocumentCount().exec();
     if (roleCount === 0) {
       await Promise.all(ROLES.map((role) => Role.create({ name: role })));
     }
 
-    const categoryCount = await Category.estimatedDocumentCount();
+    const categoryCount = await Category.estimatedDocumentCount().exec();
     if (categoryCount === 0) {
       await Promise.all(
         CATEGORIES.map((category) =>

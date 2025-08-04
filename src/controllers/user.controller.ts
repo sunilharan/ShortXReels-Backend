@@ -21,7 +21,7 @@ import { countActiveReelsWithActiveUsers, fetchReels } from './reel.controller';
 import { rename } from 'fs';
 import { Comment } from '../models/comment.model';
 import { Report } from '../models/report.model';
-import moment from 'moment';
+import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -79,7 +79,9 @@ export const register = expressAsyncHandler(async (req: any, res) => {
       },
       config.jwtRefreshExpire
     );
-    await User.findByIdAndUpdate(user.id, { $push: { token: accessToken } });
+    await User.findByIdAndUpdate(user.id, {
+      $push: { token: accessToken },
+    }).exec();
     res.status(201).json({
       success: true,
       data: { ...user.toJSON(), accessToken, refreshToken },
@@ -99,7 +101,7 @@ export const nameExist = expressAsyncHandler(async (req: any, res) => {
     let user = await User.findOne({
       $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
       status: { $ne: STATUS_TYPE.deleted },
-    });
+    }).exec();
     res.status(200).send({
       success: true,
       data: !!user,
@@ -160,7 +162,7 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       $push: { token: accessToken },
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
@@ -233,7 +235,7 @@ export const adminLogin = expressAsyncHandler(async (req: any, res) => {
       $push: { token: accessToken },
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
@@ -286,7 +288,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
       $push: { token: accessToken },
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     res.status(200).json({
       success: true,
       data: {
@@ -474,7 +476,7 @@ export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
       $unset: { token: '' },
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     if (!user) {
       res.status(404);
       throw new Error('user_not_found');
@@ -990,7 +992,9 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
 
-    const user = await User.findById(id).populate<{ role: IRole }>('role');
+    const user = await User.findById(id)
+      .populate<{ role: IRole }>('role')
+      .exec();
     if (!user) throw new Error('user_not_found');
     if (role === UserRole.Admin && user.role.name !== UserRole.User) {
       throw new Error('forbidden');
@@ -999,7 +1003,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       status,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     res.status(200).json({
       success: true,
       message: t('status_changed'),
@@ -1016,7 +1020,9 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
     if (!id || typeof isBlocked !== 'boolean') {
       throw new Error('invalid_request');
     }
-    const user = await User.findById(id).populate<{ role: IRole }>('role');
+    const user = await User.findById(id)
+      .populate<{ role: IRole }>('role')
+      .exec();
     if (!user) throw new Error('user_not_found');
     if (user.role.name !== UserRole.User) {
       throw new Error('forbidden');
@@ -1030,7 +1036,7 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
         status: STATUS_TYPE.blocked,
         updatedBy: userId,
         updatedAt: new Date().toISOString(),
-      });
+      }).exec();
     } else if (Boolean(isBlocked) === false) {
       if (user.status !== STATUS_TYPE.blocked) {
         throw new Error('data_not_blocked');
@@ -1039,7 +1045,7 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
         status: STATUS_TYPE.active,
         updatedBy: userId,
         updatedAt: new Date().toISOString(),
-      });
+      }).exec();
     }
     res.status(200).json({
       success: true,
@@ -1149,16 +1155,16 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const startDate = Date.parse(req.query.startDate);
-    const endDate = Date.parse(req.query.endDate);
+    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
     const dateQuery: any = {};
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = isValid(startDate) ? startDate : null;
+      const newEndDate = isValid(endDate) ? endDate : null;
       dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     } else if (startDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(startDate).endOf('day').toDate();
+      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
+      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
       dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     }
     const aggregation = topUsersAggregation();
@@ -1186,7 +1192,7 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
       },
     ];
 
-    const reelAgg = await Reel.aggregate(pipeline);
+    const reelAgg = await Reel.aggregate(pipeline).exec();
     const users = reelAgg[0]?.users || [];
     const totalRecords = reelAgg[0]?.pagination[0]?.count || 0;
     const totalPages = Math.ceil(totalRecords / limit);

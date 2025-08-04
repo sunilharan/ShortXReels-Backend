@@ -70,6 +70,8 @@
                                 type: integer
                               totalViews:
                                 type: integer
+                              mediaType:
+                                type: string
                               media:
                                 oneOf:
                                   - type: string
@@ -89,20 +91,19 @@
                                     type: string
                                     format: uri
                                     nullable: true
+                        firstReelYear:
+                          type: integer
                         chartData:
-                          type: object
-                          properties:
-                            monthlyCount:
-                              type: array
-                              items:
-                                type: object
-                                properties:
-                                  count:
-                                    type: integer
-                                  month:
-                                    type: integer
-                            totalRecords:
-                              type: integer
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              count:
+                                type: integer
+                              month:
+                                type: string
+                              order:
+                                type: integer
                         currentMonthCount:
                           type: integer
                         previousMonthCount:
@@ -119,9 +120,11 @@
                           items:
                             type: object
                             properties:
+                              id:
+                                type: string
                               reportType:
                                 type: string
-                              id:
+                              reason:
                                 type: string
                               reel:
                                 type: object
@@ -143,6 +146,32 @@
                                   thumbnail:
                                     type: string
                                     format: uri
+                                  totalLikes:
+                                    type: integer
+                                  totalViews:
+                                    type: integer
+                                  createdBy:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: string
+                                      name:
+                                        type: string
+                                      profile:
+                                        type: string
+                                        format: uri
+                                        nullable: true
+                              reportedBy:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  profile:
+                                    type: string
+                                    format: uri
+                                    nullable: true
                         commentReports:
                           type: array
                           items:
@@ -169,6 +198,21 @@
                                   thumbnail:
                                     type: string
                                     format: uri
+                                  totalLikes:
+                                    type: integer
+                                  totalViews:
+                                    type: integer
+                                  createdBy:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: string
+                                      name:
+                                        type: string
+                                      profile:
+                                        type: string
+                                        format: uri
+                                        nullable: true
                               comment:
                                 type: object
                                 nullable: true

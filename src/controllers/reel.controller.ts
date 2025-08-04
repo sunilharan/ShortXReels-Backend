@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { createReadStream, existsSync, rename, statSync } from 'fs';
 import { User } from '../models/user.model';
 import { config } from '../config/config';
-import moment from 'moment';
+import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 import { yearMonthChartAggregation } from './common.controller';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
@@ -152,9 +152,11 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
     res.status(400);
     throw new Error('invalid_request');
   }
-  const user = await User.findById(id).select(
-    'id name email phone gender birth status profile displayName description'
-  );
+  const user = await User.findById(id)
+    .select(
+      'id name email phone gender birth status profile displayName description'
+    )
+    .exec();
   if (!user || user.status !== STATUS_TYPE.active) {
     res.status(404);
     throw new Error('user_not_found');
@@ -163,7 +165,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
     createdBy: new mongoose.Types.ObjectId(String(user.id)),
     status: STATUS_TYPE.active,
   };
-  const total = await Reel.countDocuments(matchQuery);
+  const total = await Reel.countDocuments(matchQuery).exec();
   const reels = await fetchReels(
     userId,
     matchQuery,
@@ -191,9 +193,11 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(String(req.user.id));
     const savedReels = req.user.savedReels || [];
-    const user = await User.findById(userId).select('interests').lean();
+    const user = await User.findById(userId).select('interests').lean().exec();
     const interestIds =
-      user?.interests.map((i: any) => new mongoose.Types.ObjectId(i.id)) || [];
+      user?.interests.map(
+        (i: any) => new mongoose.Types.ObjectId(String(i.id))
+      ) || [];
     const interestReels = await Reel.aggregate([
       {
         $match: {
@@ -358,7 +362,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
         },
       },
       { $sort: { 'category.name': 1 } },
-    ]);
+    ]).exec();
 
     const recommended = await Reel.aggregate([
       {
@@ -496,7 +500,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           },
         },
       },
-    ]);
+    ]).exec();
 
     if (recommended.length > 0) {
       interestReels.push({
@@ -551,8 +555,8 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     const search = req.query.search;
     const category = req.query.category;
     const createdBy = req.query.createdBy;
-    const startDate = Date.parse(req.query.startDate);
-    const endDate = Date.parse(req.query.endDate);
+    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
     let matchQuery: any = {};
     let sortQuery: any = {};
     if (
@@ -577,19 +581,19 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     }
     if (category) {
       matchQuery.categories = {
-        $in: [new mongoose.Types.ObjectId(category)],
+        $in: [new mongoose.Types.ObjectId(String(category))],
       };
     }
     if (createdBy) {
-      matchQuery.createdBy = new mongoose.Types.ObjectId(createdBy);
+      matchQuery.createdBy = new mongoose.Types.ObjectId(String(createdBy));
     }
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = isValid(startDate) ? startDate : null;
+      const newEndDate = isValid(endDate) ? endDate : null;
       matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     } else if (startDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(startDate).endOf('day').toDate();
+      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
+      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
       matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     }
     if (role === UserRole.User) {
@@ -648,10 +652,10 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const role = req.role;
     const categories = JSON.parse(rawCategories).map(
-      (id: string) => new mongoose.Types.ObjectId(id)
+      (id: string) => new mongoose.Types.ObjectId(String(id))
     );
     const reelData: any = {
-      createdBy: new mongoose.Types.ObjectId(userId),
+      createdBy: new mongoose.Types.ObjectId(String(userId)),
       caption,
       categories,
       mediaType,
@@ -957,13 +961,13 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     ) {
       throw new Error('invalid_request');
     }
-    const reel = await Reel.findById(id);
+    const reel = await Reel.findById(id).exec();
     if (!reel) throw new Error('reel_not_found');
     await Reel.findByIdAndUpdate(id, {
       status,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     res.status(200).json({
       success: true,
       message: t('status_changed'),
@@ -980,7 +984,7 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
     if (!id || typeof isBlocked !== 'boolean') {
       throw new Error('invalid_request');
     }
-    const reel = await Reel.findById(id);
+    const reel = await Reel.findById(id).exec();
     if (!reel) throw new Error('reel_not_found');
     if (Boolean(isBlocked) === true) {
       if (reel.status === STATUS_TYPE.blocked) {
@@ -990,7 +994,7 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
         status: STATUS_TYPE.blocked,
         updatedBy: userId,
         updatedAt: new Date().toISOString(),
-      });
+      }).exec();
     } else if (Boolean(isBlocked) === false) {
       if (reel.status !== STATUS_TYPE.blocked) {
         throw new Error('data_not_blocked');
@@ -999,7 +1003,7 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
         status: STATUS_TYPE.active,
         updatedBy: userId,
         updatedAt: new Date().toISOString(),
-      });
+      }).exec();
     }
     res.status(200).json({
       success: true,
@@ -1041,12 +1045,18 @@ export const topReelsAggregation = (): any[] => {
       $unwind: '$createdBy',
     },
     {
+      $match: {
+        'createdBy.status': STATUS_TYPE.active,
+      },
+    },
+    {
       $project: {
         _id: 0,
         id: '$_id',
         caption: 1,
         totalLikes: 1,
         totalViews: 1,
+        mediaType: 1,
         media: {
           $cond: [
             { $isArray: '$media' },
@@ -1090,14 +1100,15 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const dateQuery: any = {};
-    const { startDate, endDate } = req.query;
+    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
     if (startDate && endDate) {
-      const newStartDate = moment(startDate).toDate();
-      const newEndDate = moment(endDate).toDate();
+      const newStartDate = isValid(startDate) ? startDate : null;
+      const newEndDate = isValid(endDate) ? endDate : null;
       dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     } else if (startDate) {
-      const newStartDate = moment(startDate).startOf('day').toDate();
-      const newEndDate = moment(startDate).endOf('day').toDate();
+      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
+      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
       dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
     }
     const reelsAgg = topReelsAggregation();
@@ -1124,7 +1135,7 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
         },
       },
     ];
-    const reelsData = await Reel.aggregate(reelsPipeline);
+    const reelsData = await Reel.aggregate(reelsPipeline).exec();
     const reels = reelsData[0]?.topReels || [];
     const totalRecords = reelsData[0]?.pagination[0]?.total || 0;
     const totalPages = Math.ceil(totalRecords / limit) || 0;
@@ -1144,8 +1155,10 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
 export const reelsYearMonthChart = expressAsyncHandler(
   async (req: any, res) => {
     try {
-      const year = req.query.year || new Date().getFullYear();
-      const data = await yearMonthChartAggregation(year, Reel);
+      const year = req.query.year;
+      const aggregation = yearMonthChartAggregation(year);
+      const data = await Reel.aggregate(aggregation).exec();
+
       res.status(200).json({
         success: true,
         data,

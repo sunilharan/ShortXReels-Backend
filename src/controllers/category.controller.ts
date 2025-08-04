@@ -10,7 +10,9 @@ export const getActiveCategories = expressAsyncHandler(
     try {
       const categories = await Category.find({
         status: STATUS_TYPE.active,
-      }).sort({ createdAt: -1 });
+      })
+        .sort({ createdAt: -1 })
+        .exec();
       res.status(200).json({
         success: true,
         data: categories,
@@ -54,7 +56,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
-      .populate(['createdBy','updatedBy'], 'name profile')
+      .populate(['createdBy', 'updatedBy'], 'name profile')
       .exec();
 
     const total = await Category.countDocuments(matchQuery).exec();
@@ -89,7 +91,7 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
 
     const exists = await Category.findOne({
       name: { $regex: name, $options: 'i' },
-    });
+    }).exec();
     if (exists) {
       res.status(409);
       throw new Error('category_exists');
@@ -148,7 +150,7 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     if (name && name.trim()) {
       const existingCategory = await Category.findOne({
         name: { $regex: name.trim(), $options: 'i' },
-      });
+      }).exec();
       if (existingCategory && existingCategory.id.toString() !== id) {
         res.status(409);
         throw new Error('category_exists');
@@ -177,7 +179,8 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
         new: true,
       }
     )
-      .populate(['createdBy','updatedBy'], 'name profile');
+      .populate(['createdBy', 'updatedBy'], 'name profile')
+      .exec();
     if (!category) throw new Error('category_not_found');
     res.status(200).json({ success: true, data: category });
   } catch (error) {
@@ -196,13 +199,13 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     ) {
       throw new Error('invalid_request');
     }
-    const category = await Category.findById(id);
+    const category = await Category.findById(id).exec();
     if (!category) throw new Error('category_not_found');
     await Category.findByIdAndUpdate(id, {
       status,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
-    });
+    }).exec();
     res.status(200).json({
       success: true,
       message: t('status_changed'),

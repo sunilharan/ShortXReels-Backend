@@ -20,19 +20,16 @@
                 success:
                   type: boolean
                 data:
-                  type: object
-                  properties:
-                    monthlyCount:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          count:
-                            type: integer
-                          month:
-                            type: integer
-                    totalRecords:
-                      type: integer  
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                      month:
+                        type: string
+                      order:
+                        type: integer
       400:
         description: 'Bad Request'
       401:
