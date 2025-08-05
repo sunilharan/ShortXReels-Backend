@@ -33,15 +33,6 @@ export const validateCreateReel = expressAsyncHandler(
         throw new Error('categories_required');
       }
 
-      for (const id of categories) {
-        const exists = await Category.exists({
-          _id: new mongoose.Types.ObjectId(String(id)),
-        });
-        if (!exists) {
-          res.status(404);
-          throw new Error('category_not_found');
-        }
-      }
       if (
         mediaType === MEDIA_TYPE.video &&
         (!duration || duration <= 0 || duration > 60)

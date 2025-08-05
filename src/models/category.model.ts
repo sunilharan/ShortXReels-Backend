@@ -28,7 +28,7 @@ export const categorySchema = new Schema(
       enum: Object.values(STATUS_TYPE),
       default: STATUS_TYPE.active,
     },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User',},
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   {

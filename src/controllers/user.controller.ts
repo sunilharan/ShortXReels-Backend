@@ -286,6 +286,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
     );
     await User.findByIdAndUpdate(user.id, {
       $push: { token: accessToken },
+      $pull: { token: decoded?.token },
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     }).exec();
@@ -431,10 +432,6 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
       .populate<{ role: IRole }>('role')
       .populate<{ interests: ICategory }>('interests', 'name image')
       .exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
-    }
     res.status(200).json({
       success: true,
       data: user,
@@ -446,18 +443,16 @@ export const currentUser = expressAsyncHandler(async (req: any, res) => {
 
 export const logout = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.user.id;
     const token = req.headers.authorization.split(' ')[1];
-    const user = await User.findByIdAndUpdate(userId, {
-      $pull: { token: token },
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    })
-      .populate<{ role: IRole }>('role')
-      .exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
+    const decoded: any = verifyToken(token);
+    if (decoded?.id) {
+      await User.findByIdAndUpdate(decoded?.id, {
+        $pull: { token: token },
+        updatedBy: decoded?.id,
+        updatedAt: new Date().toISOString(),
+      })
+        .populate<{ role: IRole }>('role')
+        .exec();
     }
     res.status(200).json({
       success: true,
@@ -471,32 +466,12 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
 export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const user = await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(userId, {
       status: STATUS_TYPE.deleted,
       $unset: { token: '' },
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
     }).exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
-    }
-    await Reel.updateMany(
-      { createdBy: userId },
-      { status: STATUS_TYPE.deleted }
-    ).exec();
-    await Comment.updateMany(
-      { commentedBy: userId },
-      { status: STATUS_TYPE.deleted }
-    ).exec();
-    await Comment.updateMany(
-      { 'replies._id': userId },
-      { $set: { 'replies.$.status': STATUS_TYPE.deleted } }
-    ).exec();
-    await Report.updateMany(
-      { reportedBy: userId },
-      { status: STATUS_TYPE.deleted }
-    ).exec();
     res.status(200).json({
       success: true,
       message: t('user_deleted'),
@@ -549,8 +524,6 @@ export const updateUser = expressAsyncHandler(async (req: any, res) => {
         { path: 'interests', select: 'name image' },
       ])
       .exec();
-
-    if (!user) throw new Error('user_not_found');
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -811,7 +784,7 @@ const getUsersByRole = async (req: any, res: any, roleName: string) => {
   const status = req.query.status;
   const search = req.query.search;
 
-  let matchQuery: any = {};
+  const matchQuery: any = {};
   const role = await Role.findOne({ name: roleName }).exec();
   if (!role) {
     res.status(400);
@@ -866,6 +839,7 @@ export const adminGetAdminUsers = expressAsyncHandler(async (req: any, res) => {
 export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
+    const savedReels = req.user.savedReels;
     const { reelId, action } = req.body;
     if (!reelId) {
       res.status(400);
@@ -876,16 +850,11 @@ export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    let user = await User.findById(userId).exec();
-    if (!user) {
-      res.status(404);
-      throw new Error('user_not_found');
-    }
-    const alreadySaved = user.savedReels.some(
+    const alreadySaved = savedReels.some(
       (id: any) => id.toString() === reelId
     );
     if (action === SAVE_TYPE.save && !alreadySaved) {
-      user = await User.findByIdAndUpdate(
+      await User.findByIdAndUpdate(
         userId,
         {
           $addToSet: {
@@ -897,7 +866,7 @@ export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
         { new: true }
       ).exec();
     } else if (action === SAVE_TYPE.unsave && alreadySaved) {
-      user = await User.findByIdAndUpdate(
+      await User.findByIdAndUpdate(
         userId,
         {
           $pull: { savedReels: new mongoose.Types.ObjectId(String(reelId)) },
@@ -951,9 +920,10 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
   async (req: any, res) => {
     try {
       const userId = req.params.id;
+      const removeUserId = req.params.id;
       const role = req.role;
 
-      const user = await User.findById(userId)
+      const user = await User.findById(removeUserId)
         .populate<{ role: IRole }>('role')
         .exec();
       if (!user) {
@@ -966,7 +936,7 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
       if (user.profile) {
         await removeFile(user.profile, 'files/profiles');
       }
-      await User.findByIdAndUpdate(userId, {
+      await User.findByIdAndUpdate(removeUserId, {
         $unset: { profile: '' },
         updatedBy: userId,
         updatedAt: new Date().toISOString(),
@@ -1155,22 +1125,26 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
-    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
-    const dateQuery: any = {};
-    if (startDate && endDate) {
-      const newStartDate = isValid(startDate) ? startDate : null;
-      const newEndDate = isValid(endDate) ? endDate : null;
-      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
-    } else if (startDate) {
-      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
-      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
-      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    const startDate = req.query.startDate
+      ? parseISO(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+    const matchQuery: any = {};
+    const isStartValid = startDate && isValid(startDate);
+    const isEndValid = endDate && isValid(endDate);
+
+    if (isStartValid && isEndValid) {
+      matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+    } else if (isStartValid) {
+      matchQuery.createdAt = {
+        $gte: startOfDay(startDate),
+        $lte: endOfDay(startDate),
+      };
     }
     const aggregation = topUsersAggregation();
     const pipeline: any[] = [
       {
-        $match: dateQuery,
+        $match: matchQuery,
       },
       ...aggregation,
       {
@@ -1209,61 +1183,61 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
-// export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
-//   try {
-//     const { name, email, password } = req.body;
-//     if (!name.trim()) {
-//       throw new Error('name_required');
-//     }
-//     if (!email) {
-//       throw new Error('email_required');
-//     }
-//     if (!password) {
-//       throw new Error('password_required');
-//     }
-//     if (!emailRegex.test(email)) {
-//       throw new Error('email_invalid');
-//     }
-//     let newPassword = decryptData(password);
-//     newPassword = newPassword?.password?.split('-');
-//     if (newPassword?.length > 1) {
-//       newPassword = newPassword[1];
-//     }
-//     if (!passwordRegex.test(newPassword) || !newPassword) {
-//       throw new Error('password_invalid');
-//     }
-//     const emailExists = await User.findOne({
-//       $or: [
-//         { email: { $regex: `^${email}$`, $options: 'i' } },
-//         { name: email },
-//       ],
-//       $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
-//     }).exec();
-//     if (emailExists) {
-//       res.status(409);
-//       throw new Error('email_exist');
-//     }
-//     const nameExists = await User.findOne({
-//       $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
-//       $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
-//     }).exec();
-//     if (nameExists) {
-//       res.status(409);
-//       throw new Error('name_exist');
-//     }
-//     const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
-//     const user = await User.create({
-//       name,
-//       email,
-//       password: newPassword,
-//       role: role?._id,
-//       status: STATUS_TYPE.active,
-//     });
-//     res.status(201).json({
-//       success: true,
-//       message: 'Super admin created successfully',
-//     });
-//   } catch (error) {
-//     throw error;
-//   }
-// });
+export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || (name && !name.trim()) || name.includes(' ')) {
+      throw new Error('name_required');
+    }
+    if (!email) {
+      throw new Error('email_required');
+    }
+    if (!password || (password && !password.trim())) {
+      throw new Error('password_required');
+    }
+    if (!emailRegex.test(email)) {
+      throw new Error('email_invalid');
+    }
+    let newPassword = decryptData(password);
+    newPassword = newPassword?.password?.split('-');
+    if (newPassword?.length > 1) {
+      newPassword = newPassword[1];
+    }
+    if (!passwordRegex.test(newPassword) || !newPassword) {
+      throw new Error('password_invalid');
+    }
+    const emailExists = await User.findOne({
+      $or: [
+        { email: { $regex: `^${email}$`, $options: 'i' } },
+        { name: email },
+      ],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+    }).exec();
+    if (emailExists) {
+      res.status(409);
+      throw new Error('email_exist');
+    }
+    const nameExists = await User.findOne({
+      $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
+      $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
+    }).exec();
+    if (nameExists) {
+      res.status(409);
+      throw new Error('name_exist');
+    }
+    const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
+    const user = await User.create({
+      name,
+      email,
+      password: newPassword,
+      role: role?._id,
+      status: STATUS_TYPE.active,
+    });
+    res.status(201).json({
+      success: true,
+      message: 'Super admin created successfully',
+    });
+  } catch (error) {
+    throw error;
+  }
+});

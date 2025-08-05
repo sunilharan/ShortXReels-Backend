@@ -1,5 +1,6 @@
 {
   "name_required": "નામ આવશ્યક છે.",
+  "name_invalid": "અમાન્ય નામ.",
   "email_required": "ઈમેલ આવશ્યક છે.",
   "password_required": "પાસવર્ડ આવશ્યક છે.",
   "phone_required": "ફોન નંબર આવશ્યક છે.",

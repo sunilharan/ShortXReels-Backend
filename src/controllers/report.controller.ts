@@ -112,26 +112,37 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const reportType = req.query.reportType;
     const reportedBy = req.query.reportedBy;
     const reportedTo = req.query.userId;
-    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
-    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
+    const sortBy = req.query.sortBy;
+    const sortOrder = req.query.sortOrder;
+    const startDate = req.query.startDate
+      ? parseISO(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
 
     const matchQuery: any = {};
-    if (startDate && endDate) {
-      const newStartDate = isValid(startDate) ? startDate : null;
-      const newEndDate = isValid(endDate) ? endDate : null;
+    const sortQuery: any = {};
+    const isStartValid = startDate && isValid(startDate);
+    const isEndValid = endDate && isValid(endDate);
+
+    if (isStartValid && isEndValid) {
+      matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+    } else if (isStartValid) {
       matchQuery.createdAt = {
-        $gt: newStartDate,
-        $lt: newEndDate,
-      };
-    } else if (startDate) {
-      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
-      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
-      matchQuery.createdAt = {
-        $gt: newStartDate,
-        $lt: newEndDate,
+        $gte: startOfDay(startDate),
+        $lte: endOfDay(startDate),
       };
     }
 
+    if (
+      sortOrder &&
+      sortBy &&
+      (sortOrder === 'asc' || sortOrder === 'desc') &&
+      ['createdAt', 'updatedAt', 'reviewedAt'].includes(sortBy)
+    ) {
+      sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    } else {
+      sortQuery.createdAt = -1;
+    }
     if (reportType) {
       if (reportType === REPORT_TYPE.reel) {
         matchQuery.reportType = REPORT_TYPE.reel;
@@ -358,9 +369,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
         $facet: {
           reports: [
             {
-              $sort: {
-                createdAt: -1,
-              },
+              $sort: sortQuery,
             },
             { $skip: skip },
             { $limit: limit },
@@ -369,17 +378,19 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
         },
       },
     ]).exec();
-    const user = await User.findById(userId)
-      .select('name profile displayName')
-      .exec();
     const total = reportsAggregate[0]?.pagination[0]?.total || 0;
     let data: any = {
       reports: reportsAggregate[0]?.reports || [],
       totalRecords: total,
       totalPages: Math.ceil(total / limit),
     };
-    if (reportedTo && user) {
-      data.user = user;
+    if (reportedTo) {
+      const user = await User.findById(reportedTo)
+        .select('name profile displayName')
+        .exec();
+      if (user) {
+        data.user = user;
+      }
     }
     res.status(200).json({
       success: true,
@@ -622,13 +633,15 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search;
     const status = req.query.status;
-    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
-    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
-    let sortBy = req.query.sortBy;
-    let sortOrder = req.query.sortOrder;
-    let sort: any = {};
+    const startDate = req.query.startDate
+      ? parseISO(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+    const sortBy = req.query.sortBy;
+    const sortOrder = req.query.sortOrder;
+    const sortQuery: any = {};
     if (sortBy && sortOrder) {
-      sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+      sortQuery[sortBy] = sortOrder === 'desc' ? -1 : 1;
       if (
         ![
           'totalReports',
@@ -638,25 +651,21 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
         ].includes(sortBy) ||
         !['asc', 'desc'].includes(sortOrder)
       ) {
-        sort = { totalReports: sortOrder === 'desc' ? -1 : 1 };
+        sortQuery.totalReports = sortOrder === 'desc' ? -1 : 1;
       }
     } else {
-      sort = { totalReports: -1 };
+      sortQuery.totalReports = -1;
     }
     const matchQuery: any = {};
-    if (startDate && endDate) {
-      const newStartDate = isValid(startDate) ? startDate : null;
-      const newEndDate = isValid(endDate) ? endDate : null;
+    const isStartValid = startDate && isValid(startDate);
+    const isEndValid = endDate && isValid(endDate);
+
+    if (isStartValid && isEndValid) {
+      matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+    } else if (isStartValid) {
       matchQuery.createdAt = {
-        $gt: newStartDate,
-        $lt: newEndDate,
-      };
-    } else if (startDate) {
-      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
-      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
-      matchQuery.createdAt = {
-        $gte: newStartDate,
-        $lte: newEndDate,
+        $gte: startOfDay(startDate),
+        $lte: endOfDay(startDate),
       };
     }
     const reportAggregations = getReportsAggregate();
@@ -787,7 +796,7 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
       {
         $facet: {
           data: [
-            { $sort: sort ? sort : { totalReports: -1 } },
+            { $sort: sortQuery ? sortQuery : { totalReports: -1 } },
             { $skip: skip },
             { $limit: limit },
           ],

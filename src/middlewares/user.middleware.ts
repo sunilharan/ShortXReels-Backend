@@ -7,8 +7,11 @@ import { decryptData } from '../utils/encrypt';
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   const { name, email, password, phone, gender, displayName } = req.body;
   res.status(400);
-  if (!name.trim()) {
+  if (!name || (name && !name.trim())) {
     throw new Error('name_required');
+  }
+  if (name.includes(' ')) {
+    throw new Error('name_invalid');
   }
   if (!email) {
     throw new Error('email_required');
@@ -31,6 +34,17 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   if (!emailRegex.test(email)) {
     throw new Error('email_invalid');
   }
+  let newPassword = decryptData(password);
+  newPassword = newPassword?.password.split('-');
+  if (newPassword?.length > 1) {
+    newPassword = newPassword[1];
+  }
+  if (!newPassword) {
+    throw new Error('password_required');
+  }
+  if (!passwordRegex.test(newPassword)) {
+    throw new Error('password_invalid');
+  }
   const emailExists = await User.findOne({
     $or: [{ email: { $regex: `^${email}$`, $options: 'i' } }, { name: email }],
     $and: [{ status: { $ne: STATUS_TYPE.deleted } }],
@@ -47,19 +61,6 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     res.status(409);
     throw new Error('name_exist');
   }
-  let newPassword = decryptData(password);
-  newPassword = newPassword?.password.split('-');
-  if (newPassword?.length > 1) {
-    newPassword = newPassword[1];
-  }
-  if (!newPassword) {
-    res.status(400);
-    throw new Error('password_required');
-  }
-  if (!passwordRegex.test(newPassword)) {
-    throw new Error('password_invalid');
-  }
-
   res.status(200);
   next();
 });
@@ -87,13 +88,16 @@ export const validateUpdateUser = expressAsyncHandler(
       res.status(400);
       throw new Error('display_name_invalid');
     }
-    if (name && !name.trim()) {
-      res.status(400);
-      throw new Error('name_required');
-    }
     if (name) {
+      if (name.includes(' ') || !name.trim()) {
+        res.status(400);
+        throw new Error('name_invalid');
+      }
       const nameExists = await User.findOne({
-        $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
+        $or: [
+          { name: name },
+          { email: { $regex: `^${name}$`, $options: 'i' } },
+        ],
         _id: { $ne: userId },
         status: { $ne: STATUS_TYPE.deleted },
       }).exec();

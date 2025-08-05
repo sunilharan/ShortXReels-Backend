@@ -31,18 +31,6 @@
                         type: string
                       image:
                         type: string
-                      status:
-                        type: string
-                      createdAt:
-                        type: string
-                        format: date-time
-                      updatedAt:
-                        type: string
-                        format: date-time
-                      createdBy:
-                        type: string
-                      updatedBy:
-                        type: string
       400:
         description: 'Bad Request'
       401:

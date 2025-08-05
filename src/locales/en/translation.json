@@ -1,5 +1,6 @@
 {
   "name_required": "Name is required.",
+  "name_invalid": "Invalid name.",
   "email_required": "Email address is required.",
   "password_required": "Password is required.",
   "phone_required": "Phone number is required.",

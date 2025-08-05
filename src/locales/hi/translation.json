@@ -1,5 +1,6 @@
 {
   "name_required": "नाम आवश्यक है।",
+  "name_invalid": "अमान्य नाम।",
   "email_required": "ईमेल पता आवश्यक है।",
   "password_required": "पासवर्ड आवश्यक है।",
   "phone_required": "फोन नंबर आवश्यक है।",

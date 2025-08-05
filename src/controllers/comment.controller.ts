@@ -274,7 +274,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
 
-    const userObjectId = new mongoose.Types.ObjectId(String(userId));
+    const userObjectId = req.user._id;
 
     if (replyId) {
       const commentDoc = await Comment.findOne(

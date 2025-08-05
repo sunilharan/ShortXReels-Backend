@@ -38,6 +38,16 @@
         schema:
           type: string
       - in: query
+        name: sortBy
+        schema:
+          type: string
+          enum: ["createdAt", "updatedAt", "reviewedAt"]
+      - in: query
+        name: sortOrder
+        schema:
+          type: string
+          enum: ["asc", "desc"]
+      - in: query
         name: reportedBy
         schema:
           type: string

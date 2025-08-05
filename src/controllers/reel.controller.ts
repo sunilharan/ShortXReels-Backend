@@ -133,20 +133,18 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
   const skip = (page - 1) * limit;
   const id = req.query.userId;
   const sortType = req.query.sortType;
-  let sortQuery = {};
+  const sortQuery: any = {};
   if (sortType === SORT_TYPE.popular) {
-    sortQuery = {
-      totalViews: -1,
-      totalLikes: -1,
-      totalComments: -1,
-      createdAt: -1,
-    };
+    sortQuery.totalViews = -1;
+    sortQuery.totalLikes = -1;
+    sortQuery.totalComments = -1;
+    sortQuery.createdAt = -1;
   } else if (sortType === SORT_TYPE.latest) {
-    sortQuery = { createdAt: -1 };
+    sortQuery.createdAt = -1;
   } else if (sortType === SORT_TYPE.oldest) {
-    sortQuery = { createdAt: 1 };
+    sortQuery.createdAt = 1;
   } else {
-    sortQuery = { createdAt: -1 };
+    sortQuery.createdAt = -1;
   }
   if (!id) {
     res.status(400);
@@ -193,31 +191,8 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(String(req.user.id));
     const savedReels = req.user.savedReels || [];
-    const user = await User.findById(userId).select('interests').lean().exec();
-    const interestIds =
-      user?.interests.map(
-        (i: any) => new mongoose.Types.ObjectId(String(i.id))
-      ) || [];
-    const interestReels = await Reel.aggregate([
-      {
-        $match: {
-          status: STATUS_TYPE.active,
-          createdBy: { $ne: userId },
-          categories: { $in: interestIds },
-        },
-      },
-      { $sort: { createdAt: -1 } },
-      { $unwind: '$categories' },
-      { $match: { categories: { $in: interestIds } } },
-      {
-        $lookup: {
-          from: 'categories',
-          localField: 'categories',
-          foreignField: '_id',
-          as: 'catInfo',
-        },
-      },
-      { $unwind: '$catInfo' },
+    const interestIds = req.user?.interests || [];
+    const commonAggregation: any = [
       {
         $lookup: {
           from: 'users',
@@ -314,6 +289,28 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           },
         },
       },
+    ];
+    const interestReels = await Reel.aggregate([
+      {
+        $match: {
+          status: STATUS_TYPE.active,
+          createdBy: { $ne: userId },
+          categories: { $in: interestIds },
+        },
+      },
+      { $unwind: '$categories' },
+      { $match: { categories: { $in: interestIds } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categories',
+          foreignField: '_id',
+          as: 'catInfo',
+        },
+      },
+      { $unwind: '$catInfo' },
+      ...commonAggregation,
       {
         $group: {
           _id: '$categories',
@@ -373,102 +370,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
         },
       },
       { $sort: { createdAt: -1 } },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'createdBy',
-          foreignField: '_id',
-          as: 'creator',
-        },
-      },
-      { $unwind: '$creator' },
-      {
-        $match: {
-          'creator.status': STATUS_TYPE.active,
-        },
-      },
-      {
-        $lookup: {
-          from: 'comments',
-          let: { id: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$reel', '$$id'] },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: 'commentedBy',
-                foreignField: '_id',
-                as: 'commentedByUser',
-              },
-            },
-            { $unwind: '$commentedByUser' },
-            {
-              $match: {
-                'commentedByUser.status': STATUS_TYPE.active,
-              },
-            },
-            { $count: 'count' },
-          ],
-          as: 'comments',
-        },
-      },
-      {
-        $addFields: {
-          totalViews: {
-            $cond: {
-              if: { $isArray: '$viewedBy' },
-              then: { $size: '$viewedBy' },
-              else: 0,
-            },
-          },
-          totalLikes: {
-            $cond: {
-              if: { $isArray: '$likedBy' },
-              then: { $size: '$likedBy' },
-              else: 0,
-            },
-          },
-          totalComments: {
-            $cond: [
-              { $gt: [{ $size: '$comments' }, 0] },
-              { $arrayElemAt: ['$comments.count', 0] },
-              0,
-            ],
-          },
-          media: {
-            $cond: [
-              { $isArray: '$media' },
-              {
-                $map: {
-                  input: '$media',
-                  as: 'm',
-                  in: { $concat: [config.host + '/reel/', '$$m'] },
-                },
-              },
-              {
-                $concat: [
-                  config.host + '/api/reel/view/',
-                  { $toString: '$_id' },
-                ],
-              },
-            ],
-          },
-          thumbnail: { $concat: [config.host + '/thumbnail/', '$thumbnail'] },
-          isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
-          isSaved: {
-            $in: [
-              '$_id',
-              savedReels.map(
-                (id: string) => new mongoose.Types.ObjectId(String(id))
-              ),
-            ],
-          },
-        },
-      },
+      ...commonAggregation,
       { $limit: 5 },
       {
         $project: {
@@ -507,7 +409,6 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
         category: {
           id: 'recommended',
           name: 'Recommended',
-          image: config.host + '/category/default.jpg',
         },
         reels: recommended,
       });
@@ -555,10 +456,12 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     const search = req.query.search;
     const category = req.query.category;
     const createdBy = req.query.createdBy;
-    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
-    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
-    let matchQuery: any = {};
-    let sortQuery: any = {};
+    const startDate = req.query.startDate
+      ? parseISO(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+    const matchQuery: any = {};
+    const sortQuery: any = {};
     if (
       sortOrder &&
       sortBy &&
@@ -567,11 +470,9 @@ async function getReelsByRole(req: any, res: any, role?: string) {
         sortBy
       )
     ) {
-      sortQuery = {
-        [sortBy]: sortOrder === 'asc' ? 1 : -1,
-      };
+      sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
     } else {
-      sortQuery = { createdAt: -1 };
+      sortQuery.createdAt = -1;
     }
     if (status) {
       matchQuery.status = status;
@@ -587,14 +488,16 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     if (createdBy) {
       matchQuery.createdBy = new mongoose.Types.ObjectId(String(createdBy));
     }
-    if (startDate && endDate) {
-      const newStartDate = isValid(startDate) ? startDate : null;
-      const newEndDate = isValid(endDate) ? endDate : null;
-      matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
-    } else if (startDate) {
-      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
-      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
-      matchQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    const isStartValid = startDate && isValid(startDate);
+    const isEndValid = endDate && isValid(endDate);
+
+    if (isStartValid && isEndValid) {
+      matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+    } else if (isStartValid) {
+      matchQuery.createdAt = {
+        $gte: startOfDay(startDate),
+        $lte: endOfDay(startDate),
+      };
     }
     if (role === UserRole.User) {
       matchQuery.isAdmin = false;
@@ -652,7 +555,7 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const role = req.role;
     const categories = JSON.parse(rawCategories).map(
-      (id: string) => new mongoose.Types.ObjectId(String(id))
+      (id: any) => new mongoose.Types.ObjectId(String(id))
     );
     const reelData: any = {
       createdBy: new mongoose.Types.ObjectId(String(userId)),
@@ -1099,22 +1002,26 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const dateQuery: any = {};
-    const startDate = req.query.startDate ? parseISO(req.query.startDate) : '';
-    const endDate = req.query.endDate ? parseISO(req.query.endDate) : '';
-    if (startDate && endDate) {
-      const newStartDate = isValid(startDate) ? startDate : null;
-      const newEndDate = isValid(endDate) ? endDate : null;
-      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
-    } else if (startDate) {
-      const newStartDate = isValid(startDate) ? startOfDay(startDate) : null;
-      const newEndDate = isValid(startDate) ? endOfDay(startDate) : null;
-      dateQuery.createdAt = { $gte: newStartDate, $lte: newEndDate };
+    const matchQuery: any = {};
+    const startDate = req.query.startDate
+      ? parseISO(req.query.startDate)
+      : null;
+    const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+    const isStartValid = startDate && isValid(startDate);
+    const isEndValid = endDate && isValid(endDate);
+
+    if (isStartValid && isEndValid) {
+      matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+    } else if (isStartValid) {
+      matchQuery.createdAt = {
+        $gte: startOfDay(startDate),
+        $lte: endOfDay(startDate),
+      };
     }
     const reelsAgg = topReelsAggregation();
     const reelsPipeline: any[] = [
       {
-        $match: dateQuery,
+        $match: matchQuery,
       },
       {
         $facet: {

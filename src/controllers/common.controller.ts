@@ -98,7 +98,7 @@ export const checkHealth = expressAsyncHandler(async (req: any, res) => {
 });
 
 export const yearMonthChartAggregation = (year?: number): any[] => {
-  const findYear = year || getYear(new Date());
+  const findYear = year ? year : getYear(new Date());
 
   const startDate = startOfYear(new Date(findYear, 0));
   const endDate = endOfYear(new Date(findYear, 0));
@@ -327,10 +327,10 @@ export const adminDashboardDetails = expressAsyncHandler(
         },
       ]).exec();
       const totalReels = reelAgg[0]?.totalReels[0]?.count || 0;
-      const topUsersData = reelAgg[0]?.topUsers;
-      const topReelsData = reelAgg[0]?.topReels;
-      const reelChartData = reelAgg[0]?.chartData;
-      const firstReelYear = reelAgg[0]?.firstReel[0].year || 0;
+      const topUsersData = reelAgg[0]?.topUsers || [];
+      const topReelsData = reelAgg[0]?.topReels || [];
+      const reelChartData = reelAgg[0]?.chartData || [];
+      const firstReelYear = reelAgg[0]?.firstReel[0]?.year || 0;
       const currentMonthReelCount =
         reelAgg[0]?.currentMonthCount[0]?.count || 0;
       const previousMonthReelCount =

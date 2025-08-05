@@ -22,7 +22,7 @@ import {
   blockUnblockUser,
   deleteUser,
   topUsers,
-  // createSuperAdmin,
+  createSuperAdmin,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
@@ -31,17 +31,17 @@ import { adminOnly } from '../middlewares/auth.middleware';
 const router = Router();
 
 router.post('/register', validateRegister, register);
-// router.post('/superAdmin', createSuperAdmin);
+router.post('/superAdmin', createSuperAdmin);
 router.get('/nameExist/:name', nameExist);
 router.post('/login', login);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);
 router.post('/verifyOtp', verifyOtp);
 router.put('/resetPassword', resetPassword);
+router.post('/logout', logout);
 
 router.use(authenticate);
 router.get('/currentUser', currentUser);
-router.post('/logout', logout);
 router.delete('/', deleteAccount);
 router.put(
   '/updateProfile',

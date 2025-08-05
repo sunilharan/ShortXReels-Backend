@@ -8,9 +8,15 @@ import { UserRole } from '../config/constants';
 export const getActiveCategories = expressAsyncHandler(
   async (req: any, res) => {
     try {
-      const categories = await Category.find({
+      const search = req.query.search;
+      const matchQuery: any = {
         status: STATUS_TYPE.active,
-      })
+      };
+      if (search) {
+        matchQuery.name = { $regex: search, $options: 'i' };
+      }
+      const categories = await Category.find(matchQuery)
+        .select('name image')
         .sort({ createdAt: -1 })
         .exec();
       res.status(200).json({
@@ -32,7 +38,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
     const status = req.query.status;
     const search = req.query.search;
 
-    let matchQuery: any = {};
+    const matchQuery: any = {};
     if (role === UserRole.SuperAdmin && status) {
       matchQuery.status = status;
     } else if (role === UserRole.Admin) {
