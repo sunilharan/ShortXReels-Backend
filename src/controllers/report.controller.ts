@@ -137,7 +137,9 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       sortOrder &&
       sortBy &&
       (sortOrder === 'asc' || sortOrder === 'desc') &&
-      ['createdAt', 'updatedAt', 'reviewedAt'].includes(sortBy)
+      ['createdAt', 'updatedAt', 'reviewedAt', 'totalAcceptedReports'].includes(
+        sortBy
+      )
     ) {
       sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
     } else {
@@ -162,17 +164,151 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       matchQuery.reportedBy = new mongoose.Types.ObjectId(String(reportedBy));
     }
     const reportAggregations = getReportsAggregate();
-
     const reportsAggregate = await Report.aggregate([
       { $match: matchQuery },
       ...reportAggregations,
       {
+        $unwind: { path: '$reel', preserveNullAndEmptyArrays: true },
+      },
+      {
+        $lookup: {
+          from: 'comments',
+          let: { reelId: '$reel._id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$reel', '$$reelId'] },
+                    { $eq: ['$status', STATUS_TYPE.active] },
+                  ],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: 'commentedBy',
+                foreignField: '_id',
+                as: 'commentedByUser',
+              },
+            },
+            {
+              $unwind: {
+                path: '$commentedByUser',
+                preserveNullAndEmptyArrays: false,
+              },
+            },
+            {
+              $match: {
+                'commentedByUser.status': STATUS_TYPE.active,
+              },
+            },
+            {
+              $count: 'count',
+            },
+          ],
+          as: 'reel.activeCommentsCount',
+        },
+      },
+      {
+        $addFields: {
+          'reel.totalLikes': { $size: { $ifNull: ['$reel.likedBy', []] } },
+          'reel.totalViews': { $size: { $ifNull: ['$reel.viewedBy', []] } },
+          'reel.totalComments': {
+            $cond: [
+              { $gt: [{ $size: '$reel.activeCommentsCount' }, 0] },
+              { $arrayElemAt: ['$reel.activeCommentsCount.count', 0] },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'reports',
+          let: {
+            currentReportType: '$reportType',
+            reelId: '$reel._id',
+            commentId: '$comment._id',
+            replyId: '$replyObj._id',
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$result', 'accepted'] },
+                    {
+                      $switch: {
+                        branches: [
+                          {
+                            case: { $eq: ['$$currentReportType', 'reel'] },
+                            then: {
+                              $and: [
+                                { $eq: ['$reel', '$$reelId'] },
+                                { $eq: ['$reportType', 'reel'] },
+                              ],
+                            },
+                          },
+                          {
+                            case: { $eq: ['$$currentReportType', 'comment'] },
+                            then: {
+                              $and: [
+                                { $eq: ['$reel', '$$reelId'] },
+                                { $eq: ['$comment', '$$commentId'] },
+                                { $eq: ['$reportType', 'comment'] },
+                              ],
+                            },
+                          },
+                          {
+                            case: { $eq: ['$$currentReportType', 'reply'] },
+                            then: {
+                              $and: [
+                                { $eq: ['$reel', '$$reelId'] },
+                                { $eq: ['$comment', '$$commentId'] },
+                                { $eq: ['$reply', '$$replyId'] },
+                                { $eq: ['$reportType', 'reply'] },
+                              ],
+                            },
+                          },
+                        ],
+                        default: false,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              $count: 'count',
+            },
+          ],
+          as: 'acceptedReports',
+        },
+      },
+      {
+        $addFields: {
+          totalAcceptedReports: {
+            $cond: [
+              { $gt: [{ $size: '$acceptedReports' }, 0] },
+              { $arrayElemAt: ['$acceptedReports.count', 0] },
+              0,
+            ],
+          },
+        },
+      },
+      {
         $project: {
           _id: 0,
           id: '$_id',
+          totalAcceptedReports: '$totalAcceptedReports',
           reel: {
             id: '$reel._id',
             caption: '$reel.caption',
+            totalViews: '$reel.totalViews',
+            totalLikes: '$reel.totalLikes',
+            totalComments: '$reel.totalComments',
             media: {
               $cond: [
                 { $eq: ['$reel.mediaType', 'image'] },
@@ -439,13 +575,12 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { id, result, notes } = req.body;
+    const { id, result, notes, isBlocked } = req.body;
 
-    if (!id) {
+    if (!id || typeof isBlocked !== 'boolean') {
       res.status(400);
       throw new Error('invalid_request');
     }
-
     if (
       result === REPORT_STATUS.accepted &&
       result === REPORT_STATUS.rejected
@@ -464,19 +599,44 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       {
         new: true,
       }
-    )
-      .populate([
-        { path: 'reportedBy', select: 'name profile' },
-        { path: 'reel', select: 'caption video' },
-        { path: 'reviewedBy', select: 'name profile' },
-      ])
-      .exec();
+    ).exec();
 
     if (!report) {
       res.status(404);
       throw new Error('report_not_found');
     }
-    if (report.result === REPORT_STATUS.accepted) {
+    const matchQuery: any = {
+      result: REPORT_STATUS.accepted,
+      reportType: report.reportType,
+    };
+    let responseId: any;
+    if (report.reportType === 'reel') {
+      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
+      responseId = report?.reel;
+    } else if (report.reportType === 'comment') {
+      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
+      matchQuery.comment = new mongoose.Types.ObjectId(String(report?.comment));
+      responseId = report?.comment;
+    } else if (report.reportType === 'reply') {
+      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
+      matchQuery.comment = new mongoose.Types.ObjectId(String(report?.comment));
+      matchQuery.reply = new mongoose.Types.ObjectId(String(report?.reply));
+      responseId = report?.reply;
+    }
+    const totalAcceptedReportsData = await Report.aggregate([
+      {
+        $match: matchQuery,
+      },
+      {
+        $count: 'totalAcceptedReports',
+      },
+    ]).exec();
+    const totalAcceptedReports =
+      totalAcceptedReportsData[0]?.totalAcceptedReports || 0;
+    if (
+      report.result === REPORT_STATUS.accepted &&
+      Boolean(isBlocked) === true
+    ) {
       if (report.reportType === 'reel') {
         await Reel.findByIdAndUpdate(report.reel, {
           status: STATUS_TYPE.blocked,
@@ -504,6 +664,10 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     }
     res.status(200).json({
       success: true,
+      data: {
+        totalAcceptedReports: totalAcceptedReports,
+        id: responseId,
+      },
       message: t('report_validated'),
     });
   } catch (error) {

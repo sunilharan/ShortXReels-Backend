@@ -1,6 +1,6 @@
 /report/acceptReject:
   post:
-    tags: ["Report"]
+    tags: ['Report']
     summary: Accept or reject a report
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
@@ -16,11 +16,16 @@
                 description: The ID of the report to validate.
               result:
                 type: string
-                enum: ["accepted", "rejected"]
+                enum: ['accepted', 'rejected']
                 description: Whether the report has been validated.
               notes:
                 type: string
                 description: The notes for the report validation.
+              isBlocked:
+                type: boolean
+                enum: [true, false]
+                default: false
+                description: Whether the report has been validated.
     responses:
       200:
         description: Successfully validated report.
@@ -33,13 +38,20 @@
                   type: boolean
                 message:
                   type: string
+                data:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    totalAcceptedReports:
+                      type: number
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

@@ -42,6 +42,12 @@
                                 type: integer
                               totalLikes:
                                 type: integer
+                              totalComments:
+                                type: integer
+                              rankingScore:
+                                type: integer
+                              engagementScore:
+                                type: integer
                               profile:
                                 type: string
                                 format: uri
@@ -69,6 +75,10 @@
                               totalLikes:
                                 type: integer
                               totalViews:
+                                type: integer
+                              totalComments:
+                                type: integer
+                              engagementScore:
                                 type: integer
                               mediaType:
                                 type: string

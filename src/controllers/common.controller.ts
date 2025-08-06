@@ -112,7 +112,12 @@ export const yearMonthChartAggregation = (year?: number): any[] => {
   });
 
   const aggregation = [
-    { $match: { createdAt: { $gte: startDate, $lt: endDate } } },
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lt: endDate },
+        status: { $in: [STATUS_TYPE.active, STATUS_TYPE.blocked] },
+      },
+    },
     {
       $group: {
         _id: { $month: '$createdAt' },
@@ -210,6 +215,11 @@ export const adminDashboardDetails = expressAsyncHandler(
           $facet: {
             totalUsers: [
               {
+                $match: {
+                  status: { $in: [STATUS_TYPE.active, STATUS_TYPE.blocked] },
+                },
+              },
+              {
                 $count: 'count',
               },
             ],
@@ -263,6 +273,11 @@ export const adminDashboardDetails = expressAsyncHandler(
         {
           $facet: {
             totalReels: [
+              {
+                $match: {
+                  status: { $in: [STATUS_TYPE.active, STATUS_TYPE.blocked] },
+                },
+              },
               {
                 $count: 'count',
               },
@@ -424,8 +439,12 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
-                        totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
-                        totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
+                        totalLikes: {
+                          $size: { $ifNull: ['$reel.likedBy', []] },
+                        },
+                        totalViews: {
+                          $size: { $ifNull: ['$reel.viewedBy', []] },
+                        },
                         createdBy: {
                           id: '$reel.createdBy._id',
                           name: '$reel.createdBy.name',
@@ -609,8 +628,12 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
-                        totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
-                        totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
+                        totalLikes: {
+                          $size: { $ifNull: ['$reel.likedBy', []] },
+                        },
+                        totalViews: {
+                          $size: { $ifNull: ['$reel.viewedBy', []] },
+                        },
                         createdBy: {
                           id: '$reel.createdBy._id',
                           name: '$reel.createdBy.name',

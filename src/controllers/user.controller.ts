@@ -7,6 +7,7 @@ import { Role, IRole } from '../models/role.model';
 import {
   UserRole,
   emailRegex,
+  nameRegex,
   passwordRegex,
   removeFile,
 } from '../config/constants';
@@ -264,7 +265,7 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
     }
     const user = await User.findOne({
       _id: decoded?.id,
-      token: decoded?.token,
+      token: { $in: [decoded?.token] },
       status: STATUS_TYPE.active,
     })
       .populate<{ role: IRole }>('role')
@@ -286,9 +287,11 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
     );
     await User.findByIdAndUpdate(user.id, {
       $push: { token: accessToken },
-      $pull: { token: decoded?.token },
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
+    }).exec();
+    await User.findByIdAndUpdate(user.id, {
+      $pull: { token: decoded?.token },
     }).exec();
     res.status(200).json({
       success: true,
@@ -850,9 +853,7 @@ export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {
       res.status(404);
       throw new Error('reel_not_found');
     }
-    const alreadySaved = savedReels.some(
-      (id: any) => id.toString() === reelId
-    );
+    const alreadySaved = savedReels.some((id: any) => id.toString() === reelId);
     if (action === SAVE_TYPE.save && !alreadySaved) {
       await User.findByIdAndUpdate(
         userId,
@@ -1072,18 +1073,117 @@ export const topUsersAggregation = (): any[] => {
       },
     },
     {
+      $lookup: {
+        from: 'comments',
+        let: { reelId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$reel', '$$reelId'] },
+                  { $eq: ['$status', STATUS_TYPE.active] },
+                ],
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'commentedBy',
+              foreignField: '_id',
+              as: 'commentedByUser',
+            },
+          },
+          { $unwind: '$commentedByUser' },
+          {
+            $match: { 'commentedByUser.status': STATUS_TYPE.active },
+          },
+          { $count: 'count' },
+        ],
+        as: 'commentStats',
+      },
+    },
+    {
       $group: {
         _id: '$createdBy',
         totalReels: { $sum: 1 },
+        totalComments: {
+          $sum: {
+            $cond: {
+              if: { $gt: [{ $size: '$commentStats' }, 0] },
+              then: { $arrayElemAt: ['$commentStats.count', 0] },
+              else: 0,
+            },
+          },
+        },
         totalViews: { $sum: { $size: '$viewedBy' } },
         totalLikes: { $sum: { $size: '$likedBy' } },
       },
     },
     {
+      $addFields: {
+        engagementScore: {
+          $cond: {
+            if: { $eq: ['$totalViews', 0] },
+            then: 0,
+            else: {
+              $divide: [
+                { $sum: ['$totalComments', '$totalLikes'] },
+                '$totalViews',
+              ],
+            },
+          },
+        },
+        rankingScore: {
+          $sum: [
+            {
+              $multiply: [
+                {
+                  $cond: {
+                    if: { $eq: ['$totalViews', 0] },
+                    then: 0,
+                    else: '$totalViews',
+                  },
+                },
+                0.5,
+              ],
+            },
+            {
+              $multiply: [
+                {
+                  $cond: {
+                    if: { $eq: ['$totalLikes', 0] },
+                    then: 0,
+                    else: '$totalLikes',
+                  },
+                },
+                2,
+              ],
+            },
+            {
+              $multiply: [
+                {
+                  $cond: {
+                    if: { $eq: ['$totalReels', 0] },
+                    then: 0,
+                    else: '$totalReels',
+                  },
+                },
+                3,
+              ],
+            },
+          ],
+        },
+      },
+    },
+    {
       $sort: {
-        totalViews: -1,
-        totalReels: -1,
+        // rankingScore: -1,
+        // engagementScore: -1,
         totalLikes: -1,
+        totalViews: -1,
+        totalComments: -1,
       },
     },
     {
@@ -1105,6 +1205,9 @@ export const topUsersAggregation = (): any[] => {
         totalReels: '$totalReels',
         totalViews: '$totalViews',
         totalLikes: '$totalLikes',
+        totalComments: '$totalComments',
+        rankingScore: '$rankingScore',
+        engagementScore: '$engagementScore',
         profile: {
           $cond: {
             if: { $not: ['$user.profile'] },
@@ -1186,7 +1289,7 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
 export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || (name && !name.trim()) || name.includes(' ')) {
+    if (!name) {
       throw new Error('name_required');
     }
     if (!email) {
@@ -1194,6 +1297,9 @@ export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
     }
     if (!password || (password && !password.trim())) {
       throw new Error('password_required');
+    }
+    if (!nameRegex.test(name)) {
+      throw new Error('name_invalid');
     }
     if (!emailRegex.test(email)) {
       throw new Error('email_invalid');

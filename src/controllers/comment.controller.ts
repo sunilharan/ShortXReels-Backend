@@ -137,7 +137,7 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
     );
 
     const total = await countActiveCommentsWithActiveUsers({
-      reel: reelId,
+      reel: new mongoose.Types.ObjectId(String(reelId)),
       status: STATUS_TYPE.active,
     });
     res.status(200).json({

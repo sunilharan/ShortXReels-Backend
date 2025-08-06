@@ -214,7 +214,12 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ['$reel', '$$id'] },
+                $expr: {
+                  $and: [
+                    { $eq: ['$reel', '$$id'] },
+                    { $eq: ['$status', STATUS_TYPE.active] },
+                  ],
+                },
               },
             },
             {
@@ -511,17 +516,13 @@ async function getReelsByRole(req: any, res: any, role?: string) {
         skip,
         limit,
         sortQuery,
-        onlyActive: false,
         addCategories: true,
         addStatus: true,
       },
       savedReels
     );
 
-    const totalRecords = await countActiveReelsWithActiveUsers(
-      matchQuery,
-      false
-    );
+    const totalRecords = await countActiveReelsWithActiveUsers(matchQuery);
     res.status(200).json({
       success: true,
       data: {
@@ -925,15 +926,72 @@ export const topReelsAggregation = (): any[] => {
       },
     },
     {
+      $lookup: {
+        from: 'comments',
+        let: { reelId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$reel', '$$reelId'] },
+                  { $eq: ['$status', STATUS_TYPE.active] },
+                ],
+              },
+            },
+          },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'commentedBy',
+              foreignField: '_id',
+              as: 'commentedByUser',
+            },
+          },
+          { $unwind: '$commentedByUser' },
+          {
+            $match: { 'commentedByUser.status': STATUS_TYPE.active },
+          },
+          { $count: 'count' },
+        ],
+        as: 'commentStats',
+      },
+    },
+    {
       $addFields: {
         totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
         totalViews: { $size: { $ifNull: ['$viewedBy', []] } },
+        totalComments: {
+          $cond: [
+            { $gt: [{ $size: '$commentStats' }, 0] },
+            { $arrayElemAt: ['$commentStats.count', 0] },
+            0,
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        engagementScore: {
+          $cond: {
+            if: { $eq: ['$totalViews', 0] },
+            then: 0,
+            else: {
+              $divide: [
+                { $sum: ['$totalComments', '$totalLikes'] },
+                '$totalViews',
+              ],
+            },
+          },
+        },
       },
     },
     {
       $sort: {
-        totalViews: -1,
+        // engagementScore: -1,
         totalLikes: -1,
+        totalViews: -1,
+        totalComments: -1,
       },
     },
     {
@@ -959,6 +1017,8 @@ export const topReelsAggregation = (): any[] => {
         caption: 1,
         totalLikes: 1,
         totalViews: 1,
+        totalComments: 1,
+        engagementScore: 1,
         mediaType: 1,
         media: {
           $cond: [

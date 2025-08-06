@@ -1,9 +1,9 @@
 /report:
   get:
     summary: Get all reports
-    tags: ["Report"]
+    tags: ['Report']
     parameters:
-      - $ref: "#/components/parameters/AcceptLanguage"
+      - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
         name: page
         schema:
@@ -22,17 +22,17 @@
         name: status
         schema:
           type: string
-          enum: ["active", "inactive", "deleted"]
+          enum: ['active', 'inactive', 'deleted']
       - in: query
         name: result
         schema:
           type: string
-          enum: ["pending", "accepted", "rejected"]
+          enum: ['pending', 'accepted', 'rejected']
       - in: query
         name: reportType
         schema:
           type: string
-          enum: ["reel", "comment"]
+          enum: ['reel', 'comment']
       - in: query
         name: userId
         schema:
@@ -41,12 +41,12 @@
         name: sortBy
         schema:
           type: string
-          enum: ["createdAt", "updatedAt", "reviewedAt"]
+          enum: ['createdAt', 'updatedAt', 'reviewedAt', 'totalAcceptedReports']
       - in: query
         name: sortOrder
         schema:
           type: string
-          enum: ["asc", "desc"]
+          enum: ['asc', 'desc']
       - in: query
         name: reportedBy
         schema:
@@ -92,6 +92,8 @@
                         properties:
                           id:
                             type: string
+                          totalAcceptedReports:
+                            type: number
                           reel:
                             type: object
                             nullable: true
@@ -106,7 +108,7 @@
                                   type: string
                               mediaType:
                                 type: string
-                                enum: ["image", "video"]
+                                enum: ['image', 'video']
                               thumbnail:
                                 type: string
                               createdBy:
@@ -118,6 +120,12 @@
                                     type: string
                                   profile:
                                     type: string
+                              totalViews:
+                                type: number
+                              totalLikes:
+                                type: number
+                              totalComments:
+                                type: number
                           comment:
                             type: object
                             nullable: true
@@ -153,10 +161,10 @@
                             type: string
                           reportType:
                             type: string
-                            enum: ["reel", "comment", "reply"]
+                            enum: ['reel', 'comment', 'reply']
                           status:
                             type: string
-                            enum: ["active", "inactive", "deleted"]
+                            enum: ['active', 'inactive', 'deleted']
                           reviewedBy:
                             type: object
                             nullable: true
@@ -170,7 +178,7 @@
                                 nullable: true
                           result:
                             type: string
-                            enum: ["pending", "accepted", "rejected"]
+                            enum: ['pending', 'accepted', 'rejected']
                           notes:
                             type: string
                           reviewedAt:

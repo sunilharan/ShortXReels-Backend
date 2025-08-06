@@ -1,17 +1,19 @@
 import expressAsyncHandler from 'express-async-handler';
 import { User } from '../models/user.model';
 import { STATUS_TYPE, GENDER_TYPE } from '../config/enums';
-import { emailRegex, passwordRegex, UserRole } from '../config/constants';
+import {
+  nameRegex,
+  emailRegex,
+  passwordRegex,
+  UserRole,
+} from '../config/constants';
 import { decryptData } from '../utils/encrypt';
 
 export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   const { name, email, password, phone, gender, displayName } = req.body;
   res.status(400);
-  if (!name || (name && !name.trim())) {
+  if (!name) {
     throw new Error('name_required');
-  }
-  if (name.includes(' ')) {
-    throw new Error('name_invalid');
   }
   if (!email) {
     throw new Error('email_required');
@@ -30,6 +32,9 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
   }
   if (gender && !Object.values(GENDER_TYPE).includes(gender)) {
     throw new Error('gender_invalid');
+  }
+  if (!nameRegex.test(name)) {
+    throw new Error('name_invalid');
   }
   if (!emailRegex.test(email)) {
     throw new Error('email_invalid');
@@ -89,7 +94,7 @@ export const validateUpdateUser = expressAsyncHandler(
       throw new Error('display_name_invalid');
     }
     if (name) {
-      if (name.includes(' ') || !name.trim()) {
+      if (!nameRegex.test(name)) {
         res.status(400);
         throw new Error('name_invalid');
       }
