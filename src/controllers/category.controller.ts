@@ -187,7 +187,10 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
     )
       .populate(['createdBy', 'updatedBy'], 'name profile')
       .exec();
-    if (!category) throw new Error('category_not_found');
+    if (!category) {
+      res.status(404);
+      throw new Error('category_not_found');
+    }
     res.status(200).json({ success: true, data: category });
   } catch (error) {
     throw error;
@@ -203,10 +206,14 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       !status ||
       ![STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)
     ) {
+      res.status(400);
       throw new Error('invalid_request');
     }
     const category = await Category.findById(id).exec();
-    if (!category) throw new Error('category_not_found');
+    if (!category) {
+      res.status(404);
+      throw new Error('category_not_found');
+    }
     await Category.findByIdAndUpdate(id, {
       status,
       updatedBy: userId,

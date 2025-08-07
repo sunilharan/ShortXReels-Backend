@@ -111,6 +111,8 @@
                                 enum: ['image', 'video']
                               thumbnail:
                                 type: string
+                              isBlocked:
+                                type: boolean
                               createdBy:
                                 type: object
                                 properties:
@@ -138,6 +140,8 @@
                                 type: string
                               content:
                                 type: string
+                              isBlocked:
+                                type: boolean
                               createdBy:
                                 type: object
                                 properties:

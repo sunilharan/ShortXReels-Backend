@@ -19,7 +19,7 @@ import {
   getRoles,
   checkHealth,
 } from './controllers/common.controller';
-import { adminOnly } from './middlewares/auth.middleware';
+import { adminOnly, authenticate } from './middlewares/auth.middleware';
 import { FOLDER_LIST } from './config/constants';
 import { existsSync, mkdirSync } from 'fs';
 import { createServer } from 'http';
@@ -75,7 +75,7 @@ app.use('/api/report', reportRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/encrypt', getEncodeData);
 app.use('/api/decrypt', getDecodedData);
-app.get('/api/roles', adminOnly, getRoles);
+app.get('/api/roles', authenticate, adminOnly, getRoles);
 app.get('/api/health', checkHealth);
 setupSwaggerDocs(app);
 

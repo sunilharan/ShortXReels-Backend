@@ -95,7 +95,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
 export const nameExist = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name } = req.params;
-    if (!name) {
+    if (!name || !nameRegex.test(name)) {
       res.status(400);
       throw new Error('invalid_request');
     }
@@ -932,6 +932,7 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
         throw new Error('user_not_found');
       }
       if (role === UserRole.Admin && user.role.name !== UserRole.User) {
+        res.status(403);
         throw new Error('forbidden');
       }
       if (user.profile) {
@@ -960,14 +961,19 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
 
     const allowedStatuses = Object.values(STATUS_TYPE);
     if (!id || !status || !allowedStatuses.includes(status)) {
+      res.status(400);
       throw new Error('invalid_request');
     }
 
     const user = await User.findById(id)
       .populate<{ role: IRole }>('role')
       .exec();
-    if (!user) throw new Error('user_not_found');
+    if (!user) {
+      res.status(404);
+      throw new Error('user_not_found');
+    }
     if (role === UserRole.Admin && user.role.name !== UserRole.User) {
+      res.status(403);
       throw new Error('forbidden');
     }
     await User.findByIdAndUpdate(id, {
@@ -989,18 +995,24 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const { id, isBlocked } = req.body;
     if (!id || typeof isBlocked !== 'boolean') {
+      res.status(400);
       throw new Error('invalid_request');
     }
     const user = await User.findById(id)
       .populate<{ role: IRole }>('role')
       .exec();
-    if (!user) throw new Error('user_not_found');
+    if (!user) {
+      res.status(404);
+      throw new Error('user_not_found');
+    }
     if (user.role.name !== UserRole.User) {
+      res.status(403);
       throw new Error('forbidden');
     }
 
     if (Boolean(isBlocked) === true) {
       if (user.status === STATUS_TYPE.blocked) {
+        res.status(409);
         throw new Error('data_already_blocked');
       }
       await User.findByIdAndUpdate(id, {
@@ -1010,6 +1022,7 @@ export const blockUnblockUser = expressAsyncHandler(async (req: any, res) => {
       }).exec();
     } else if (Boolean(isBlocked) === false) {
       if (user.status !== STATUS_TYPE.blocked) {
+        res.status(409);
         throw new Error('data_not_blocked');
       }
       await User.findByIdAndUpdate(id, {
@@ -1039,10 +1052,11 @@ export const deleteUser = expressAsyncHandler(async (req: any, res) => {
       .populate<{ role: IRole }>('role')
       .exec();
     if (!user) {
-      res.status(400);
+      res.status(404);
       throw new Error('user_not_found');
     }
     if (user.role.name !== UserRole.User) {
+      res.status(403);
       throw new Error('forbidden');
     }
     await User.findByIdAndUpdate(
@@ -1245,7 +1259,7 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
       };
     }
     const aggregation = topUsersAggregation();
-    const pipeline: any[] = [
+    const reelAgg = await Reel.aggregate([
       {
         $match: matchQuery,
       },
@@ -1267,9 +1281,7 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
           ],
         },
       },
-    ];
-
-    const reelAgg = await Reel.aggregate(pipeline).exec();
+    ]).exec();
     const users = reelAgg[0]?.users || [];
     const totalRecords = reelAgg[0]?.pagination[0]?.count || 0;
     const totalPages = Math.ceil(totalRecords / limit);
@@ -1290,18 +1302,23 @@ export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name) {
+      res.status(400);
       throw new Error('name_required');
     }
     if (!email) {
+      res.status(400);
       throw new Error('email_required');
     }
     if (!password || (password && !password.trim())) {
+      res.status(400);
       throw new Error('password_required');
     }
     if (!nameRegex.test(name)) {
+      res.status(400);
       throw new Error('name_invalid');
     }
     if (!emailRegex.test(email)) {
+      res.status(400);
       throw new Error('email_invalid');
     }
     let newPassword = decryptData(password);
@@ -1310,6 +1327,7 @@ export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
       newPassword = newPassword[1];
     }
     if (!passwordRegex.test(newPassword) || !newPassword) {
+      res.status(400);
       throw new Error('password_invalid');
     }
     const emailExists = await User.findOne({

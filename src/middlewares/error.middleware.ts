@@ -7,11 +7,19 @@ export const notFound = (req: any, res: any, next: any) => {
 };
 
 export const errorHandler = (err: any, req: any, res: any, next: any) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
-  res.json({
+  const statusCode = Number(res.statusCode) === 200 ? 500 : Number(res.statusCode);
+
+  const defaultErrorKey = 'internal_server_error';
+  let translatedMessage: string;
+  if (req.t && err.message && req.t(err.message, { defaultValue: '' })) {
+    translatedMessage = req.t(err.message);
+  } else {
+    translatedMessage = req.t ? req.t(defaultErrorKey) : i18next.t(defaultErrorKey);
+  }
+
+  res.status(statusCode).json({
     success: false,
-    message: req.t ? req.t(err.message) : i18next.t("invalid_request"),
+    message: translatedMessage,
     stack: process.env.NODE_ENV !== 'production' ? err.stack : null,
   });
 };

@@ -2,9 +2,9 @@ import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import mongoose from 'mongoose';
 import { REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
-import { Reel } from '../models/reel.model';
+import { IReel, Reel } from '../models/reel.model';
 import { t } from 'i18next';
-import { Comment } from '../models/comment.model';
+import { Comment, IComment } from '../models/comment.model';
 import { config } from '../config/config';
 import { UserRole } from '../config/constants';
 import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
@@ -30,13 +30,13 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       throw new Error('reason_required');
     }
     const reelExists = await Reel.findById(reel).exec();
-    if (!reelExists) {
+    if (!reelExists || reelExists.status !== STATUS_TYPE.active) {
       res.status(404);
       throw new Error('reel_not_found');
     }
     if (comment) {
       const commentExists = await Comment.findById(comment).exec();
-      if (!commentExists) {
+      if (!commentExists || commentExists.status !== STATUS_TYPE.active) {
         res.status(404);
         throw new Error('comment_not_found');
       }
@@ -45,7 +45,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       const replyExists = await Comment.findOne({
         _id: new mongoose.Types.ObjectId(String(comment)),
         replies: {
-          $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)) },
+          $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)), status: STATUS_TYPE.active },
         },
       }).exec();
       if (!replyExists) {
@@ -306,6 +306,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
           reel: {
             id: '$reel._id',
             caption: '$reel.caption',
+            isBlocked: { $eq: ['$reel.status', STATUS_TYPE.blocked] },
             totalViews: '$reel.totalViews',
             totalLikes: '$reel.totalLikes',
             totalComments: '$reel.totalComments',
@@ -361,6 +362,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               { $eq: ['$reportType', 'reply'] },
               {
                 id: '$replyObj._id',
+                isBlocked: { $eq: ['$replyObj.status', STATUS_TYPE.blocked] },
                 content: '$replyObj.content',
                 commentId: '$comment._id',
                 commentContent: '$comment.content',
@@ -386,6 +388,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                   { $eq: ['$reportType', 'comment'] },
                   {
                     id: '$comment._id',
+                    isBlocked: { $eq: ['$comment.status', STATUS_TYPE.blocked] },
                     content: '$comment.content',
                     createdBy: {
                       id: '$comment.createdBy._id',
@@ -573,106 +576,138 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
 });
 
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const { id, result, notes, isBlocked } = req.body;
+  const userId = req.user.id;
+  const { id, result, notes, isBlocked } = req.body;
 
-    if (!id || typeof isBlocked !== 'boolean') {
-      res.status(400);
-      throw new Error('invalid_request');
-    }
-    if (
-      result === REPORT_STATUS.accepted &&
-      result === REPORT_STATUS.rejected
-    ) {
-      res.status(400);
-      throw new Error('invalid_review_validated');
-    }
-    const report = await Report.findByIdAndUpdate(
-      id,
-      {
-        reviewedBy: new mongoose.Types.ObjectId(String(userId)),
-        result: result,
-        notes: notes,
-        reviewedAt: new Date(),
-      },
-      {
-        new: true,
-      }
-    ).exec();
+  if (!id || typeof isBlocked !== 'boolean') {
+    res.status(400);
+    throw new Error('invalid_request');
+  }
 
-    if (!report) {
-      res.status(404);
-      throw new Error('report_not_found');
+  if (result === REPORT_STATUS.accepted && result === REPORT_STATUS.rejected) {
+    res.status(400);
+    throw new Error('invalid_review_validated');
+  }
+
+  const report = await Report.findByIdAndUpdate(
+    id,
+    {
+      reviewedBy: new mongoose.Types.ObjectId(userId),
+      result,
+      notes,
+      reviewedAt: new Date(),
+    },
+    { new: true }
+  )
+    .populate([
+      { path: 'reel', select: 'status' },
+      { path: 'comment', select: 'status replies' },
+    ])
+    .exec();
+
+  if (!report) {
+    res.status(404);
+    throw new Error('report_not_found');
+  }
+
+  const matchQuery: any = {
+    result: REPORT_STATUS.accepted,
+    reportType: report.reportType,
+    reel: new mongoose.Types.ObjectId(String(report?.reel?._id)),
+  };
+
+  let responseId: any;
+  let responseIsBlocked: boolean = false;
+
+  switch (report.reportType) {
+    case 'reel':
+      const reel = report?.reel as IReel;
+      responseId = report?.reel?._id;
+      responseIsBlocked = reel?.status === STATUS_TYPE.blocked;
+      break;
+    case 'comment': {
+      const comment = report?.comment as IComment;
+      matchQuery.comment = new mongoose.Types.ObjectId(String(comment?._id));
+      responseId = comment?._id;
+      responseIsBlocked = comment?.status === STATUS_TYPE.blocked;
+      break;
     }
-    const matchQuery: any = {
-      result: REPORT_STATUS.accepted,
-      reportType: report.reportType,
-    };
-    let responseId: any;
-    if (report.reportType === 'reel') {
-      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
-      responseId = report?.reel;
-    } else if (report.reportType === 'comment') {
-      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
-      matchQuery.comment = new mongoose.Types.ObjectId(String(report?.comment));
-      responseId = report?.comment;
-    } else if (report.reportType === 'reply') {
-      matchQuery.reel = new mongoose.Types.ObjectId(String(report?.reel));
-      matchQuery.comment = new mongoose.Types.ObjectId(String(report?.comment));
+    case 'reply': {
+      const comment = report?.comment as IComment;
+      matchQuery.comment = new mongoose.Types.ObjectId(String(comment?._id));
       matchQuery.reply = new mongoose.Types.ObjectId(String(report?.reply));
       responseId = report?.reply;
+      const foundReply = comment?.replies?.find(
+        (reply: any) => reply._id.toString() === report?.reply?.toString()
+      );
+      responseIsBlocked = foundReply?.status === STATUS_TYPE.blocked;
+      break;
     }
-    const totalAcceptedReportsData = await Report.aggregate([
-      {
-        $match: matchQuery,
-      },
-      {
-        $count: 'totalAcceptedReports',
-      },
-    ]).exec();
-    const totalAcceptedReports =
-      totalAcceptedReportsData[0]?.totalAcceptedReports || 0;
-    if (
-      report.result === REPORT_STATUS.accepted &&
-      Boolean(isBlocked) === true
-    ) {
-      if (report.reportType === 'reel') {
-        await Reel.findByIdAndUpdate(report.reel, {
-          status: STATUS_TYPE.blocked,
-          updatedBy: userId,
-          updatedAt: new Date().toISOString(),
-        }).exec();
-      } else if (report.reportType === 'comment') {
-        await Comment.findByIdAndUpdate(report.comment, {
-          status: STATUS_TYPE.blocked,
-          updatedBy: userId,
-          updatedAt: new Date().toISOString(),
-        }).exec();
-      } else if (report.reportType === 'reply') {
-        await Comment.findOneAndUpdate(
-          { _id: report.comment, 'replies._id': report.reply },
+  }
+
+  const totalAcceptedReportsData = await Report.aggregate([
+    { $match: matchQuery },
+    { $count: 'totalAcceptedReports' },
+  ]).exec();
+
+  const totalAcceptedReports =
+    totalAcceptedReportsData[0]?.totalAcceptedReports || 0;
+
+  if (result === REPORT_STATUS.accepted && isBlocked) {
+    switch (report.reportType) {
+      case 'reel':
+        const reel = await Reel.findByIdAndUpdate(
+          report?.reel?._id,
+          {
+            status: STATUS_TYPE.blocked,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
+          },
+          { new: true }
+        ).exec();
+        responseIsBlocked = reel?.status === STATUS_TYPE.blocked;
+        break;
+      case 'comment':
+        const comment = await Comment.findByIdAndUpdate(
+          report?.comment?._id,
+          {
+            status: STATUS_TYPE.blocked,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString(),
+          },
+          { new: true }
+        ).exec();
+        responseIsBlocked = comment?.status === STATUS_TYPE.blocked;
+        break;
+      case 'reply':
+        const updatedComment = await Comment.findOneAndUpdate(
+          { _id: report?.comment?._id, 'replies._id': report?.reply },
           {
             $set: {
               'replies.$.status': STATUS_TYPE.blocked,
               'replies.$.updatedBy': userId,
               'replies.$.updatedAt': new Date().toISOString(),
             },
-          }
+          },
+          { new: true }
         ).exec();
-      }
+        const foundReply = updatedComment?.replies?.find(
+          (r: any) => r._id.toString() === report?.reply?.toString()
+        );
+        responseIsBlocked = foundReply?.status === STATUS_TYPE.blocked;
+        break;
     }
-    res.status(200).json({
-      success: true,
-      data: {
-        totalAcceptedReports: totalAcceptedReports,
-        id: responseId,
-      },
-      message: t('report_validated'),
-    });
-  } catch (error) {
-    throw error;
   }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalAcceptedReports,
+      id: responseId,
+      isBlocked: responseIsBlocked,
+    },
+    message: t('report_validated'),
+  });
 });
 
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
@@ -680,6 +715,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     const userId = req.user.id;
     const { id } = req.body;
     if (!id) {
+      res.status(400);
       throw new Error('invalid_request');
     }
     const report = await Report.findByIdAndUpdate(id, {
@@ -687,7 +723,10 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
     }).exec();
-    if (!report) throw new Error('report_not_found');
+    if (!report) {
+      res.status(404);
+      throw new Error('report_not_found');
+    }
     res.status(200).json({
       success: true,
       message: t('data_blocked'),

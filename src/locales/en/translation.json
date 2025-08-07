@@ -80,5 +80,6 @@
   "data_blocked": "Data blocked successfully.",
   "data_unblocked": "Data unblocked successfully.",
   "data_already_blocked": "Data already blocked.",
-  "data_not_blocked": "Data is not blocked."
+  "data_not_blocked": "Data is not blocked.",
+  "internal_server_error": "Something went wrong. Please try again later."
 }

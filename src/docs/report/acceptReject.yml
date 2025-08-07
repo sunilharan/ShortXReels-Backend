@@ -45,6 +45,8 @@
                       type: string
                     totalAcceptedReports:
                       type: number
+                    isBlocked:
+                      type: boolean
       400:
         description: 'Bad Request'
       401:

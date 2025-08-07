@@ -66,7 +66,6 @@ export const validateRegister = expressAsyncHandler(async (req, res, next) => {
     res.status(409);
     throw new Error('name_exist');
   }
-  res.status(200);
   next();
 });
 

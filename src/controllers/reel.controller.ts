@@ -866,7 +866,10 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     const reel = await Reel.findById(id).exec();
-    if (!reel) throw new Error('reel_not_found');
+    if (!reel) {
+      res.status(404);
+      throw new Error('reel_not_found');
+    }
     await Reel.findByIdAndUpdate(id, {
       status,
       updatedBy: userId,
@@ -889,9 +892,13 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_request');
     }
     const reel = await Reel.findById(id).exec();
-    if (!reel) throw new Error('reel_not_found');
+    if (!reel) {
+      res.status(404);
+      throw new Error('reel_not_found');
+    }
     if (Boolean(isBlocked) === true) {
       if (reel.status === STATUS_TYPE.blocked) {
+        res.status(409);
         throw new Error('data_already_blocked');
       }
       await Reel.findByIdAndUpdate(id, {
@@ -901,6 +908,7 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
       }).exec();
     } else if (Boolean(isBlocked) === false) {
       if (reel.status !== STATUS_TYPE.blocked) {
+        res.status(409);
         throw new Error('data_not_blocked');
       }
       await Reel.findByIdAndUpdate(id, {
@@ -1079,7 +1087,7 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
       };
     }
     const reelsAgg = topReelsAggregation();
-    const reelsPipeline: any[] = [
+    const reelsData = await Reel.aggregate([
       {
         $match: matchQuery,
       },
@@ -1101,8 +1109,7 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
           ],
         },
       },
-    ];
-    const reelsData = await Reel.aggregate(reelsPipeline).exec();
+    ]).exec();
     const reels = reelsData[0]?.topReels || [];
     const totalRecords = reelsData[0]?.pagination[0]?.total || 0;
     const totalPages = Math.ceil(totalRecords / limit) || 0;

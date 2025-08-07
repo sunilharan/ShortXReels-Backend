@@ -22,14 +22,14 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       throw new Error('invalid_content');
     }
     const reelExists = await Reel.findById(reel).exec();
-    if (!reelExists) {
+    if (!reelExists || reelExists.status !== STATUS_TYPE.active) {
       res.status(404);
       throw new Error('reel_not_found');
     }
     let comment;
     if (commentId) {
       const commentExists = await Comment.findById(commentId).exec();
-      if (!commentExists) {
+      if (!commentExists || commentExists.status !== STATUS_TYPE.active) {
         res.status(404);
         throw new Error('comment_not_found');
       }
@@ -50,7 +50,7 @@ export const createComment = expressAsyncHandler(async (req: any, res) => {
       ).exec();
 
       comment = await Comment.findById(commentId).exec();
-      if (!comment) {
+      if (!comment || comment.status !== STATUS_TYPE.active) {
         res.status(400);
         throw new Error('comment_creation_failed');
       }
@@ -392,11 +392,15 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
       !status ||
       ![STATUS_TYPE.active, STATUS_TYPE.inactive].includes(status)
     ) {
+      res.status(400);
       throw new Error('invalid_request');
     }
     if (commentId) {
       const comment = await Comment.findById(commentId).exec();
-      if (!comment) throw new Error('comment_not_found');
+      if (!comment) {
+        res.status(404);
+        throw new Error('comment_not_found');
+      }
       const reply = await Comment.findOneAndUpdate(
         {
           _id: new mongoose.Types.ObjectId(String(commentId)),
@@ -410,10 +414,16 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
           },
         }
       ).exec();
-      if (!reply) throw new Error('reply_not_found');
+      if (!reply) {
+        res.status(404);
+        throw new Error('reply_not_found');
+      }
     } else {
       const comment = await Comment.findById(id).exec();
-      if (!comment) throw new Error('comment_not_found');
+      if (!comment) {
+        res.status(404);
+        throw new Error('comment_not_found');
+      }
       await Comment.findByIdAndUpdate(id, { status }).exec();
     }
     res.status(200).json({
@@ -431,11 +441,15 @@ export const blockUnblockComment = expressAsyncHandler(
       const userId = req.user.id;
       const { id, isBlocked, commentId } = req.body;
       if (!id || typeof isBlocked !== 'boolean') {
+        res.status(400);
         throw new Error('invalid_request');
       }
       if (commentId) {
         const comment = await Comment.findById(commentId).exec();
-        if (!comment) throw new Error('comment_not_found');
+        if (!comment) {
+          res.status(404);
+          throw new Error('comment_not_found');
+        }
         if (Boolean(isBlocked) === true) {
           const reply = await Comment.findOneAndUpdate(
             {
@@ -450,7 +464,10 @@ export const blockUnblockComment = expressAsyncHandler(
               },
             }
           ).exec();
-          if (!reply) throw new Error('reply_not_found');
+          if (!reply) {
+            res.status(404);
+            throw new Error('reply_not_found');
+          }
         } else if (Boolean(isBlocked) === false) {
           const reply = await Comment.findOneAndUpdate(
             {
@@ -465,14 +482,21 @@ export const blockUnblockComment = expressAsyncHandler(
               },
             }
           ).exec();
-          if (!reply) throw new Error('reply_not_found');
+          if (!reply) {
+            res.status(404);
+            throw new Error('reply_not_found');
+          }
         }
       } else {
         const comment = await Comment.findById(id).exec();
-        if (!comment) throw new Error('comment_not_found');
+        if (!comment) {
+          res.status(404);
+          throw new Error('comment_not_found');
+        }
 
         if (Boolean(isBlocked) === true) {
           if (comment.status === STATUS_TYPE.blocked) {
+            res.status(409);
             throw new Error('data_already_blocked');
           }
           await Comment.findByIdAndUpdate(id, {
@@ -482,6 +506,7 @@ export const blockUnblockComment = expressAsyncHandler(
           }).exec();
         } else if (Boolean(isBlocked) === false) {
           if (comment.status !== STATUS_TYPE.blocked) {
+            res.status(409);
             throw new Error('data_not_blocked');
           }
           await Comment.findByIdAndUpdate(id, {

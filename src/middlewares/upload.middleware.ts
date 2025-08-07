@@ -88,11 +88,11 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
     let errored = false;
     let pending = 0;
 
-    const fail = (err: Error | string) => {
+    const fail = (err: Error | string, statusCode: number = 400) => {
       if (!errored) {
         errored = true;
         const message = t(String(err || 'invalid_request'));
-        res.status(400).json({ success: false, message });
+        res.status(statusCode).json({ success: false, message });
       }
     };
 
@@ -183,7 +183,7 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
               unlinkSync(savePath);
             } catch {}
             pending--;
-            return fail(`${mediaType}_max_size_exceeded`);
+            return fail(`${mediaType}_max_size_exceeded`, 413);
           }
         });
 
