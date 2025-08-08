@@ -94,10 +94,10 @@ export const register = expressAsyncHandler(async (req: any, res) => {
 
 export const nameExist = expressAsyncHandler(async (req: any, res) => {
   try {
-    const { name } = req.params;
+    const { name } = req.body;
     if (!name || !nameRegex.test(name)) {
       res.status(400);
-      throw new Error('invalid_request');
+      throw new Error('name_invalid');
     }
     let user = await User.findOne({
       $or: [{ name: name }, { email: { $regex: `^${name}$`, $options: 'i' } }],
@@ -920,7 +920,7 @@ export const getSavedReels = expressAsyncHandler(async (req: any, res) => {
 export const adminRemoveProfilePicture = expressAsyncHandler(
   async (req: any, res) => {
     try {
-      const userId = req.params.id;
+      const userId = req.user.id;
       const removeUserId = req.params.id;
       const role = req.role;
 
@@ -931,7 +931,11 @@ export const adminRemoveProfilePicture = expressAsyncHandler(
         res.status(404);
         throw new Error('user_not_found');
       }
-      if (role === UserRole.Admin && user.role.name !== UserRole.User) {
+      if (
+        userId !== removeUserId &&
+        role === UserRole.Admin &&
+        user.role.name !== UserRole.User
+      ) {
         res.status(403);
         throw new Error('forbidden');
       }
@@ -1298,6 +1302,7 @@ export const topUsers = expressAsyncHandler(async (req: any, res) => {
     throw error;
   }
 });
+
 export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
   try {
     const { name, email, password } = req.body;

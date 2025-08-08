@@ -278,8 +278,19 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
 
     if (replyId) {
       const commentDoc = await Comment.findOne(
-        { _id: commentId, 'replies._id': replyId },
-        { 'replies.$': 1, reel: 1 }
+        {
+          _id: commentId,
+          replies: {
+            $elemMatch: {
+              _id: replyId,
+              status: STATUS_TYPE.active,
+            },
+          },
+        },
+        {
+          'replies.$': 1,
+          reel: 1,
+        }
       ).exec();
 
       if (!commentDoc || !commentDoc.replies?.length) {
@@ -335,7 +346,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       });
     } else {
       const commentDoc = await Comment.findById(commentId).exec();
-      if (!commentDoc) {
+      if (!commentDoc || commentDoc.status !== STATUS_TYPE.active) {
         res.status(404);
         throw new Error('comment_not_found');
       }

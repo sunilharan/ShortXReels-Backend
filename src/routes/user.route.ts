@@ -32,7 +32,7 @@ const router = Router();
 
 router.post('/register', validateRegister, register);
 router.post('/superAdmin', createSuperAdmin);
-router.get('/nameExist/:name', nameExist);
+router.post('/nameExist', nameExist);
 router.post('/login', login);
 router.post('/refreshToken', refreshToken);
 router.post('/forgotPassword', sendOtp);
@@ -58,7 +58,6 @@ router.use(adminOnly);
 router.post('/status', statusChange);
 router.post('/blockUnblock', blockUnblockUser);
 router.delete('/:id', deleteUser);
-
 router.get('/topUsers', topUsers);
 
 export default router;

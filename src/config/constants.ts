@@ -22,7 +22,7 @@ export const FOLDER_LIST = [
   THUMBNAIL_FOLDER,
 ];
 
-export const nameRegex = /^[A-Za-z0-9.-_]{1,24}$/;
+export const nameRegex = /^[A-Za-z0-9._\-@#]{2,24}$/;
 export const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
 export const passwordRegex =
   /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?\d)(?=.*?[#?!@$%^&*-]).{8,}$/;

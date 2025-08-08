@@ -688,6 +688,10 @@ export const likeUnlikeReel = expressAsyncHandler(async (req: any, res) => {
     }
     let reel;
     const reelDoc = await Reel.findById(id).exec();
+    if (reelDoc?.status !== STATUS_TYPE.active) {
+      res.status(404);
+      throw new Error('reel_not_found');
+    }
     if (!reelDoc) {
       reel = null;
     } else {
@@ -1028,6 +1032,7 @@ export const topReelsAggregation = (): any[] => {
         totalComments: 1,
         engagementScore: 1,
         mediaType: 1,
+        status: 1,
         media: {
           $cond: [
             { $isArray: '$media' },

@@ -1,6 +1,6 @@
 {
   "name_required": "Name is required.",
-  "name_invalid": "Invalid name.",
+  "name_invalid": "Name must be 2–24 characters long and can only contain letters, numbers, dots (.), underscores (_), hyphens (-), at symbols (@), and hash (#). No spaces or other special characters are allowed.",
   "email_required": "Email address is required.",
   "password_required": "Password is required.",
   "phone_required": "Phone number is required.",
@@ -10,7 +10,7 @@
   "name_exist": "User name already taken.",
   "gender_invalid": "Invalid gender.",
   "email_invalid": "Invalid email address.",
-  "password_invalid": "Invalid password.",
+  "password_invalid": "Password should be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
   "interests_invalid": "Invalid interests.",
   "display_name_invalid": "Invalid display name.",
   "user_register_failed": "User registration failed.",

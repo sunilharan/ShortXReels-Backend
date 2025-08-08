@@ -1,0 +1,141 @@
+/report/blockedComments:
+  get:
+    tags: ['Report']
+    summary: Get blocked comments
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - in: query
+        name: page
+        schema:
+          type: number
+          default: 1
+      - in: query
+        name: limit
+        schema:
+          type: number
+          default: 10
+      - in: query
+        name: search
+        schema:
+          type: string
+      - in: query
+        name: sortBy
+        schema:
+          type: string
+          enum:
+            [
+              'createdAt',
+              'totalReports',
+              'totalPendingReports',
+              'totalAcceptedReports',
+              'totalRejectedReports',
+            ]
+      - in: query
+        name: sortOrder
+        schema:
+          type: string
+          enum: ['asc', 'desc']
+      - in: query
+        name: startDate
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: endDate
+        schema:
+          type: string
+          format: date-time
+    responses:
+      200:
+        description: A list of blocked comments with report statistics
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    comments:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          commentId:
+                            type: string
+                            nullable: true
+                          commentContent:
+                            type: string
+                            nullable: true
+                          content:
+                            type: string
+                          status:
+                            type: string
+                          totalReports:
+                            type: number
+                          totalPendingReports:
+                            type: number
+                          totalAcceptedReports:
+                            type: number
+                          totalRejectedReports:
+                            type: number
+                          createdBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                          blockedBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                              profile:
+                                type: string
+                          reel:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              caption:
+                                type: string
+                              status:
+                                type: string
+                              media:
+                                type: string
+                              mediaType:
+                                type: string
+                                enum: ['image', 'video']
+                              thumbnail:
+                                type: string
+                              createdBy:
+                                type: object
+                                properties:
+                                  id:
+                                    type: string
+                                  name:
+                                    type: string
+                                  profile:
+                                    type: string
+                    totalRecords:
+                      type: number
+                    totalPages:
+                      type: number
+      400:
+        description: Bad Request
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Not Found
+      500:
+        description: Internal Server Error

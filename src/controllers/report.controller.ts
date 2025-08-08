@@ -1,7 +1,12 @@
 import expressAsyncHandler from 'express-async-handler';
 import { Report } from '../models/report.model';
 import mongoose from 'mongoose';
-import { REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
+import {
+  MEDIA_TYPE,
+  REPORT_STATUS,
+  REPORT_TYPE,
+  STATUS_TYPE,
+} from '../config/enums';
 import { IReel, Reel } from '../models/reel.model';
 import { t } from 'i18next';
 import { Comment, IComment } from '../models/comment.model';
@@ -45,7 +50,10 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
       const replyExists = await Comment.findOne({
         _id: new mongoose.Types.ObjectId(String(comment)),
         replies: {
-          $elemMatch: { _id: new mongoose.Types.ObjectId(String(reply)), status: STATUS_TYPE.active },
+          $elemMatch: {
+            _id: new mongoose.Types.ObjectId(String(reply)),
+            status: STATUS_TYPE.active,
+          },
         },
       }).exec();
       if (!replyExists) {
@@ -238,37 +246,43 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               $match: {
                 $expr: {
                   $and: [
-                    { $eq: ['$result', 'accepted'] },
+                    { $eq: ['$result', REPORT_STATUS.accepted] },
                     {
                       $switch: {
                         branches: [
                           {
-                            case: { $eq: ['$$currentReportType', 'reel'] },
+                            case: {
+                              $eq: ['$$currentReportType', REPORT_TYPE.reel],
+                            },
                             then: {
                               $and: [
                                 { $eq: ['$reel', '$$reelId'] },
-                                { $eq: ['$reportType', 'reel'] },
+                                { $eq: ['$reportType', REPORT_TYPE.reel] },
                               ],
                             },
                           },
                           {
-                            case: { $eq: ['$$currentReportType', 'comment'] },
+                            case: {
+                              $eq: ['$$currentReportType', REPORT_TYPE.comment],
+                            },
                             then: {
                               $and: [
                                 { $eq: ['$reel', '$$reelId'] },
                                 { $eq: ['$comment', '$$commentId'] },
-                                { $eq: ['$reportType', 'comment'] },
+                                { $eq: ['$reportType', REPORT_TYPE.comment] },
                               ],
                             },
                           },
                           {
-                            case: { $eq: ['$$currentReportType', 'reply'] },
+                            case: {
+                              $eq: ['$$currentReportType', REPORT_TYPE.reply],
+                            },
                             then: {
                               $and: [
                                 { $eq: ['$reel', '$$reelId'] },
                                 { $eq: ['$comment', '$$commentId'] },
                                 { $eq: ['$reply', '$$replyId'] },
-                                { $eq: ['$reportType', 'reply'] },
+                                { $eq: ['$reportType', REPORT_TYPE.reply] },
                               ],
                             },
                           },
@@ -299,6 +313,29 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
         },
       },
       {
+        $match: {
+          $expr: {
+            $switch: {
+              branches: [
+                {
+                  case: { $eq: ['$reportType', REPORT_TYPE.reel] },
+                  then: { $eq: ['$reel.status', STATUS_TYPE.active] },
+                },
+                {
+                  case: { $eq: ['$reportType', REPORT_TYPE.comment] },
+                  then: { $eq: ['$comment.status', STATUS_TYPE.active] },
+                },
+                {
+                  case: { $eq: ['$reportType', REPORT_TYPE.reply] },
+                  then: { $eq: ['$replyObj.status', STATUS_TYPE.active] },
+                },
+              ],
+              default: false,
+            },
+          },
+        },
+      },
+      {
         $project: {
           _id: 0,
           id: '$_id',
@@ -307,12 +344,13 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
             id: '$reel._id',
             caption: '$reel.caption',
             isBlocked: { $eq: ['$reel.status', STATUS_TYPE.blocked] },
+            status: '$reel.status',
             totalViews: '$reel.totalViews',
             totalLikes: '$reel.totalLikes',
             totalComments: '$reel.totalComments',
             media: {
               $cond: [
-                { $eq: ['$reel.mediaType', 'image'] },
+                { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
                 {
                   $map: {
                     input: '$reel.media',
@@ -359,11 +397,12 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
           },
           comment: {
             $cond: [
-              { $eq: ['$reportType', 'reply'] },
+              { $eq: ['$reportType', REPORT_TYPE.reply] },
               {
                 id: '$replyObj._id',
                 isBlocked: { $eq: ['$replyObj.status', STATUS_TYPE.blocked] },
                 content: '$replyObj.content',
+                status: '$replyObj.status',
                 commentId: '$comment._id',
                 commentContent: '$comment.content',
                 createdBy: {
@@ -385,11 +424,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               },
               {
                 $cond: [
-                  { $eq: ['$reportType', 'comment'] },
+                  { $eq: ['$reportType', REPORT_TYPE.comment] },
                   {
                     id: '$comment._id',
-                    isBlocked: { $eq: ['$comment.status', STATUS_TYPE.blocked] },
+                    isBlocked: {
+                      $eq: ['$comment.status', STATUS_TYPE.blocked],
+                    },
                     content: '$comment.content',
+                    status: '$comment.status',
                     createdBy: {
                       id: '$comment.createdBy._id',
                       name: '$comment.createdBy.name',
@@ -477,6 +519,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                 { notes: { $regex: search, $options: 'i' } },
                 { 'reel.caption': { $regex: search, $options: 'i' } },
                 { 'comment.content': { $regex: search, $options: 'i' } },
+                { 'replyObj.content': { $regex: search, $options: 'i' } },
               ],
             }
           : {},
@@ -486,7 +529,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
           ? {
               $expr: {
                 $cond: [
-                  { $eq: ['$reportType', 'reel'] },
+                  { $eq: ['$reportType', REPORT_TYPE.reel] },
                   {
                     $eq: [
                       '$reel.createdBy.id',
@@ -575,6 +618,552 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
+export const blockedReelsContent = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search;
+      const reportType = req.query.reportType;
+      const sortBy = req.query.sortBy;
+      const sortOrder = req.query.sortOrder;
+      const startDate = req.query.startDate
+        ? parseISO(req.query.startDate)
+        : null;
+      const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+
+      const matchQuery: any = {};
+      const sortQuery: any = {};
+      const isStartValid = startDate && isValid(startDate);
+      const isEndValid = endDate && isValid(endDate);
+
+      if (isStartValid && isEndValid) {
+        matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+      } else if (isStartValid) {
+        matchQuery.createdAt = {
+          $gte: startOfDay(startDate),
+          $lte: endOfDay(startDate),
+        };
+      }
+
+      if (
+        sortOrder &&
+        sortBy &&
+        (sortOrder === 'asc' || sortOrder === 'desc') &&
+        [
+          'createdAt',
+          'totalReports',
+          'totalPendingReports',
+          'totalAcceptedReports',
+          'totalRejectedReports',
+        ].includes(sortBy)
+      ) {
+        sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
+      } else {
+        sortQuery.createdAt = -1;
+      }
+
+      const reportAggregations = getReportsAggregate();
+      const reportsAggregate = await Report.aggregate([
+        { $match: { ...matchQuery, reportType: REPORT_TYPE.reel } },
+        ...reportAggregations,
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'reel.updatedBy',
+            foreignField: '_id',
+            as: 'reel.blockedBy',
+          },
+        },
+        {
+          $unwind: '$reel.blockedBy',
+        },
+        {
+          $group: {
+            _id: {
+              reportType: '$reportType',
+              reelId: '$reel._id',
+            },
+            totalReports: { $sum: 1 },
+            totalPendingReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.pending] }, 1, 0],
+              },
+            },
+            totalAcceptedReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.accepted] }, 1, 0],
+              },
+            },
+            totalRejectedReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.rejected] }, 1, 0],
+              },
+            },
+            reel: { $first: '$reel' },
+          },
+        },
+        {
+          $match: {
+            'reel.status': STATUS_TYPE.blocked,
+          },
+        },
+        {
+          $match: search
+            ? { 'reel.caption': { $regex: search, $options: 'i' } }
+            : {},
+        },
+        {
+          $project: {
+            _id: 0,
+            reportType: 1,
+            totalReports: 1,
+            totalPendingReports: 1,
+            totalAcceptedReports: 1,
+            totalRejectedReports: 1,
+            id: '$reel._id',
+            caption: '$reel.caption',
+            status: '$reel.status',
+            blockedBy: {
+              id: '$reel.blockedBy._id',
+              name: '$reel.blockedBy.name',
+              profile: {
+                $cond: {
+                  if: { $not: ['$reel.blockedBy.profile'] },
+                  then: '$$REMOVE',
+                  else: {
+                    $concat: [
+                      config.host + '/profile/',
+                      '$reel.blockedBy.profile',
+                    ],
+                  },
+                },
+              },
+            },
+            media: {
+              $cond: [
+                { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
+                {
+                  $map: {
+                    input: '$reel.media',
+                    as: 'img',
+                    in: { $concat: [config.host, '/reel/', '$$img'] },
+                  },
+                },
+                {
+                  $concat: [
+                    config.host + '/api/reel/view/',
+                    { $toString: '$reel._id' },
+                  ],
+                },
+              ],
+            },
+            mediaType: '$reel.mediaType',
+            thumbnail: {
+              $cond: [
+                { $ifNull: ['$reel.thumbnail', false] },
+                {
+                  $concat: [config.host + '/thumbnail/', '$reel.thumbnail'],
+                },
+                '$$REMOVE',
+              ],
+            },
+            createdBy: {
+              id: '$reel.createdBy._id',
+              name: '$reel.createdBy.name',
+              profile: {
+                $cond: {
+                  if: { $not: ['$reel.createdBy.profile'] },
+                  then: '$$REMOVE',
+                  else: {
+                    $concat: [
+                      config.host + '/profile/',
+                      '$reel.createdBy.profile',
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $facet: {
+            data: [{ $sort: sortQuery }, { $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]).exec();
+
+      const reels = reportsAggregate[0]?.data || [];
+      const total = reportsAggregate[0]?.pagination[0]?.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        success: true,
+        data: { reels, totalRecords: total, totalPages },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+);
+
+export const blockedCommentContent = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search;
+      const sortBy = req.query.sortBy;
+      const sortOrder = req.query.sortOrder;
+      const startDate = req.query.startDate
+        ? parseISO(req.query.startDate)
+        : null;
+      const endDate = req.query.endDate ? parseISO(req.query.endDate) : null;
+
+      const matchQuery: any = {};
+      const sortQuery: any = {};
+      const isStartValid = startDate && isValid(startDate);
+      const isEndValid = endDate && isValid(endDate);
+
+      if (isStartValid && isEndValid) {
+        matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+      } else if (isStartValid) {
+        matchQuery.createdAt = {
+          $gte: startOfDay(startDate),
+          $lte: endOfDay(startDate),
+        };
+      }
+
+      if (
+        sortOrder &&
+        sortBy &&
+        (sortOrder === 'asc' || sortOrder === 'desc') &&
+        [
+          'createdAt',
+          'totalReports',
+          'totalPendingReports',
+          'totalAcceptedReports',
+          'totalRejectedReports',
+        ].includes(sortBy)
+      ) {
+        sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
+      } else {
+        sortQuery.createdAt = -1;
+      }
+
+      const reportAggregations = getReportsAggregate();
+      const reportsAggregate = await Report.aggregate([
+        {
+          $match: {
+            ...matchQuery,
+            reportType: { $in: [REPORT_TYPE.comment, REPORT_TYPE.reply] },
+          },
+        },
+        ...reportAggregations,
+        {
+          $match: search
+            ? {
+                $or: [
+                  { 'comment.content': { $regex: search, $options: 'i' } },
+                  { 'replyObj.content': { $regex: search, $options: 'i' } },
+                ],
+              }
+            : {},
+        },
+        {
+          $match: {
+            $expr: {
+              $switch: {
+                branches: [
+                  {
+                    case: { $eq: ['$reportType', REPORT_TYPE.comment] },
+                    then: { $eq: ['$comment.status', STATUS_TYPE.blocked] },
+                  },
+                  {
+                    case: { $eq: ['$reportType', REPORT_TYPE.reply] },
+                    then: { $eq: ['$replyObj.status', STATUS_TYPE.blocked] },
+                  },
+                ],
+                default: false,
+              },
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              reportType: '$reportType',
+              targetId: {
+                $switch: {
+                  branches: [
+                    {
+                      case: { $eq: ['$reportType', REPORT_TYPE.comment] },
+                      then: '$comment._id',
+                    },
+                    {
+                      case: { $eq: ['$reportType', REPORT_TYPE.reply] },
+                      then: '$replyObj._id',
+                    },
+                  ],
+                  default: null,
+                },
+              },
+            },
+            totalReports: { $sum: 1 },
+            totalPendingReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.pending] }, 1, 0],
+              },
+            },
+            totalAcceptedReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.accepted] }, 1, 0],
+              },
+            },
+            totalRejectedReports: {
+              $sum: {
+                $cond: [{ $eq: ['$result', REPORT_STATUS.rejected] }, 1, 0],
+              },
+            },
+            reel: { $first: '$reel' },
+            comment: { $first: '$comment' },
+            replyObj: { $first: '$replyObj' },
+          },
+        },
+        {
+          $addFields: {
+            blockedById: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
+                '$comment.updatedBy',
+                '$replyObj.updatedBy',
+              ],
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'blockedById',
+            foreignField: '_id',
+            as: 'blockedBy',
+          },
+        },
+        {
+          $unwind: '$blockedBy',
+        },
+        {
+          $project: {
+            _id: 0,
+            reportType: 1,
+            totalReports: 1,
+            totalPendingReports: 1,
+            totalAcceptedReports: 1,
+            totalRejectedReports: 1,
+            reel: {
+              id: '$reel._id',
+              caption: '$reel.caption',
+              status: '$reel.status',
+              media: {
+                $cond: [
+                  { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
+                  {
+                    $map: {
+                      input: '$reel.media',
+                      as: 'img',
+                      in: { $concat: [config.host, '/reel/', '$$img'] },
+                    },
+                  },
+                  {
+                    $concat: [
+                      config.host + '/api/reel/view/',
+                      { $toString: '$reel._id' },
+                    ],
+                  },
+                ],
+              },
+              mediaType: '$reel.mediaType',
+              thumbnail: {
+                $cond: [
+                  { $ifNull: ['$reel.thumbnail', false] },
+                  {
+                    $concat: [config.host + '/thumbnail/', '$reel.thumbnail'],
+                  },
+                  '$$REMOVE',
+                ],
+              },
+              createdBy: {
+                id: '$reel.createdBy._id',
+                name: '$reel.createdBy.name',
+                profile: {
+                  $cond: {
+                    if: { $not: ['$reel.createdBy.profile'] },
+                    then: '$$REMOVE',
+                    else: {
+                      $concat: [
+                        config.host + '/profile/',
+                        '$reel.createdBy.profile',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            id: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.reply] },
+                '$replyObj._id',
+                {
+                  $cond: [
+                    { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
+                    '$comment._id',
+                    '$reel._id',
+                  ],
+                },
+              ],
+            },
+            commentId: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.reply] },
+                '$comment._id',
+                '$$REMOVE',
+              ],
+            },
+            commentContent: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.reply] },
+                '$comment.content',
+                '$$REMOVE',
+              ],
+            },
+            content: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
+                '$comment.content',
+                '$replyObj.content',
+              ],
+            },
+            status: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
+                '$comment.status',
+                '$replyObj.status',
+              ],
+            },
+            blockedBy: {
+              id: '$blockedBy._id',
+              name: '$blockedBy.name',
+              profile: {
+                $cond: {
+                  if: { $not: ['$blockedBy.profile'] },
+                  then: '$$REMOVE',
+                  else: {
+                    $concat: [
+                      config.host + '/profile/',
+                      '$blockedBy.profile',
+                    ],
+                  },
+                },
+              },
+            },
+            createdBy: {
+              $cond: [
+                { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
+                {
+                  id: '$comment.createdBy._id',
+                  name: '$comment.createdBy.name',
+                  profile: {
+                    $cond: {
+                      if: { $not: ['$comment.createdBy.profile'] },
+                      then: '$$REMOVE',
+                      else: {
+                        $concat: [
+                          config.host + '/profile/',
+                          '$comment.createdBy.profile',
+                        ],
+                      },
+                    },
+                  },
+                },
+                {
+                  id: '$replyObj.createdBy._id',
+                  name: '$replyObj.createdBy.name',
+                  profile: {
+                    $cond: {
+                      if: { $not: ['$replyObj.createdBy.profile'] },
+                      then: '$$REMOVE',
+                      else: {
+                        $concat: [
+                          config.host + '/profile/',
+                          '$replyObj.createdBy.profile',
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          $facet: {
+            data: [{ $sort: sortQuery }, { $skip: skip }, { $limit: limit }],
+            pagination: [{ $count: 'total' }],
+          },
+        },
+      ]).exec();
+
+      const comments = reportsAggregate[0]?.data || [];
+      const total = reportsAggregate[0]?.pagination[0]?.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        success: true,
+        data: { comments, totalRecords: total, totalPages },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+);
+
+export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
+  const { pipeline, limit } = getContentReportsAggregation(
+    req.query,
+    REPORT_TYPE.reel
+  );
+  const reportsAggregate = await Report.aggregate(pipeline).exec();
+
+  const reports = reportsAggregate[0]?.reports || [];
+  const total = reportsAggregate[0]?.pagination[0]?.total || 0;
+  const totalPages = Math.ceil(total / limit);
+
+  res.status(200).json({
+    success: true,
+    data: { reports, totalRecords: total, totalPages },
+  });
+});
+
+export const getReportsByCommentId = expressAsyncHandler(async (req: any, res) => {
+  const { pipeline, limit } = getContentReportsAggregation(
+    req.query,
+    REPORT_TYPE.comment
+  );
+  const reportsAggregate = await Report.aggregate(pipeline).exec();
+
+  const reports = reportsAggregate[0]?.reports || [];
+  const total = reportsAggregate[0]?.pagination[0]?.total || 0;
+  const totalPages = Math.ceil(total / limit);
+
+  res.status(200).json({
+    success: true,
+    data: { reports, totalRecords: total, totalPages },
+  });
+});
+
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
   const { id, result, notes, isBlocked } = req.body;
@@ -620,19 +1209,19 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
   let responseIsBlocked: boolean = false;
 
   switch (report.reportType) {
-    case 'reel':
+    case REPORT_TYPE.reel:
       const reel = report?.reel as IReel;
       responseId = report?.reel?._id;
       responseIsBlocked = reel?.status === STATUS_TYPE.blocked;
       break;
-    case 'comment': {
+    case REPORT_TYPE.comment: {
       const comment = report?.comment as IComment;
       matchQuery.comment = new mongoose.Types.ObjectId(String(comment?._id));
       responseId = comment?._id;
       responseIsBlocked = comment?.status === STATUS_TYPE.blocked;
       break;
     }
-    case 'reply': {
+    case REPORT_TYPE.reply: {
       const comment = report?.comment as IComment;
       matchQuery.comment = new mongoose.Types.ObjectId(String(comment?._id));
       matchQuery.reply = new mongoose.Types.ObjectId(String(report?.reply));
@@ -655,7 +1244,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
 
   if (result === REPORT_STATUS.accepted && isBlocked) {
     switch (report.reportType) {
-      case 'reel':
+      case REPORT_TYPE.reel:
         const reel = await Reel.findByIdAndUpdate(
           report?.reel?._id,
           {
@@ -667,7 +1256,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
         ).exec();
         responseIsBlocked = reel?.status === STATUS_TYPE.blocked;
         break;
-      case 'comment':
+      case REPORT_TYPE.comment:
         const comment = await Comment.findByIdAndUpdate(
           report?.comment?._id,
           {
@@ -679,7 +1268,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
         ).exec();
         responseIsBlocked = comment?.status === STATUS_TYPE.blocked;
         break;
-      case 'reply':
+      case REPORT_TYPE.reply:
         const updatedComment = await Comment.findOneAndUpdate(
           { _id: report?.comment?._id, 'replies._id': report?.reply },
           {
@@ -829,6 +1418,287 @@ export const getReportsAggregate = () => {
   ];
 };
 
+export const getContentReportsAggregation = (
+  {
+    id,
+    search,
+    result,
+    sortBy,
+    sortOrder,
+    startDate,
+    endDate,
+    page = 1,
+    limit = 10,
+  }: any,
+  type: string
+) => {
+  const skip = (page - 1) * limit;
+  const matchQuery: any = {};
+  const sortQuery: any = {};
+  const isStartValid = startDate && isValid(startDate);
+  const isEndValid = endDate && isValid(endDate);
+  if (isStartValid && isEndValid) {
+    matchQuery.createdAt = { $gte: startDate, $lte: endDate };
+  } else if (isStartValid) {
+    matchQuery.createdAt = {
+      $gte: startOfDay(startDate),
+      $lte: endOfDay(startDate),
+    };
+  }
+  if (
+    sortOrder &&
+    sortBy &&
+    (sortOrder === 'asc' || sortOrder === 'desc') &&
+    ['createdAt', 'updatedAt', 'reviewedAt', 'totalAcceptedReports'].includes(
+      sortBy
+    )
+  ) {
+    sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
+  } else {
+    sortQuery.createdAt = -1;
+  }
+
+  if (result) {
+    // Ensure result is a string before assignment
+    matchQuery.result = Array.isArray(result)
+      ? result[0].toString()
+      : result.toString();
+  }
+
+  const objectId = mongoose.Types.ObjectId.isValid(id)
+    ? new mongoose.Types.ObjectId(id)
+    : id;
+
+  let typeMatch;
+  switch (type) {
+    case REPORT_TYPE.reel:
+      typeMatch = {
+        $and: [
+          { $eq: ['$reportType', REPORT_TYPE.reel] },
+          { $eq: ['$reel._id', objectId] },
+        ],
+      };
+      break;
+    case REPORT_TYPE.comment:
+      typeMatch = {
+        $or: [
+          {
+            $and: [
+              { $eq: ['$reportType', REPORT_TYPE.comment] },
+              { $eq: ['$comment._id', objectId] },
+            ],
+          },
+          {
+            $and: [
+              { $eq: ['$reportType', REPORT_TYPE.reply] },
+              { $eq: ['$replyObj._id', objectId] },
+            ],
+          },
+        ],
+      };
+      break;
+  }
+  const reportAggregations = getReportsAggregate();
+  const pipeline = [
+    { $match: matchQuery },
+    ...reportAggregations,
+    { $match: { $expr: typeMatch } },
+    {
+      $project: {
+        _id: 0,
+        id: '$_id',
+        totalAcceptedReports: '$totalAcceptedReports',
+        reel: {
+          id: '$reel._id',
+          caption: '$reel.caption',
+          isBlocked: { $eq: ['$reel.status', STATUS_TYPE.blocked] },
+          status: '$reel.status',
+          totalViews: '$reel.totalViews',
+          totalLikes: '$reel.totalLikes',
+          totalComments: '$reel.totalComments',
+          media: {
+            $cond: [
+              { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
+              {
+                $map: {
+                  input: '$reel.media',
+                  as: 'img',
+                  in: {
+                    $concat: [config.host, '/reel/', '$$img'],
+                  },
+                },
+              },
+              {
+                $concat: [
+                  config.host + '/api/reel/view/',
+                  { $toString: '$reel._id' },
+                ],
+              },
+            ],
+          },
+          mediaType: '$reel.mediaType',
+          thumbnail: {
+            $cond: [
+              { $ifNull: ['$reel.thumbnail', false] },
+              {
+                $concat: [config.host + '/thumbnail/', '$reel.thumbnail'],
+              },
+              '$$REMOVE',
+            ],
+          },
+          createdBy: {
+            id: '$reel.createdBy._id',
+            name: '$reel.createdBy.name',
+            profile: {
+              $cond: {
+                if: { $not: ['$reel.createdBy.profile'] },
+                then: '$$REMOVE',
+                else: {
+                  $concat: [
+                    config.host + '/profile/',
+                    '$reel.createdBy.profile',
+                  ],
+                },
+              },
+            },
+          },
+        },
+        comment: {
+          $cond: [
+            { $eq: ['$reportType', REPORT_TYPE.reply] },
+            {
+              id: '$replyObj._id',
+              isBlocked: { $eq: ['$replyObj.status', STATUS_TYPE.blocked] },
+              content: '$replyObj.content',
+              status: '$replyObj.status',
+              commentId: '$comment._id',
+              commentContent: '$comment.content',
+              createdBy: {
+                id: '$replyObj.createdBy._id',
+                name: '$replyObj.createdBy.name',
+                profile: {
+                  $cond: {
+                    if: { $not: ['$replyObj.createdBy.profile'] },
+                    then: '$$REMOVE',
+                    else: {
+                      $concat: [
+                        config.host + '/profile/',
+                        '$replyObj.createdBy.profile',
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+            {
+              $cond: [
+                { $eq: ['$reportType', REPORT_TYPE.comment] },
+                {
+                  id: '$comment._id',
+                  isBlocked: {
+                    $eq: ['$comment.status', STATUS_TYPE.blocked],
+                  },
+                  content: '$comment.content',
+                  status: '$comment.status',
+                  createdBy: {
+                    id: '$comment.createdBy._id',
+                    name: '$comment.createdBy.name',
+                    profile: {
+                      $cond: {
+                        if: { $not: ['$comment.createdBy.profile'] },
+                        then: '$$REMOVE',
+                        else: {
+                          $concat: [
+                            config.host + '/profile/',
+                            '$comment.createdBy.profile',
+                          ],
+                        },
+                      },
+                    },
+                  },
+                },
+                '$$REMOVE',
+              ],
+            },
+          ],
+        },
+        reportedBy: {
+          id: '$reportedBy._id',
+          name: '$reportedBy.name',
+          profile: {
+            $cond: {
+              if: { $not: ['$reportedBy.profile'] },
+              then: '$$REMOVE',
+              else: {
+                $concat: [config.host + '/profile/', '$reportedBy.profile'],
+              },
+            },
+          },
+        },
+        reason: 1,
+        reportType: 1,
+        status: 1,
+        reviewedBy: {
+          $cond: {
+            if: { $not: ['$reviewedAt'] },
+            then: '$$REMOVE',
+            else: {
+              id: '$reviewedBy._id',
+              name: '$reviewedBy.name',
+              profile: {
+                $cond: {
+                  if: { $not: ['$reviewedBy.profile'] },
+                  then: '$$REMOVE',
+                  else: {
+                    $concat: [config.host + '/profile/', '$reviewedBy.profile'],
+                  },
+                },
+              },
+            },
+          },
+        },
+        reviewedAt: {
+          $cond: {
+            if: { $not: ['$reviewedAt'] },
+            then: '$$REMOVE',
+            else: '$reviewedAt',
+          },
+        },
+        notes: {
+          $cond: {
+            if: { $not: ['$notes'] },
+            then: '$$REMOVE',
+            else: '$notes',
+          },
+        },
+        result: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+    ...(search
+      ? [
+          {
+            $match: {
+              $or: [
+                { 'reel.title': { $regex: search, $options: 'i' } },
+                { 'comment.text': { $regex: search, $options: 'i' } },
+              ],
+            },
+          },
+        ]
+      : []),
+    { $sort: sortQuery },
+    {
+      $facet: {
+        reports: [{ $skip: Number(skip) }, { $limit: Number(limit) }],
+        pagination: [{ $count: 'total' }],
+      },
+    },
+  ];
+
+  return { pipeline, limit: Number(limit) };
+};
 export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -881,15 +1751,15 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
             $switch: {
               branches: [
                 {
-                  case: { $eq: ['$reportType', 'reel'] },
+                  case: { $eq: ['$reportType', REPORT_TYPE.reel] },
                   then: '$reel.createdBy._id',
                 },
                 {
-                  case: { $eq: ['$reportType', 'comment'] },
+                  case: { $eq: ['$reportType', REPORT_TYPE.comment] },
                   then: '$comment.createdBy._id',
                 },
                 {
-                  case: { $eq: ['$reportType', 'reply'] },
+                  case: { $eq: ['$reportType', REPORT_TYPE.reply] },
                   then: '$replyObj.createdBy._id',
                 },
               ],

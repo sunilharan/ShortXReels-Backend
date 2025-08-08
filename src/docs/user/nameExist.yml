@@ -1,16 +1,22 @@
-/user/nameExist/{name}:
-  get:
+/user/nameExist:
+  post:
     tags:
       - User
     summary: Check if a name exists
     parameters:
-      - in: path
-        name: name
-        required: true
-        schema:
-          type: string
-        description: The name to check
+      - $ref: '#/components/parameters/AcceptLanguage'
     security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+            required:
+              - name
     responses:
       200:
         description: Name exists

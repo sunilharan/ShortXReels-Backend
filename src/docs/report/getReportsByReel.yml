@@ -1,9 +1,14 @@
-/report:
+/report/getReportsByReelId:
   get:
-    summary: Get all reports
     tags: ['Report']
+    summary: Get reports by reel id
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
+      - in: query
+        name: id
+        schema:
+          type: string
+        required: true
       - in: query
         name: page
         schema:
@@ -19,24 +24,10 @@
         schema:
           type: string
       - in: query
-        name: status
-        schema:
-          type: string
-          enum: ['active', 'inactive', 'deleted']
-      - in: query
         name: result
         schema:
           type: string
           enum: ['pending', 'accepted', 'rejected']
-      - in: query
-        name: reportType
-        schema:
-          type: string
-          enum: ['reel', 'comment']
-      - in: query
-        name: userId
-        schema:
-          type: string
       - in: query
         name: sortBy
         schema:
@@ -47,10 +38,6 @@
         schema:
           type: string
           enum: ['asc', 'desc']
-      - in: query
-        name: reportedBy
-        schema:
-          type: string
       - in: query
         name: startDate
         schema:
@@ -74,17 +61,6 @@
                 data:
                   type: object
                   properties:
-                    user:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        name:
-                          type: string
-                        displayName:
-                          type: string
-                        profile:
-                          type: string
                     reports:
                       type: array
                       items:
@@ -130,31 +106,6 @@
                                 type: number
                               totalComments:
                                 type: number
-                          comment:
-                            type: object
-                            nullable: true
-                            properties:
-                              id:
-                                type: string
-                              commentId:
-                                type: string
-                              commentContent:
-                                type: string
-                              content:
-                                type: string
-                              isBlocked:
-                                type: boolean
-                              status:
-                                type: string
-                              createdBy:
-                                type: object
-                                properties:
-                                  id:
-                                    type: string
-                                  name:
-                                    type: string
-                                  profile:
-                                    type: string
                           reportedBy:
                             type: object
                             properties:

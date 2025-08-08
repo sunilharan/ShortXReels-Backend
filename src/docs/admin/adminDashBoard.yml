@@ -72,6 +72,8 @@
                                 type: string
                               caption:
                                 type: string
+                              status:
+                                type: string
                               totalLikes:
                                 type: integer
                               totalViews:
@@ -143,6 +145,8 @@
                                     type: string
                                   caption:
                                     type: string
+                                  status:
+                                    type: string
                                   media:
                                     oneOf:
                                       - type: string
@@ -159,6 +163,8 @@
                                   totalLikes:
                                     type: integer
                                   totalViews:
+                                    type: integer
+                                  totalComments:
                                     type: integer
                                   createdBy:
                                     type: object
@@ -198,6 +204,14 @@
                                     type: string
                                   caption:
                                     type: string
+                                  status:
+                                    type: string
+                                  totalLikes:
+                                    type: integer
+                                  totalViews:
+                                    type: integer
+                                  totalComments:
+                                    type: integer
                                   media:
                                     type: array
                                     items:
@@ -208,10 +222,6 @@
                                   thumbnail:
                                     type: string
                                     format: uri
-                                  totalLikes:
-                                    type: integer
-                                  totalViews:
-                                    type: integer
                                   createdBy:
                                     type: object
                                     properties:

@@ -4,7 +4,7 @@ import { AES, enc, mode, pad } from 'crypto-js';
 import { config } from '../config/config';
 import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
-import { REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
+import { MEDIA_TYPE, REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { Report } from '../models/report.model';
 import { UserRole } from '../config/constants';
@@ -409,6 +409,38 @@ export const adminDashboardDetails = expressAsyncHandler(
                   preserveNullAndEmptyArrays: true,
                 },
               },
+              {
+                $lookup: {
+                  from: 'comments',
+                  let: { reelId: '$reel._id' },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ['$reel', '$$reelId'] },
+                            { $eq: ['$status', STATUS_TYPE.active] },
+                          ],
+                        },
+                      },
+                    },
+                    {
+                      $lookup: {
+                        from: 'users',
+                        localField: 'commentedBy',
+                        foreignField: '_id',
+                        as: 'commentedByUser',
+                      },
+                    },
+                    { $unwind: '$commentedByUser' },
+                    {
+                      $match: { 'commentedByUser.status': STATUS_TYPE.active },
+                    },
+                    { $count: 'count' },
+                  ],
+                  as: 'reel.commentStats',
+                },
+              },
               { $sort: { createdAt: -1 } },
               {
                 $project: {
@@ -439,11 +471,19 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        status: '$reel.status',
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },
                         },
                         totalViews: {
                           $size: { $ifNull: ['$reel.viewedBy', []] },
+                        },
+                        totalComments: {
+                          $cond: [
+                            { $gt: [{ $size: '$reel.commentStats' }, 0] },
+                            { $arrayElemAt: ['$reel.commentStats.count', 0] },
+                            0,
+                          ],
                         },
                         createdBy: {
                           id: '$reel.createdBy._id',
@@ -463,7 +503,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                         },
                         media: {
                           $cond: [
-                            { $eq: ['$reel.mediaType', 'image'] },
+                            { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
                             {
                               $cond: [
                                 { $isArray: '$reel.media' },
@@ -495,7 +535,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                             },
                             {
                               $cond: [
-                                { $eq: ['$reel.mediaType', 'video'] },
+                                { $eq: ['$reel.mediaType', MEDIA_TYPE.video] },
                                 {
                                   $concat: [
                                     config.host,
@@ -598,6 +638,38 @@ export const adminDashboardDetails = expressAsyncHandler(
                   },
                 },
               },
+              {
+                $lookup: {
+                  from: 'comments',
+                  let: { reelId: '$reel._id' },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ['$reel', '$$reelId'] },
+                            { $eq: ['$status', STATUS_TYPE.active] },
+                          ],
+                        },
+                      },
+                    },  
+                    {
+                      $lookup: {
+                        from: 'users',
+                        localField: 'commentedBy',
+                        foreignField: '_id',
+                        as: 'commentedByUser',
+                      },
+                    },
+                    { $unwind: '$commentedByUser' },
+                    {
+                      $match: { 'commentedByUser.status': STATUS_TYPE.active },
+                    },
+                    { $count: 'count' },
+                  ],
+                  as: 'reel.commentStats',
+                },
+              },
               { $sort: { createdAt: -1 } },
               {
                 $project: {
@@ -628,11 +700,19 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        status: '$reel.status',
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },
                         },
                         totalViews: {
                           $size: { $ifNull: ['$reel.viewedBy', []] },
+                        },
+                        totalComments: {
+                          $cond: [
+                            { $gt: [{ $size: '$reel.commentStats' }, 0] },
+                            { $arrayElemAt: ['$reel.commentStats.count', 0] },
+                            0,
+                          ],
                         },
                         createdBy: {
                           id: '$reel.createdBy._id',
@@ -652,7 +732,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                         },
                         media: {
                           $cond: [
-                            { $eq: ['$reel.mediaType', 'image'] },
+                            { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
                             {
                               $cond: [
                                 { $isArray: '$reel.media' },
@@ -684,7 +764,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                             },
                             {
                               $cond: [
-                                { $eq: ['$reel.mediaType', 'video'] },
+                                { $eq: ['$reel.mediaType', MEDIA_TYPE.video] },
                                 {
                                   $concat: [
                                     config.host,
@@ -716,7 +796,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                   },
                   comment: {
                     $cond: [
-                      { $eq: ['$reportType', 'reply'] },
+                      { $eq: ['$reportType', REPORT_TYPE.reply] },
                       {
                         id: '$replyObject._id',
                         content: '$replyObject.content',
@@ -725,7 +805,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                       },
                       {
                         $cond: [
-                          { $eq: ['$reportType', 'comment'] },
+                          { $eq: ['$reportType', REPORT_TYPE.comment] },
                           {
                             id: '$comment._id',
                             content: '$comment.content',
