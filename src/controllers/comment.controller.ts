@@ -487,7 +487,7 @@ export const blockUnblockComment = expressAsyncHandler(
             },
             {
               $set: {
-                'replies.$.status': STATUS_TYPE.blocked,
+                'replies.$.status': STATUS_TYPE.active,
                 'replies.$.updatedBy': userId,
                 'replies.$.updatedAt': new Date().toISOString(),
               },
@@ -529,7 +529,7 @@ export const blockUnblockComment = expressAsyncHandler(
       }
       res.status(200).json({
         success: true,
-        message: t('data_blocked'),
+        message: t(Boolean(isBlocked) ? 'data_blocked' : 'data_unblocked'),
       });
     } catch (error) {
       throw error;

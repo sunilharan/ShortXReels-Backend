@@ -625,7 +625,6 @@ export const blockedReelsContent = expressAsyncHandler(
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
       const search = req.query.search;
-      const reportType = req.query.reportType;
       const sortBy = req.query.sortBy;
       const sortOrder = req.query.sortOrder;
       const startDate = req.query.startDate
@@ -653,6 +652,7 @@ export const blockedReelsContent = expressAsyncHandler(
         (sortOrder === 'asc' || sortOrder === 'desc') &&
         [
           'createdAt',
+          'updatedAt',
           'totalReports',
           'totalPendingReports',
           'totalAcceptedReports',
@@ -715,6 +715,51 @@ export const blockedReelsContent = expressAsyncHandler(
             : {},
         },
         {
+          $lookup: {
+            from: 'comments',
+            let: { reelId: '$reel._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$reel', '$$reelId'] },
+                      { $eq: ['$status', STATUS_TYPE.active] },
+                    ],
+                  },
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'commentedBy',
+                  foreignField: '_id',
+                  as: 'commentedByUser',
+                },
+              },
+              { $unwind: '$commentedByUser' },
+              {
+                $match: { 'commentedByUser.status': STATUS_TYPE.active },
+              },
+              { $count: 'count' },
+            ],
+            as: 'reel.commentStats',
+          },
+        },
+        {
+          $addFields: {
+            totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
+            totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
+            totalComments: {
+              $cond: [
+                { $gt: [{ $size: '$reel.commentStats' }, 0] },
+                { $arrayElemAt: ['$reel.commentStats.count', 0] },
+                0,
+              ],
+            },
+          },
+        },
+        {
           $project: {
             _id: 0,
             reportType: 1,
@@ -725,6 +770,9 @@ export const blockedReelsContent = expressAsyncHandler(
             id: '$reel._id',
             caption: '$reel.caption',
             status: '$reel.status',
+            totalLikes: '$totalLikes',
+            totalViews: '$totalViews',
+            totalComments: '$totalComments',
             blockedBy: {
               id: '$reel.blockedBy._id',
               name: '$reel.blockedBy.name',
@@ -843,6 +891,7 @@ export const blockedCommentContent = expressAsyncHandler(
         (sortOrder === 'asc' || sortOrder === 'desc') &&
         [
           'createdAt',
+          'updatedAt',
           'totalReports',
           'totalPendingReports',
           'totalAcceptedReports',
@@ -934,12 +983,53 @@ export const blockedCommentContent = expressAsyncHandler(
           },
         },
         {
+          $lookup: {
+            from: 'comments',
+            let: { reelId: '$reel._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$reel', '$$reelId'] },
+                      { $eq: ['$status', STATUS_TYPE.active] },
+                    ],
+                  },
+                },
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'commentedBy',
+                  foreignField: '_id',
+                  as: 'commentedByUser',
+                },
+              },
+              { $unwind: '$commentedByUser' },
+              {
+                $match: { 'commentedByUser.status': STATUS_TYPE.active },
+              },
+              { $count: 'count' },
+            ],
+            as: 'reel.commentStats',
+          },
+        },
+        {
           $addFields: {
             blockedById: {
               $cond: [
                 { $eq: ['$_id.reportType', REPORT_TYPE.comment] },
                 '$comment.updatedBy',
                 '$replyObj.updatedBy',
+              ],
+            },
+            'reel.totalLikes': { $size: { $ifNull: ['$reel.likedBy', []] } },
+            'reel.totalViews': { $size: { $ifNull: ['$reel.viewedBy', []] } },
+            'reel.totalComments': {
+              $cond: [
+                { $gt: [{ $size: '$reel.commentStats' }, 0] },
+                { $arrayElemAt: ['$reel.commentStats.count', 0] },
+                0,
               ],
             },
           },
@@ -967,6 +1057,9 @@ export const blockedCommentContent = expressAsyncHandler(
               id: '$reel._id',
               caption: '$reel.caption',
               status: '$reel.status',
+              totalLikes: '$reel.totalLikes',
+              totalViews: '$reel.totalViews',
+              totalComments: '$reel.totalComments',
               media: {
                 $cond: [
                   { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
@@ -1061,10 +1154,7 @@ export const blockedCommentContent = expressAsyncHandler(
                   if: { $not: ['$blockedBy.profile'] },
                   then: '$$REMOVE',
                   else: {
-                    $concat: [
-                      config.host + '/profile/',
-                      '$blockedBy.profile',
-                    ],
+                    $concat: [config.host + '/profile/', '$blockedBy.profile'],
                   },
                 },
               },
@@ -1147,22 +1237,24 @@ export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
   });
 });
 
-export const getReportsByCommentId = expressAsyncHandler(async (req: any, res) => {
-  const { pipeline, limit } = getContentReportsAggregation(
-    req.query,
-    REPORT_TYPE.comment
-  );
-  const reportsAggregate = await Report.aggregate(pipeline).exec();
+export const getReportsByCommentId = expressAsyncHandler(
+  async (req: any, res) => {
+    const { pipeline, limit } = getContentReportsAggregation(
+      req.query,
+      REPORT_TYPE.comment
+    );
+    const reportsAggregate = await Report.aggregate(pipeline).exec();
 
-  const reports = reportsAggregate[0]?.reports || [];
-  const total = reportsAggregate[0]?.pagination[0]?.total || 0;
-  const totalPages = Math.ceil(total / limit);
+    const reports = reportsAggregate[0]?.reports || [];
+    const total = reportsAggregate[0]?.pagination[0]?.total || 0;
+    const totalPages = Math.ceil(total / limit);
 
-  res.status(200).json({
-    success: true,
-    data: { reports, totalRecords: total, totalPages },
-  });
-});
+    res.status(200).json({
+      success: true,
+      data: { reports, totalRecords: total, totalPages },
+    });
+  }
+);
 
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
   const userId = req.user.id;
@@ -1181,7 +1273,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
   const report = await Report.findByIdAndUpdate(
     id,
     {
-      reviewedBy: new mongoose.Types.ObjectId(userId),
+      reviewedBy: new mongoose.Types.ObjectId(String(userId)),
       result,
       notes,
       reviewedAt: new Date(),
@@ -1302,13 +1394,17 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
-    const { id } = req.body;
-    if (!id) {
+    const { id, status } = req.body;
+    if (!id || !status) {
       res.status(400);
       throw new Error('invalid_request');
     }
+    if (status !== STATUS_TYPE.active) {
+      res.status(400);
+      throw new Error('invalid_status');
+    }
     const report = await Report.findByIdAndUpdate(id, {
-      status: STATUS_TYPE.blocked,
+      status: status,
       updatedBy: userId,
       updatedAt: new Date().toISOString(),
     }).exec();
@@ -1318,7 +1414,7 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
     }
     res.status(200).json({
       success: true,
-      message: t('data_blocked'),
+      message: t('status_changed'),
     });
   } catch (error) {
     throw error;
@@ -1459,14 +1555,11 @@ export const getContentReportsAggregation = (
   }
 
   if (result) {
-    // Ensure result is a string before assignment
-    matchQuery.result = Array.isArray(result)
-      ? result[0].toString()
-      : result.toString();
+    matchQuery.result = String(result);
   }
 
   const objectId = mongoose.Types.ObjectId.isValid(id)
-    ? new mongoose.Types.ObjectId(id)
+    ? new mongoose.Types.ObjectId(String(id))
     : id;
 
   let typeMatch;
@@ -1713,19 +1806,20 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     const sortBy = req.query.sortBy;
     const sortOrder = req.query.sortOrder;
     const sortQuery: any = {};
-    if (sortBy && sortOrder) {
+    if (
+      sortBy &&
+      sortOrder &&
+      (sortOrder === 'asc' || sortOrder === 'desc') &&
+      [
+        'createdAt',
+        'updatedAt',
+        'totalReports',
+        'totalPendingReports',
+        'totalAcceptedReports',
+        'totalRejectedReports',
+      ].includes(sortBy)
+    ) {
       sortQuery[sortBy] = sortOrder === 'desc' ? -1 : 1;
-      if (
-        ![
-          'totalReports',
-          'totalPendingReports',
-          'totalAcceptedReports',
-          'totalRejectedReports',
-        ].includes(sortBy) ||
-        !['asc', 'desc'].includes(sortOrder)
-      ) {
-        sortQuery.totalReports = sortOrder === 'desc' ? -1 : 1;
-      }
     } else {
       sortQuery.totalReports = -1;
     }

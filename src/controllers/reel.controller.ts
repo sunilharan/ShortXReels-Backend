@@ -112,7 +112,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
   }
 
   const reelsMap = new Map<string, any>();
-  reels.forEach((reel) => reelsMap.set(reel.id.toString(), reel));
+  reels.forEach((reel: any) => reelsMap.set(reel.id.toString(), reel));
   const finalReels = Array.from(reelsMap.values()).slice(0, limit);
 
   res.status(200).json({
@@ -471,9 +471,13 @@ async function getReelsByRole(req: any, res: any, role?: string) {
       sortOrder &&
       sortBy &&
       (sortOrder === 'asc' || sortOrder === 'desc') &&
-      ['createdAt', 'totalViews', 'totalLikes', 'totalComments'].includes(
-        sortBy
-      )
+      [
+        'createdAt',
+        'updatedAt',
+        'totalViews',
+        'totalLikes',
+        'totalComments',
+      ].includes(sortBy)
     ) {
       sortQuery[sortBy] = sortOrder === 'asc' ? 1 : -1;
     } else {

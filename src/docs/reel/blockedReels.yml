@@ -1,7 +1,7 @@
-/report/blockedComments:
+/reel/blockedReels:
   get:
-    tags: ['Report']
-    summary: Get blocked comments
+    tags: ['Reel']
+    summary: Get blocked reels
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
@@ -25,6 +25,7 @@
           enum:
             [
               'createdAt',
+              'updatedAt',
               'totalReports',
               'totalPendingReports',
               'totalAcceptedReports',
@@ -47,7 +48,7 @@
           format: date-time
     responses:
       200:
-        description: A list of blocked comments with report statistics
+        description: A list of blocked reels with report statistics
         content:
           application/json:
             schema:
@@ -55,27 +56,14 @@
               properties:
                 success:
                   type: boolean
-                  example: true
                 data:
                   type: object
                   properties:
-                    comments:
+                    reels:
                       type: array
                       items:
                         type: object
                         properties:
-                          id:
-                            type: string
-                          commentId:
-                            type: string
-                            nullable: true
-                          commentContent:
-                            type: string
-                            nullable: true
-                          content:
-                            type: string
-                          status:
-                            type: string
                           totalReports:
                             type: number
                           totalPendingReports:
@@ -84,12 +72,31 @@
                             type: number
                           totalRejectedReports:
                             type: number
+                          id:
+                            type: string
+                          caption:
+                            type: string
+                          status:
+                            type: string
+                          media:
+                            oneOf:
+                              - type: string
+                              - type: array
+                                items:
+                                  type: string
+                          mediaType:
+                            type: string
+                            enum: ['image', 'video']
+                          thumbnail:
+                            type: string
                           createdBy:
                             type: object
                             properties:
                               id:
                                 type: string
                               name:
+                                type: string
+                              profile:
                                 type: string
                           blockedBy:
                             type: object
@@ -100,31 +107,12 @@
                                 type: string
                               profile:
                                 type: string
-                          reel:
-                            type: object
-                            properties:
-                              id:
-                                type: string
-                              caption:
-                                type: string
-                              status:
-                                type: string
-                              media:
-                                type: string
-                              mediaType:
-                                type: string
-                                enum: ['image', 'video']
-                              thumbnail:
-                                type: string
-                              createdBy:
-                                type: object
-                                properties:
-                                  id:
-                                    type: string
-                                  name:
-                                    type: string
-                                  profile:
-                                    type: string
+                          totalLikes:
+                            type: number
+                          totalViews:
+                            type: number
+                          totalComments:
+                            type: number
                     totalRecords:
                       type: number
                     totalPages:

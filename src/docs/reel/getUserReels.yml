@@ -31,7 +31,14 @@
         required: false
         schema:
           type: string
-          enum: ['createdAt', 'totalViews', 'totalLikes', 'totalComments']
+          enum:
+            [
+              'createdAt',
+              'updatedAt',
+              'totalViews',
+              'totalLikes',
+              'totalComments',
+            ]
       - in: query
         name: sortOrder
         required: false

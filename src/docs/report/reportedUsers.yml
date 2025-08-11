@@ -37,6 +37,8 @@
           type: string
           enum:
             [
+              "createdAt",
+              "updatedAt",
               "totalReports",
               "totalPendingReports",
               "totalAcceptedReports",

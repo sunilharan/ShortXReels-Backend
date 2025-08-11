@@ -8,8 +8,6 @@ import {
   getReportedUsers,
   getReportsByReelId,
   getReportsByCommentId,
-  blockedReelsContent,
-  blockedCommentContent,
 } from '../controllers/report.controller';
 
 const router = Router();
@@ -21,8 +19,6 @@ router.delete('/:id', deleteReport);
 router.get('/', getReports);
 router.post('/acceptReject', validateReport);
 router.get('/users', getReportedUsers);
-router.get('/blockedReels', blockedReelsContent);
-router.get('/blockedComments', blockedCommentContent);
 router.get('/getReportsByReelId', getReportsByReelId);
 router.get('/getReportsByCommentId', getReportsByCommentId);
 
