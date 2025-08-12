@@ -1,6 +1,6 @@
 {
   "name_required": "Name is required.",
-  "name_invalid": "Name must be 2–24 characters long and can only contain letters, numbers, dots (.), underscores (_), hyphens (-), at symbols (@), and hash (#). No spaces or other special characters are allowed.",
+  "name_invalid": "Name must be 2–24 characters, using only letters, numbers, ., _, -, @, or # (no spaces or other symbols).",
   "email_required": "Email address is required.",
   "password_required": "Password is required.",
   "phone_required": "Phone number is required.",
