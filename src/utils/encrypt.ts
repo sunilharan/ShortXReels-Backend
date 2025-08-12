@@ -11,7 +11,6 @@ export const generateToken = (
   } as SignOptions);
 };
 
-
 export const verifyToken = (token: string) => {
   try {
     return jwt.verify(token, config.jwtSecret);

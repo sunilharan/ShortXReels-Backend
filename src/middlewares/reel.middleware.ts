@@ -32,11 +32,7 @@ export const validateCreateReel = expressAsyncHandler(
         res.status(400);
         throw new Error('categories_required');
       }
-
-      if (
-        mediaType === MEDIA_TYPE.video &&
-        (!duration || duration <= 0 || duration > 60)
-      ) {
+      if (mediaType === MEDIA_TYPE.video && (!duration || duration > 60)) {
         res.status(400);
         throw new Error('invalid_duration');
       }

@@ -1,8 +1,8 @@
-import { Server, Socket } from "socket.io";
+import { Server, Socket } from 'socket.io';
 
 const WEBSOCKET_CORS = {
-  origin: "*",
-  methods: ["GET", "POST"],
+  origin: '*',
+  methods: ['GET', 'POST'],
 };
 
 class WebSocket extends Server {
@@ -19,7 +19,9 @@ class WebSocket extends Server {
     return WebSocket.io;
   }
 
-  public initializeHandlers(socketHandlers: Array<{ path: string; handler: any }>) {
+  public initializeHandlers(
+    socketHandlers: Array<{ path: string; handler: any }>
+  ) {
     socketHandlers.forEach(({ path, handler }) => {
       const namespace = WebSocket.io.of(path);
 
@@ -27,7 +29,7 @@ class WebSocket extends Server {
         namespace.use(handler.middlewareImplementation.bind(handler));
       }
 
-      namespace.on("connection", (socket: Socket) => {
+      namespace.on('connection', (socket: Socket) => {
         handler.handleConnection(socket);
       });
     });

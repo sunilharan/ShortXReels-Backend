@@ -106,16 +106,17 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
     const filePath = `files/categories/${image.filename}`;
 
     rename(image.path, filePath, async (err) => {
-      if (err) throw new Error('file_upload_failed');
-
-      const category = await Category.create({
-        name,
-        image: image.filename,
-        createdBy: userId,
-        updatedBy: userId,
-      });
-      res.status(201).json({ success: true, data: category });
+      if (err) {
+        throw new Error('file_upload_failed');
+      }
     });
+    const category = await Category.create({
+      name,
+      image: image.filename,
+      createdBy: userId,
+      updatedBy: userId,
+    });
+    res.status(201).json({ success: true, data: category });
   } catch (error) {
     throw error;
   }
@@ -169,7 +170,9 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
       const filePath = `files/categories/${image.filename}`;
 
       rename(image.path, filePath, async (err) => {
-        if (err) throw new Error('file_upload_failed');
+        if (err) {
+          throw new Error('file_upload_failed');
+        }
         updateData.image = image.filename;
         if (oldImage) removeFile(oldImage, 'files/categories');
       });

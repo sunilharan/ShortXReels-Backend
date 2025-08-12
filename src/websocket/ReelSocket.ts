@@ -11,7 +11,7 @@ class ReelSocket implements SocketInterface {
       if (id) {
         socket.join(id);
         socket.emit('joinedRoom', `User joined ${id}`);
-      } 
+      }
     });
     socket.on('leaveRoom', (id) => {
       if (socket.rooms.has(id)) {
@@ -20,8 +20,8 @@ class ReelSocket implements SocketInterface {
       }
     });
     socket.on('disconnect', () => {
-      socket.rooms.forEach(room => {
-        if (room !== socket.id) { 
+      socket.rooms.forEach((room) => {
+        if (room !== socket.id) {
           socket.leave(room);
         }
       });

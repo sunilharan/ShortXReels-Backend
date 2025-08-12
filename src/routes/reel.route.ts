@@ -16,7 +16,7 @@ import {
   blockUnblockReel,
   topReels,
   reelsYearMonthChart,
-  } from '../controllers/reel.controller';
+} from '../controllers/reel.controller';
 import { validateCreateReel } from '../middlewares/reel.middleware';
 import { blockedReelsContent } from '../controllers/report.controller';
 
@@ -48,4 +48,5 @@ router.get('/adminReels', adminReels);
 router.get('/topReels', topReels);
 router.get('/reelsChart', reelsYearMonthChart);
 router.get('/blockedReels', blockedReelsContent);
+
 export default router;

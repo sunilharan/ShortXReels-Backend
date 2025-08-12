@@ -814,9 +814,9 @@ export const streamReelVideo = expressAsyncHandler(async (req: any, res) => {
       res.writeHead(200, {
         'Content-Length': fileSize,
         'Content-Type': 'video/mp4',
-        'Content-Disposition': `inline; filename="${reel.caption}${path.extname(
+        'Content-Disposition': `inline; filename='${reel.caption}${path.extname(
           (reel.media as string) || ''
-        )}"`,
+        )}'`,
         'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         Pragma: 'no-cache',

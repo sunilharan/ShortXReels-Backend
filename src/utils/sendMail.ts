@@ -83,6 +83,7 @@ export const sendMail = async (to: string, subject: string, text: string) => {
 `,
     };
     await transporter.sendMail(mailOptions);
-  } catch (error) {throw error;
+  } catch (error) {
+    throw error;
   }
 };
