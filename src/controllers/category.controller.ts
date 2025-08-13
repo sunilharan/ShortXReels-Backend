@@ -5,6 +5,7 @@ import { t } from 'i18next';
 import { rename } from 'fs';
 import { STATUS_TYPE } from '../config/enums';
 import { UserRole } from '../config/constants';
+import mongoose from 'mongoose';
 export const getActiveCategories = expressAsyncHandler(
   async (req: any, res) => {
     try {
@@ -96,7 +97,8 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
     }
 
     const exists = await Category.findOne({
-      name: { $regex: name, $options: 'i' },
+      name: { $regex: `^${name.trim()}$`, $options: 'i' },
+      status: { $ne: STATUS_TYPE.deleted },
     }).exec();
     if (exists) {
       res.status(409);
@@ -156,9 +158,11 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
 
     if (name && name.trim()) {
       const existingCategory = await Category.findOne({
-        name: { $regex: name.trim(), $options: 'i' },
+        _id: { $ne: new mongoose.Types.ObjectId(String(id)) },
+        name: { $regex: `^${name.trim()}$`, $options: 'i' },
+        status: { $ne: STATUS_TYPE.deleted },
       }).exec();
-      if (existingCategory && existingCategory.id.toString() !== id) {
+      if (existingCategory) {
         res.status(409);
         throw new Error('category_exists');
       }
@@ -173,7 +177,6 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
         if (err) {
           throw new Error('file_upload_failed');
         }
-        updateData.image = image.filename;
         if (oldImage) removeFile(oldImage, 'files/categories');
       });
       updateData.image = image.filename;

@@ -412,10 +412,11 @@ export const resetPassword = expressAsyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error('password_same');
       }
-      user.password = newPassword;
-      user.updatedBy = user.id;
-      user.updatedAt = new Date();
-      await user.save();
+      await User.findByIdAndUpdate(user.id, {
+        password: newPassword,
+        updatedBy: user.id,
+        updatedAt: new Date().toISOString(),
+      }).exec();
       await Otp.deleteMany({ userId: user.id });
       res.status(200).json({
         success: true,
@@ -559,7 +560,7 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
 
     const user = await User.findOne({
       _id: userId,
-      $and: [{ status: { $nin: [STATUS_TYPE.deleted, STATUS_TYPE.blocked] } }],
+      status: STATUS_TYPE.active,
     }).exec();
 
     if (!user) {
@@ -576,9 +577,11 @@ export const changePassword = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('password_same');
     }
-    user.password = newPassword;
-    (user.updatedBy = userId), (user.updatedAt = new Date());
-    await user.save();
+    await User.findByIdAndUpdate(userId, {
+      password: newPassword,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    }).exec();
     res.status(200).json({
       success: true,
       message: t('password_changed'),
@@ -1214,6 +1217,22 @@ export const topUsersAggregation = (): any[] => {
     },
     {
       $unwind: '$user',
+    },
+    {
+      $lookup: {
+        from: 'roles',
+        localField: 'user.role',
+        foreignField: '_id',
+        as: 'role',
+      },
+    },
+    {
+      $unwind: '$role',
+    },
+    {
+      $match: {
+        'role.name': { $eq: UserRole.User },
+      },
     },
     {
       $project: {
