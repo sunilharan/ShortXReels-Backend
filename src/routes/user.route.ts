@@ -27,6 +27,7 @@ import {
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
 import { adminOnly } from '../middlewares/auth.middleware';
+import { MEDIA_TYPE } from '../config/enums';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.delete('/', deleteAccount);
 router.put(
   '/updateProfile',
   uploadFiles({
-    profile: { maxCount: 1, types: ['image'] },
+    profile: { maxCount: 1, types: [MEDIA_TYPE.image] },
   }),
   validateUpdateUser,
   updateUser

@@ -9,6 +9,7 @@ import {
   getActiveCategories,
   statusChange,
 } from '../controllers/category.controller';
+import { MEDIA_TYPE } from '../config/enums';
 
 const router = Router();
 
@@ -18,14 +19,14 @@ router.use(adminOnly);
 router.post(
   '/',
   uploadFiles({
-    image: { maxCount: 1, types: ['image'] },
+    image: { maxCount: 1, types: [MEDIA_TYPE.image] },
   }),
   createCategory
 );
 router.put(
   '/',
   uploadFiles({
-    image: { maxCount: 1, types: ['image'] },
+    image: { maxCount: 1, types: [MEDIA_TYPE.image] },
   }),
   editCategory
 );

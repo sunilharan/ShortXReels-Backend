@@ -19,6 +19,7 @@ import {
 } from '../controllers/reel.controller';
 import { validateCreateReel } from '../middlewares/reel.middleware';
 import { blockedReelsContent } from '../controllers/report.controller';
+import { MEDIA_TYPE } from '../config/enums';
 
 const router = Router();
 
@@ -31,8 +32,8 @@ router.get('/view/:id', streamReelVideo);
 router.post(
   '/',
   uploadFiles({
-    media: { types: ['video', 'image'], maxCount: 10 },
-    thumbnail: { types: ['image'], maxCount: 1 },
+    media: { types: [MEDIA_TYPE.video, MEDIA_TYPE.image], maxCount: 1 },
+    thumbnail: { types: [MEDIA_TYPE.image], maxCount: 1 },
   }),
   validateCreateReel,
   createReel

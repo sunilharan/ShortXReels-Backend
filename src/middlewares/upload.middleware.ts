@@ -237,25 +237,19 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
           }
         });
 
-        out.on('error', (err) => {
+        const handleError = (err: Error) => {
           if (errored) return;
           stream.destroy();
-          try {
-            unlinkSync(savePath);
-          } catch {}
-          pending--;
-          fail(err);
-        });
-
-        stream.on('error', (err) => {
-          if (errored) return;
           out.destroy();
           try {
             unlinkSync(savePath);
           } catch {}
           pending--;
           fail(err);
-        });
+        };
+
+        stream.on('error', handleError);
+        out.on('error', handleError);
       } else {
         const rule = allowedFields[field];
         if (!rule) {
@@ -264,15 +258,8 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
         }
 
         const mime = info.mimeType || 'application/octet-stream';
-        const ext = path.extname(info.filename).toLowerCase();
-        const inferredMime = {
-          '.jpg': 'image/jpeg',
-          '.jpeg': 'image/jpeg',
-          '.png': 'image/png',
-          '.gif': 'image/gif',
-        }[ext];
-
-        if (!rule.types.some((t) => inferredMime?.startsWith(t + '/'))) {
+        
+        if (rule.types.some(t => t === MEDIA_TYPE.image) && !mime.startsWith('image/')) {
           stream.resume();
           return fail(`invalid_image_format`);
         }
@@ -308,7 +295,7 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
             fieldname: field,
             originalname: info.filename,
             encoding: info.encoding,
-            mimeType: inferredMime || mime,
+            mimeType: mime,
             size,
             path: savePath,
             filename: id,
@@ -323,34 +310,19 @@ export const uploadFiles = (allowedFields: AllowedFields) => {
           }
         });
 
-        out.on('error', (err) => {
+        const handleError = (err: Error) => {
           if (errored) return;
           stream.destroy();
-          try {
-            unlinkSync(savePath);
-          } catch {}
-          pending--;
-          fail(err);
-        });
-
-        stream.on('error', (err) => {
-          if (errored) return;
           out.destroy();
           try {
             unlinkSync(savePath);
           } catch {}
           pending--;
           fail(err);
-        });
-        out.on('error', (err) => {
-          if (errored) return;
-          stream.destroy();
-          try {
-            unlinkSync(savePath);
-          } catch {}
-          pending--;
-          fail(err);
-        });
+        };
+
+        stream.on('error', handleError);
+        out.on('error', handleError);
       }
     });
 

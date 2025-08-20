@@ -19,6 +19,7 @@ import {
 } from '../middlewares/auth.middleware';
 import { adminDashboardDetails } from '../controllers/common.controller';
 import { uploadFiles } from '../middlewares/upload.middleware';
+import { MEDIA_TYPE } from '../config/enums';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get('/', adminGetAdminUsers);
 router.post(
   '/',
   uploadFiles({
-    profile: { maxCount: 1, types: ['image'] },
+    profile: { maxCount: 1, types: [MEDIA_TYPE.image] },
   }),
   validateRegister,
   adminRegister
@@ -43,7 +44,7 @@ router.post(
 router.put(
   '/',
   uploadFiles({
-    profile: { maxCount: 1, types: ['image'] },
+    profile: { maxCount: 1, types: [MEDIA_TYPE.image] },
   }),
   validateUpdateUser,
   adminEdit

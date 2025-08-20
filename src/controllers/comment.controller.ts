@@ -327,19 +327,19 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
         (id: any) => id.toString() === userId
       );
       const totalLikes = updatedReply?.likedBy?.length || 0;
-
-      const io = WebSocket.getInstance();
-      io.of('reel')
-        .to(updatedDoc?.reel?.toString() || 'reel')
-        .emit('likeUnlikeComment', {
-          type: COMMENT_TYPE.reply,
-          commentId,
-          replyId,
-          userId,
-          isLiked: isNowLiked,
-          totalLikes,
-        });
-
+      if (updatedDoc?.reel) {
+        const io = WebSocket.getInstance();
+        io.of('reel')
+          .to(updatedDoc?.reel?.toString())
+          .emit('likeUnlikeComment', {
+            type: COMMENT_TYPE.reply,
+            commentId,
+            replyId,
+            userId,
+            isLiked: isNowLiked,
+            totalLikes,
+          });
+      }
       res.status(200).json({
         success: true,
         message: t('like_unlike_success'),
@@ -371,19 +371,19 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
         (id: any) => id.toString() === userId
       );
       const totalLikes = updatedComment?.likedBy?.length || 0;
-
-      const io = WebSocket.getInstance();
-      io.of('reel')
-        .to(updatedComment?.reel?.toString() || 'reel')
-        .emit('likeUnlikeComment', {
-          type: COMMENT_TYPE.comment,
-          commentId,
-          replyId: null,
-          userId,
-          isLiked: isNowLiked,
-          totalLikes,
-        });
-
+      if (updatedComment?.reel) {
+        const io = WebSocket.getInstance();
+        io.of('reel')
+          .to(updatedComment?.reel?.toString())
+          .emit('likeUnlikeComment', {
+            type: COMMENT_TYPE.comment,
+            commentId,
+            replyId: null,
+            userId,
+            isLiked: isNowLiked,
+            totalLikes,
+          });
+      }
       res.status(200).json({
         success: true,
         message: t('like_unlike_success'),
