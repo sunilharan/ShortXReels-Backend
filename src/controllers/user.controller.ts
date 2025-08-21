@@ -788,7 +788,9 @@ const getUsersByRole = async (req: any, res: any, roleName: string) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const status = req.query.status;
-  const search = req.query.search;
+  const search = (
+    typeof req?.query?.search === 'string' ? req?.query?.search : ''
+  ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   const matchQuery: any = {};
   const role = await Role.findOne({ name: roleName }).exec();

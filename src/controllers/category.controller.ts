@@ -9,7 +9,9 @@ import mongoose from 'mongoose';
 export const getActiveCategories = expressAsyncHandler(
   async (req: any, res) => {
     try {
-      const search = req.query.search;
+      const search = (
+        typeof req?.query?.search === 'string' ? req?.query?.search : ''
+      ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const matchQuery: any = {
         status: STATUS_TYPE.active,
       };
@@ -37,7 +39,9 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const status = req.query.status;
-    const search = req.query.search;
+    const search = (
+      typeof req?.query?.search === 'string' ? req?.query?.search : ''
+    ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const matchQuery: any = {};
     if (role === UserRole.SuperAdmin && status) {

@@ -114,7 +114,9 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
-    const search = req.query.search;
+    const search = (
+      typeof req?.query?.search === 'string' ? req?.query?.search : ''
+    ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const result = req.query.result;
     const status = req.query.status;
     const reportType = req.query.reportType;
@@ -624,7 +626,9 @@ export const blockedReelsContent = expressAsyncHandler(
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
-      const search = req.query.search;
+      const search = (
+        typeof req?.query?.search === 'string' ? req?.query?.search : ''
+      ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const sortBy = req.query.sortBy;
       const sortOrder = req.query.sortOrder;
       const startDate = req.query.startDate
@@ -863,7 +867,9 @@ export const blockedCommentContent = expressAsyncHandler(
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
-      const search = req.query.search;
+      const search = (
+        typeof req?.query?.search === 'string' ? req?.query?.search : ''
+      ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const sortBy = req.query.sortBy;
       const sortOrder = req.query.sortOrder;
       const startDate = req.query.startDate
@@ -1797,7 +1803,9 @@ export const getReportedUsers = expressAsyncHandler(async (req: any, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
-    const search = req.query.search;
+    const search = (
+      typeof req?.query?.search === 'string' ? req?.query?.search : ''
+    ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const status = req.query.status;
     const startDate = req.query.startDate
       ? parseISO(req.query.startDate)

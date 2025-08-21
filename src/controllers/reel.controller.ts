@@ -458,7 +458,9 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     const sortOrder = req.query.sortOrder;
     const sortBy = req.query.sortBy;
     const status = req.query.status;
-    const search = req.query.search;
+    const search = (
+      typeof req?.query?.search === 'string' ? req?.query?.search : ''
+    ).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const category = req.query.category;
     const createdBy = req.query.createdBy;
     const startDate = req.query.startDate
