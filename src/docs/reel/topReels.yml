@@ -66,6 +66,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                                 format: uri

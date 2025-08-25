@@ -45,6 +45,8 @@
                             type: string
                           name:
                             type: string
+                          displayName:
+                            type: string
                           totalReels:
                             type: integer
                           totalViews:
@@ -69,4 +71,3 @@
         description: 'Reels not found'
       500:
         description: 'Internal server error'
-                    

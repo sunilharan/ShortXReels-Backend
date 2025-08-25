@@ -67,7 +67,7 @@ export const getCategories = expressAsyncHandler(async (req: any, res) => {
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
-      .populate(['createdBy', 'updatedBy'], 'name profile')
+      .populate(['createdBy', 'updatedBy'], 'name profile displayName')
       .exec();
 
     const total = await Category.countDocuments(matchQuery).exec();
@@ -116,12 +116,14 @@ export const createCategory = expressAsyncHandler(async (req: any, res) => {
         throw new Error('file_upload_failed');
       }
     });
-    const category = await Category.create({
+    let category = await Category.create({
       name,
       image: image.filename,
       createdBy: userId,
       updatedBy: userId,
     });
+    category = await category.populate('createdBy', 'name profile displayName');
+    category = await category.populate('updatedBy', 'name profile displayName');
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     throw error;
@@ -195,7 +197,7 @@ export const editCategory = expressAsyncHandler(async (req: any, res) => {
         new: true,
       }
     )
-      .populate(['createdBy', 'updatedBy'], 'name profile')
+      .populate(['createdBy', 'updatedBy'], 'name profile displayName')
       .exec();
     if (!category) {
       res.status(404);

@@ -36,6 +36,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               totalReels:
                                 type: integer
                               totalViews:
@@ -98,6 +100,8 @@
                                   id:
                                     type: string
                                   name:
+                                    type: string
+                                  displayName:
                                     type: string
                                   profile:
                                     type: string
@@ -173,6 +177,8 @@
                                         type: string
                                       name:
                                         type: string
+                                      displayName:
+                                        type: string
                                       profile:
                                         type: string
                                         format: uri
@@ -183,6 +189,8 @@
                                   id:
                                     type: string
                                   name:
+                                    type: string
+                                  displayName:
                                     type: string
                                   profile:
                                     type: string
@@ -228,6 +236,8 @@
                                       id:
                                         type: string
                                       name:
+                                        type: string
+                                      displayName:
                                         type: string
                                       profile:
                                         type: string

@@ -1,7 +1,7 @@
 /category:
   put:
-    tags: ["Category"]
-    summary: "Edit a category"
+    tags: ['Category']
+    summary: 'Edit a category'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -22,7 +22,7 @@
                 type: string
     responses:
       200:
-        description: "Category updated successfully"
+        description: 'Category updated successfully'
         content:
           application/json:
             schema:
@@ -54,6 +54,8 @@
                           type: string
                         name:
                           type: string
+                        displayName:
+                          type: string
                         profile:
                           type: string
                     updatedBy:
@@ -63,13 +65,15 @@
                           type: string
                         name:
                           type: string
+                        displayName:
+                          type: string
                         profile:
                           type: string
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

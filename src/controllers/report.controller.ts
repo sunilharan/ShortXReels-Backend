@@ -95,7 +95,7 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
     const alreadyReported = await Report.findOne(alreadyReportedQuery).exec();
 
     if (!alreadyReported) {
-      createData.updatedBy = userId;
+      createData.updatedBy = new mongoose.Types.ObjectId(String(userId));
       await Report.create(createData);
     }
     res.status(201).json({
@@ -383,6 +383,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
             createdBy: {
               id: '$reel.createdBy._id',
               name: '$reel.createdBy.name',
+              displayName: '$reel.createdBy.displayName',
               profile: {
                 $cond: {
                   if: { $not: ['$reel.createdBy.profile'] },
@@ -410,6 +411,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                 createdBy: {
                   id: '$replyObj.createdBy._id',
                   name: '$replyObj.createdBy.name',
+                  displayName: '$replyObj.createdBy.displayName',
                   profile: {
                     $cond: {
                       if: { $not: ['$replyObj.createdBy.profile'] },
@@ -437,6 +439,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
                     createdBy: {
                       id: '$comment.createdBy._id',
                       name: '$comment.createdBy.name',
+                      displayName: '$comment.createdBy.displayName',
                       profile: {
                         $cond: {
                           if: { $not: ['$comment.createdBy.profile'] },
@@ -459,6 +462,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
           reportedBy: {
             id: '$reportedBy._id',
             name: '$reportedBy.name',
+            displayName: '$reportedBy.displayName',
             profile: {
               $cond: {
                 if: { $not: ['$reportedBy.profile'] },
@@ -479,6 +483,7 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
               else: {
                 id: '$reviewedBy._id',
                 name: '$reviewedBy.name',
+                displayName: '$reviewedBy.displayName',
                 profile: {
                   $cond: {
                     if: { $not: ['$reviewedBy.profile'] },
@@ -780,6 +785,7 @@ export const blockedReelsContent = expressAsyncHandler(
             blockedBy: {
               id: '$reel.blockedBy._id',
               name: '$reel.blockedBy.name',
+              displayName: '$reel.blockedBy.displayName',
               profile: {
                 $cond: {
                   if: { $not: ['$reel.blockedBy.profile'] },
@@ -824,6 +830,7 @@ export const blockedReelsContent = expressAsyncHandler(
             createdBy: {
               id: '$reel.createdBy._id',
               name: '$reel.createdBy.name',
+              displayName: '$reel.createdBy.displayName',
               profile: {
                 $cond: {
                   if: { $not: ['$reel.createdBy.profile'] },
@@ -1097,6 +1104,7 @@ export const blockedCommentContent = expressAsyncHandler(
               createdBy: {
                 id: '$reel.createdBy._id',
                 name: '$reel.createdBy.name',
+                displayName: '$reel.createdBy.displayName',
                 profile: {
                   $cond: {
                     if: { $not: ['$reel.createdBy.profile'] },
@@ -1155,6 +1163,7 @@ export const blockedCommentContent = expressAsyncHandler(
             blockedBy: {
               id: '$blockedBy._id',
               name: '$blockedBy.name',
+              displayName: '$blockedBy.displayName',
               profile: {
                 $cond: {
                   if: { $not: ['$blockedBy.profile'] },
@@ -1171,6 +1180,7 @@ export const blockedCommentContent = expressAsyncHandler(
                 {
                   id: '$comment.createdBy._id',
                   name: '$comment.createdBy.name',
+                  displayName: '$comment.createdBy.displayName',
                   profile: {
                     $cond: {
                       if: { $not: ['$comment.createdBy.profile'] },
@@ -1187,6 +1197,7 @@ export const blockedCommentContent = expressAsyncHandler(
                 {
                   id: '$replyObj.createdBy._id',
                   name: '$replyObj.createdBy.name',
+                  displayName: '$replyObj.createdBy.displayName',
                   profile: {
                     $cond: {
                       if: { $not: ['$replyObj.createdBy.profile'] },
@@ -1283,6 +1294,7 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
       result,
       notes,
       reviewedAt: new Date(),
+      updatedBy: new mongoose.Types.ObjectId(String(userId)),
     },
     { new: true }
   )
@@ -1648,6 +1660,7 @@ export const getContentReportsAggregation = (
           createdBy: {
             id: '$reel.createdBy._id',
             name: '$reel.createdBy.name',
+            displayName: '$reel.createdBy.displayName',
             profile: {
               $cond: {
                 if: { $not: ['$reel.createdBy.profile'] },
@@ -1675,6 +1688,7 @@ export const getContentReportsAggregation = (
               createdBy: {
                 id: '$replyObj.createdBy._id',
                 name: '$replyObj.createdBy.name',
+                displayName: '$replyObj.createdBy.displayName',
                 profile: {
                   $cond: {
                     if: { $not: ['$replyObj.createdBy.profile'] },
@@ -1702,6 +1716,7 @@ export const getContentReportsAggregation = (
                   createdBy: {
                     id: '$comment.createdBy._id',
                     name: '$comment.createdBy.name',
+                    displayName: '$comment.createdBy.displayName',
                     profile: {
                       $cond: {
                         if: { $not: ['$comment.createdBy.profile'] },
@@ -1724,6 +1739,7 @@ export const getContentReportsAggregation = (
         reportedBy: {
           id: '$reportedBy._id',
           name: '$reportedBy.name',
+          displayName: '$reportedBy.displayName',
           profile: {
             $cond: {
               if: { $not: ['$reportedBy.profile'] },
@@ -1744,6 +1760,7 @@ export const getContentReportsAggregation = (
             else: {
               id: '$reviewedBy._id',
               name: '$reviewedBy.name',
+              displayName: '$reviewedBy.displayName',
               profile: {
                 $cond: {
                   if: { $not: ['$reviewedBy.profile'] },

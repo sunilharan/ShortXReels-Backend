@@ -1,9 +1,9 @@
 /report/users:
   get:
-    tags: ["Report"]
+    tags: ['Report']
     summary: Get reported users based on there content reported by other users
     parameters:
-      - $ref: "#/components/parameters/AcceptLanguage"
+      - $ref: '#/components/parameters/AcceptLanguage'
       - in: query
         name: page
         schema:
@@ -22,7 +22,7 @@
         name: status
         schema:
           type: string
-          enum: ["active", "inactive", "deleted", "blocked"]
+          enum: ['active', 'inactive', 'deleted', 'blocked']
       - in: query
         name: startDate
         schema:
@@ -37,18 +37,18 @@
           type: string
           enum:
             [
-              "createdAt",
-              "updatedAt",
-              "totalReports",
-              "totalPendingReports",
-              "totalAcceptedReports",
-              "totalRejectedReports",
+              'createdAt',
+              'updatedAt',
+              'totalReports',
+              'totalPendingReports',
+              'totalAcceptedReports',
+              'totalRejectedReports',
             ]
       - in: query
         name: sortOrder
         schema:
           type: string
-          enum: ["asc", "desc"]
+          enum: ['asc', 'desc']
     responses:
       200:
         description: Successfully retrieved offenders.
@@ -81,7 +81,7 @@
                             type: string
                           status:
                             type: string
-                            enum: ["active", "inactive", "deleted"]
+                            enum: ['active', 'inactive', 'deleted']
                           profile:
                             type: string
                             format: uri
@@ -99,6 +99,9 @@
                           updatedAt:
                             type: string
                             format: date-time
+                          createdBy:
+                            type: string
+                            nullable: true
                           updatedBy:
                             type: string
                             nullable: true
@@ -107,10 +110,10 @@
                     totalPages:
                       type: integer
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

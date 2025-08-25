@@ -52,6 +52,8 @@
                           type: string
                         name:
                           type: string
+                        displayName:
+                          type: string
                         profile:
                           type: string
                     caption:
@@ -90,6 +92,8 @@
                             type: string
                           name:
                             type: string
+                          displayName:
+                            type: string
                           profile:
                             type: string
                     totalViews:
@@ -106,6 +110,8 @@
                           id:
                             type: string
                           name:
+                            type: string
+                          displayName:
                             type: string
                           profile:
                             type: string

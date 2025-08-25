@@ -154,36 +154,6 @@ export const getCommentsByReel = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const getById = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const commentId = req.params.id;
-
-    if (!commentId) {
-      res.status(400);
-      throw new Error('invalid_request');
-    }
-    const comment = await Comment.findById(commentId)
-      .populate(
-        ['commentedBy', 'likedBy', 'replies.repliedBy', 'replies.likedBy'],
-        'name profile'
-      )
-      .sort({ createdAt: -1 })
-      .exec();
-    if (!comment) {
-      res.status(404);
-      throw new Error('comment_not_found');
-    }
-
-    res.status(200).json({
-      success: true,
-      data: comment,
-    });
-  } catch (error) {
-    throw error;
-  }
-});
-
 export const deleteComment = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
@@ -645,6 +615,7 @@ export const fetchComments = async (
                   in: {
                     id: '$$user._id',
                     name: '$$user.name',
+                    displayName: '$$user.displayName',
                     profile: {
                       $cond: {
                         if: { $not: ['$$user.profile'] },
@@ -679,6 +650,7 @@ export const fetchComments = async (
         commentedBy: {
           id: '$commentedBy._id',
           name: '$commentedBy.name',
+          displayName: '$commentedBy.displayName',
           profile: {
             $cond: {
               if: { $not: ['$commentedBy.profile'] },

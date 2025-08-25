@@ -1,6 +1,6 @@
 /comment/getByReel/{id}:
   get:
-    tags: ["Comment"]
+    tags: ['Comment']
     summary: Get comments by reel ID
     description: Retrieve all comments associated with a specific reel.
     parameters:
@@ -52,6 +52,10 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
+                              profile:
+                                type: string
                           replies:
                             type: array
                             items:
@@ -84,6 +88,8 @@
                                       type: string
                                     name:
                                       type: string
+                                    displayName:
+                                      type: string
                                     profile:
                                       type: string
                           status:
@@ -102,14 +108,14 @@
                     totalPages:
                       type: number
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       409:
-        description: "Conflict"
+        description: 'Conflict'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

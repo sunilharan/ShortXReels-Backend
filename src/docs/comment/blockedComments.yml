@@ -92,12 +92,18 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
+                              profile:
+                                type: string
                           blockedBy:
                             type: object
                             properties:
                               id:
                                 type: string
                               name:
+                                type: string
+                              displayName:
                                 type: string
                               profile:
                                 type: string
@@ -123,6 +129,8 @@
                                   id:
                                     type: string
                                   name:
+                                    type: string
+                                  displayName:
                                     type: string
                                   profile:
                                     type: string

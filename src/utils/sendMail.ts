@@ -1,20 +1,22 @@
 import { config } from '../config/config';
 import { createTransport } from 'nodemailer';
+import { decryptData } from './encrypt';
 
 export const sendMail = async (to: string, subject: string, text: string) => {
   try {
+    const decrypted = decryptData(config.emailData);
     const transporter = createTransport({
       service: 'gmail',
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
       auth: {
-        user: config.nodeMailerUser,
-        pass: config.nodeMailerPassword,
+        user: decrypted.user,
+        pass: decrypted.password,
       },
     });
     let mailOptions = {
-      from: config.nodeMailerUser,
+      from: decrypted.user,
       to: to,
       subject,
       html: `<!DOCTYPE html>

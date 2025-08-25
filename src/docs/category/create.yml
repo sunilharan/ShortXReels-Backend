@@ -1,7 +1,7 @@
 /category:
   post:
-    tags: ["Category"]
-    summary: "Create a new category"
+    tags: ['Category']
+    summary: 'Create a new category'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
@@ -20,7 +20,7 @@
                 required: true
     responses:
       201:
-        description: "Category created successfully"
+        description: 'Category created successfully'
         content:
           application/json:
             schema:
@@ -46,14 +46,32 @@
                       type: string
                       format: date-time
                     createdBy:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                        profile:
+                          type: string
                     updatedBy:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        displayName:
+                          type: string
+                        profile:
+                          type: string
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       409:
-        description: "Conflict"
+        description: 'Conflict'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

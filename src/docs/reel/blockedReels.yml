@@ -96,6 +96,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                           blockedBy:
@@ -104,6 +106,8 @@
                               id:
                                 type: string
                               name:
+                                type: string
+                              displayName:
                                 type: string
                               profile:
                                 type: string

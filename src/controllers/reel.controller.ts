@@ -178,7 +178,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
   res.status(200).json({
     success: true,
     data: {
-      ...user.toJSON(),
+      ...user?.toJSON(),
       reels,
       totalRecords: total,
       totalReels: total,
@@ -338,6 +338,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
               createdBy: {
                 id: '$creator._id',
                 name: '$creator.name',
+                displayName: '$creator.displayName',
                 profile: {
                   $cond: {
                     if: { $not: ['$creator.profile'] },
@@ -395,6 +396,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           createdBy: {
             id: '$creator._id',
             name: '$creator.name',
+            displayName: '$creator.displayName',
             profile: {
               $cond: {
                 if: { $not: ['$creator.profile'] },
@@ -602,10 +604,10 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const reel = await Reel.create(reelData);
 
     const populated = await reel.populate([
-      { path: 'createdBy', select: 'name profile' },
+      { path: 'createdBy', select: 'name profile displayName' },
       { path: 'categories', select: 'name image' },
-      { path: 'likedBy', select: 'name profile' },
-      { path: 'viewedBy', select: 'name profile' },
+      { path: 'likedBy', select: 'name profile displayName' },
+      { path: 'viewedBy', select: 'name profile displayName' },
     ]);
 
     if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
@@ -1060,6 +1062,7 @@ export const topReelsAggregation = (): any[] => {
         createdBy: {
           id: '$createdBy._id',
           name: '$createdBy.name',
+          displayName: '$createdBy.displayName',
           profile: {
             $cond: {
               if: { $not: ['$createdBy.profile'] },
@@ -1330,6 +1333,7 @@ export const fetchReels = async (
         createdAt: 1,
         createdBy: {
           name: '$createdBy.name',
+          displayName: '$createdBy.displayName',
           profile: {
             $cond: {
               if: { $not: ['$createdBy.profile'] },

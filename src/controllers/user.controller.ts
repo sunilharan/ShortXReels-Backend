@@ -85,7 +85,7 @@ export const register = expressAsyncHandler(async (req: any, res) => {
     }).exec();
     res.status(201).json({
       success: true,
-      data: { ...user.toJSON(), accessToken, refreshToken },
+      data: { ...user?.toJSON(), accessToken, refreshToken },
     });
   } catch (error) {
     throw error;
@@ -164,11 +164,10 @@ export const login = expressAsyncHandler(async (req: any, res) => {
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     }).exec();
-    const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
       data: {
-        ...userData,
+        ...user?.toJSON(),
         accessToken,
         refreshToken,
       },
@@ -237,11 +236,10 @@ export const adminLogin = expressAsyncHandler(async (req: any, res) => {
       updatedBy: user.id,
       updatedAt: new Date().toISOString(),
     }).exec();
-    const userData = JSON.parse(JSON.stringify(user));
     res.status(200).json({
       success: true,
       data: {
-        ...userData,
+        ...user?.toJSON(),
         accessToken,
         refreshToken,
       },
@@ -292,6 +290,8 @@ export const refreshToken = expressAsyncHandler(async (req: any, res) => {
     }).exec();
     await User.findByIdAndUpdate(user.id, {
       $pull: { token: decoded?.token },
+      updatedBy: user.id,
+      updatedAt: new Date().toISOString(),
     }).exec();
     res.status(200).json({
       success: true,
@@ -739,40 +739,6 @@ export const adminDelete = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('invalid_request');
     }
-    await Reel.updateMany(
-      { user: id },
-      {
-        status: STATUS_TYPE.deleted,
-        updatedBy: userId,
-        updatedAt: new Date().toISOString(),
-      }
-    ).exec();
-    await Comment.updateMany(
-      { user: id },
-      {
-        status: STATUS_TYPE.deleted,
-        updatedBy: userId,
-        updatedAt: new Date().toISOString(),
-      }
-    ).exec();
-    await Comment.updateMany(
-      { 'replies._id': id },
-      {
-        $set: {
-          'replies.$.status': STATUS_TYPE.deleted,
-          'replies.$.updatedBy': userId,
-          'replies.$.updatedAt': new Date().toISOString(),
-        },
-      }
-    ).exec();
-    await Report.updateMany(
-      { user: id },
-      {
-        status: STATUS_TYPE.deleted,
-        updatedBy: userId,
-        updatedAt: new Date().toISOString(),
-      }
-    ).exec();
     res.status(200).json({
       success: true,
       message: t('user_deleted'),
@@ -1241,6 +1207,7 @@ export const topUsersAggregation = (): any[] => {
         _id: 0,
         id: '$user._id',
         name: '$user.name',
+        displayName: '$user.displayName',
         totalReels: '$totalReels',
         totalViews: '$totalViews',
         totalLikes: '$totalLikes',

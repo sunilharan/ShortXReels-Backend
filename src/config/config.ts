@@ -15,8 +15,5 @@ export const config = {
   defaultLanguage: process.env.DEFAULT_LANGUAGE || '',
   aesKey: process.env.AES_KEY || '',
   aesIv: process.env.AES_IV || '',
-  nodeMailerHost: process.env.NODEMAILER_HOST || 'smtp.gmail.com',
-  nodeMailerPort: process.env.NODEMAILER_PORT || '587',
-  nodeMailerUser: process.env.NODEMAILER_USER,
-  nodeMailerPassword: process.env.NODEMAILER_PASSWORD,
+  emailData: process.env.EMAIL_DATA || '',
 };

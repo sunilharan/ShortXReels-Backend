@@ -451,6 +451,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                   reportedBy: {
                     id: '$reportedBy._id',
                     name: '$reportedBy.name',
+                    displayName: '$reportedBy.displayName',
                     profile: {
                       $cond: {
                         if: { $not: ['$reportedBy.profile'] },
@@ -488,6 +489,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                         createdBy: {
                           id: '$reel.createdBy._id',
                           name: '$reel.createdBy.name',
+                          displayName: '$reel.createdBy.displayName',
                           profile: {
                             $cond: {
                               if: { $not: ['$reel.createdBy.profile'] },
@@ -680,6 +682,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                   reportedBy: {
                     id: '$reportedBy._id',
                     name: '$reportedBy.name',
+                    displayName: '$reportedBy.displayName',
                     profile: {
                       $cond: {
                         if: { $not: ['$reportedBy.profile'] },
@@ -717,6 +720,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                         createdBy: {
                           id: '$reel.createdBy._id',
                           name: '$reel.createdBy.name',
+                          displayName: '$reel.createdBy.displayName',
                           profile: {
                             $cond: {
                               if: { $not: ['$reel.createdBy.profile'] },

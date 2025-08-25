@@ -98,6 +98,8 @@
                                     type: string
                                   name:
                                     type: string
+                                  displayName:
+                                    type: string
                                   profile:
                                     type: string
                               totalViews:
@@ -112,6 +114,8 @@
                               id:
                                 type: string
                               name:
+                                type: string
+                              displayName:
                                 type: string
                               profile:
                                 type: string
@@ -132,6 +136,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                                 nullable: true
@@ -149,8 +155,6 @@
                           updatedAt:
                             type: string
                             format: date-time
-                          updatedBy:
-                            type: string
                     totalRecords:
                       type: number
                     totalPages:

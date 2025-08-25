@@ -20,13 +20,13 @@
         required: false
         schema:
           type: string
-          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+          example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
       - in: query
         name: addReelIds
         required: false
         schema:
           type: string
-          example: "[\"686760c106fb8bcb615e4164\",\"686760c106fb8bcb615e4163\"]"
+          example: '["686760c106fb8bcb615e4164","686760c106fb8bcb615e4163"]'
       - in: query
         name: profileUserId
         required: false
@@ -64,6 +64,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                           caption:
@@ -98,8 +100,6 @@
                           updatedAt:
                             type: string
                             format: date-time
-                          updatedBy:
-                            type: string
                     totalRecords:
                       type: number
                     totalPages:

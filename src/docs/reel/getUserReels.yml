@@ -95,6 +95,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                           caption:
@@ -143,8 +145,6 @@
                           updatedAt:
                             type: string
                             format: date-time
-                          updatedBy:
-                            type: string
                     totalRecords:
                       type: number
                     totalPages:

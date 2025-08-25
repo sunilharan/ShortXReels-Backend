@@ -64,6 +64,8 @@
                                 type: string
                               name:
                                 type: string
+                              displayName:
+                                type: string
                               profile:
                                 type: string
                           updatedBy:
@@ -72,6 +74,8 @@
                               id:
                                 type: string
                               name:
+                                type: string
+                              displayName:
                                 type: string
                               profile:
                                 type: string
