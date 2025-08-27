@@ -5,7 +5,6 @@
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     requestBody:
-      required: true
       content:
         multipart/form-data:
           schema:
@@ -13,11 +12,12 @@
             properties:
               name:
                 type: string
-                required: true
               image:
                 type: string
                 format: binary
-                required: true
+            required:
+              - name
+              - image
     responses:
       201:
         description: 'Category created successfully'

@@ -30,6 +30,8 @@
                 format: binary
               oldProfile:
                 type: string
+            required:
+              - id
     responses:
       200:
         description: 'User updated successfully'

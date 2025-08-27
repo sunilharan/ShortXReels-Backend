@@ -20,6 +20,8 @@
                 format: binary
               oldImage:
                 type: string
+            required:
+              - id
     responses:
       200:
         description: 'Category updated successfully'

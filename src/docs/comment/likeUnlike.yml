@@ -13,16 +13,18 @@
             properties:
               commentId:
                 type: string
-                required: true
               action:
                 type: string
                 enum: ["like", "unlike"]
                 example: "like"
-                required: true
               replyId:
                 type: string
+            required:
+              - commentId
+              - action
     responses:
       200:
+        description: "Comment liked/unliked successfully"
         content:
           application/json:
             schema:

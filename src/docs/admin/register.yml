@@ -28,6 +28,13 @@
               profile:
                 type: string
                 format: binary
+            required:
+              - name
+              - email
+              - password
+              - phone
+              - gender
+              - displayName
     responses:
       200:
         description: 'Admin registered successfully'

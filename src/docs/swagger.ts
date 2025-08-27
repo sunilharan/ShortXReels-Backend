@@ -30,8 +30,8 @@ const options: Options = {
           schema: {
             type: 'string',
             enum: ['en', 'hi','gu'],
+            default: 'en'
           },
-          default: 'en',
           description: 'Language for localization (english, hindi, gujarati)',
         },
       },
