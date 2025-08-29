@@ -110,7 +110,6 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
 
 export const getReports = expressAsyncHandler(async (req: any, res) => {
   try {
-    const userId = req.user.id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;

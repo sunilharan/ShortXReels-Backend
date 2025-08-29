@@ -23,7 +23,7 @@ export const otpSchema = new Schema<IOtp>(
   {
     timestamps: true,
     toJSON: {
-      transform: function (doc, ret) {
+      transform: (_, ret: Record<string, any>) => {
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;

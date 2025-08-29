@@ -60,7 +60,7 @@ export const getDecodedData = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const getRoles = expressAsyncHandler(async (req: any, res) => {
+export const getRoles = expressAsyncHandler(async (_, res) => {
   try {
     const roles = await Role.find().exec();
     res.status(200).send({
@@ -72,7 +72,7 @@ export const getRoles = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const checkHealth = expressAsyncHandler(async (req: any, res) => {
+export const checkHealth = expressAsyncHandler(async (_, res) => {
   const mongoState = mongoose.connection.readyState;
   const mongoStates = [
     'disconnected',

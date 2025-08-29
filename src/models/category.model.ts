@@ -34,7 +34,7 @@ export const categorySchema = new Schema(
   {
     timestamps: true,
     toJSON: {
-      transform: function (doc, ret) {
+      transform: (_, ret: Record<string, any>) => {
         ret.id = ret._id;
         if (ret.image) {
           ret.image = `${config.host}/category/${ret.image}`;

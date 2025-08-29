@@ -12,7 +12,7 @@ export const roleSchema = new Schema<IRole>(
   },
   {
     toJSON: {
-      transform: function (doc, ret) {
+      transform: (_, ret: Record<string, any>) => {
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;

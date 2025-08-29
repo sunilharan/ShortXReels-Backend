@@ -78,7 +78,7 @@ const swaggerSpec: SwaggerSpec = swaggerJsDoc(options) as SwaggerSpec;
 const setupSwaggerDocs = (app: Express) => {
   app.use(
     '/api/swagger-docs',
-    (req: Request, res: Response, next: NextFunction) => {
+    (req: Request, _: Response, next: NextFunction) => {
       const url = `${req.protocol}://${req.get('host')}/api`;
       swaggerSpec.servers = [
         {
@@ -91,7 +91,7 @@ const setupSwaggerDocs = (app: Express) => {
     swaggerUi.serve,
     swaggerUi.setup(swaggerSpec)
   );
-  app.get('/api/swagger.json', (req: Request, res: Response) => {
+  app.get('/api/swagger.json', (_: Request, res: Response) => {
     res.json(swaggerSpec);
   });
 

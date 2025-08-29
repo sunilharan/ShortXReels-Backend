@@ -269,7 +269,7 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
       }
 
       const reply = commentDoc.replies[0];
-      const alreadyLiked = reply.likedBy.some(
+      const alreadyLiked = reply?.likedBy?.some(
         (id: any) => id.toString() === userId
       );
 

@@ -11,17 +11,15 @@ import {
   passwordRegex,
   removeFile,
 } from '../config/constants';
-import { STATUS_TYPE, SAVE_TYPE, GENDER_TYPE } from '../config/enums';
+import { STATUS_TYPE, SAVE_TYPE } from '../config/enums';
 import { Otp } from '../models/otp.model';
 import crypto from 'crypto';
-import { sendMail } from '../utils/sendMail';
+// import { sendMail } from '../utils/sendMail';
 import { ICategory } from '../models/category.model';
 import { config } from '../config/config';
 import { Reel } from '../models/reel.model';
 import { countActiveReelsWithActiveUsers, fetchReels } from './reel.controller';
 import { rename } from 'fs';
-import { Comment } from '../models/comment.model';
-import { Report } from '../models/report.model';
 import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 
 export const register = expressAsyncHandler(async (req: any, res) => {
@@ -320,7 +318,7 @@ export const sendOtp = expressAsyncHandler(async (req: any, res) => {
       res.status(400);
       throw new Error('email_does_not_exist');
     }
-    const otpData = crypto.randomInt(1000, 9999);
+    const otpData = crypto.randomInt(1000, 10000);
     await Otp.findOneAndDelete({ userId: user.id }).exec();
     const otp = await Otp.create({ userId: user.id, otp: otpData });
     // await sendMail(user.email, 'your_otp_code', otpData?.otp?.toString() || '');
@@ -1343,7 +1341,7 @@ export const createSuperAdmin = expressAsyncHandler(async (req: any, res) => {
       throw new Error('name_exist');
     }
     const role = await Role.findOne({ name: UserRole.SuperAdmin }).exec();
-    const user = await User.create({
+    await User.create({
       name,
       email,
       password: newPassword,

@@ -61,7 +61,7 @@ i18next
       debug: false,
       initImmediate: false,
     },
-    (err, t) => {
+    (err) => {
       if (err) console.log(err);
     }
   );

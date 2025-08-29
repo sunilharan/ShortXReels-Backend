@@ -1,7 +1,5 @@
 import expressAsyncHandler from 'express-async-handler';
 import { MEDIA_TYPE } from '../config/enums';
-import { Category } from '../models/category.model';
-import mongoose from 'mongoose';
 
 export const validateCreateReel = expressAsyncHandler(
   async (req: any, res, next) => {

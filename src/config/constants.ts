@@ -68,7 +68,7 @@ export const removeFile = async (
     if (fileName.startsWith('http')) {
       const url = new URL(fileName);
       const pathParts = url.pathname.split('/');
-      fileName = pathParts[pathParts.length - 1];
+      fileName = pathParts[pathParts.length - 1] || '';
     }
     fileName = fileName.replace(/^["\[\]]+|["\[\]]+$/g, '');
     if (!fileName) {

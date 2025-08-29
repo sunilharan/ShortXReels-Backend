@@ -60,7 +60,7 @@ export const userSchema = new Schema<IUser>(
   {
     timestamps: true,
     toJSON: {
-      transform: function (doc, ret) {
+      transform: (_, ret: Record<string, any>) => {
         ret.id = ret._id;
         if (ret.profile) {
           if (!/^https?:\/\//i.test(ret.profile)) {
