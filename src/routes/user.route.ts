@@ -23,6 +23,7 @@ import {
   deleteUser,
   topUsers,
   createSuperAdmin,
+  deleteAccountWithReason,
 } from '../controllers/user.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadFiles } from '../middlewares/upload.middleware';
@@ -44,6 +45,7 @@ router.post('/logout', logout);
 router.use(authenticate);
 router.get('/currentUser', currentUser);
 router.delete('/', deleteAccount);
+router.post('/deleteAccountWithReason', deleteAccountWithReason);
 router.put(
   '/updateProfile',
   uploadFiles({

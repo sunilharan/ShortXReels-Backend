@@ -28,6 +28,7 @@ export interface IUser extends Document {
   savedReels: PopulatedDoc<Document<ObjectId> & IReel>[];
   createdBy: PopulatedDoc<Document<ObjectId> & IUser>;
   updatedBy: PopulatedDoc<Document<ObjectId> & IUser>;
+  deleteReason: string;
   createdAt: Date;
   updatedAt: Date;
   matchPassword(enteredPassword: string): Promise<boolean>;
@@ -56,6 +57,7 @@ export const userSchema = new Schema<IUser>(
     savedReels: [{ type: Schema.Types.ObjectId, ref: 'Reel' }],
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    deleteReason: { type: String },
   },
   {
     timestamps: true,

@@ -483,6 +483,26 @@ export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
+export const deleteAccountWithReason = expressAsyncHandler(async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+    const deleteReason = req.body.deleteReason || '';
+    await User.findByIdAndUpdate(userId, {
+      status: STATUS_TYPE.deleted,
+      $unset: { token: '' },
+      deleteReason,
+      updatedBy: userId,
+      updatedAt: new Date().toISOString(),
+    }).exec();
+    res.status(200).json({
+      success: true,
+      message: t('user_deleted'),
+    });
+  } catch (error) {
+    throw error;
+  }
+});
+
 export const updateUser = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;

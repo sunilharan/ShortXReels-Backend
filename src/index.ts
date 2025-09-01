@@ -62,7 +62,7 @@ i18next
       initImmediate: false,
     },
     (err) => {
-      if (err) console.log(err);
+      if (err) console.log('i18next err :\n', err);
     }
   );
 app.use(i18nextMiddleware.handle(i18next));
