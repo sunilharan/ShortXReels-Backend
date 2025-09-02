@@ -36,7 +36,7 @@
               - gender
               - displayName
     responses:
-      200:
+      201:
         description: 'Admin registered successfully'
         content:
           application/json:

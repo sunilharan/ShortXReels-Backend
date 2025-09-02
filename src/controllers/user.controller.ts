@@ -465,7 +465,7 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const deleteAccount = expressAsyncHandler(async (req: any, res) => {
+export const deleteAccountWithoutReason = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = req.user.id;
     await User.findByIdAndUpdate(userId, {
@@ -668,7 +668,7 @@ export const adminRegister = expressAsyncHandler(async (req: any, res) => {
       { path: 'role', select: 'name' },
       { path: 'interests', select: 'name image' },
     ]);
-    res.status(200).json({
+    res.status(201).json({
       success: true,
       data: user,
     });

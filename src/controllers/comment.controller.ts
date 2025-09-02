@@ -177,21 +177,27 @@ export const deleteComment = expressAsyncHandler(async (req: any, res) => {
             updatedBy: userId,
             updatedAt: new Date().toISOString(),
           },
-        }
+        },
+        { new: true }
       ).exec();
     } else {
       comment = await Comment.findOneAndUpdate(
-        {
-          _id: new mongoose.Types.ObjectId(String(commentId)),
-          'replies._id': new mongoose.Types.ObjectId(String(replyId)),
-          'replies.repliedBy': new mongoose.Types.ObjectId(String(userId)),
-        },
+        { _id: new mongoose.Types.ObjectId(String(commentId)) },
         {
           $set: {
-            'replies.$.status': STATUS_TYPE.deleted,
-            'replies.$.updatedBy': userId,
-            'replies.$.updatedAt': new Date().toISOString(),
+            'replies.$[elem].status': STATUS_TYPE.deleted,
+            'replies.$[elem].updatedBy': new mongoose.Types.ObjectId(userId),
+            'replies.$[elem].updatedAt': new Date().toISOString(),
           },
+        },
+        {
+          arrayFilters: [
+            {
+              'elem._id': new mongoose.Types.ObjectId(String(replyId)),
+              'elem.repliedBy': new mongoose.Types.ObjectId(String(userId)),
+            },
+          ],
+          new: true,
         }
       ).exec();
     }
@@ -275,16 +281,18 @@ export const likeUnlikeComment = expressAsyncHandler(async (req: any, res) => {
 
       let updateQuery: any = {};
       if (action === LIKE_TYPE.like && !alreadyLiked) {
-        updateQuery = { $addToSet: { 'replies.$.likedBy': userObjectId } };
+        updateQuery = {
+          $addToSet: { 'replies.$[elem].likedBy': userObjectId },
+        };
       } else if (action === LIKE_TYPE.unlike && alreadyLiked) {
-        updateQuery = { $pull: { 'replies.$.likedBy': userObjectId } };
+        updateQuery = { $pull: { 'replies.$[elem].likedBy': userObjectId } };
       }
 
       if (Object.keys(updateQuery).length > 0) {
-        await Comment.findOneAndUpdate(
-          { _id: commentId, 'replies._id': replyId },
-          updateQuery
-        ).exec();
+        await Comment.findOneAndUpdate({ _id: commentId }, updateQuery, {
+          arrayFilters: [{ 'elem._id': new mongoose.Types.ObjectId(replyId) }],
+          new: true,
+        }).exec();
       }
 
       const updatedDoc = await Comment.findOne(
@@ -383,16 +391,21 @@ export const statusChange = expressAsyncHandler(async (req: any, res) => {
         throw new Error('comment_not_found');
       }
       const reply = await Comment.findOneAndUpdate(
-        {
-          _id: new mongoose.Types.ObjectId(String(commentId)),
-          'replies._id': new mongoose.Types.ObjectId(String(id)),
-        },
+        { _id: new mongoose.Types.ObjectId(String(commentId)) },
         {
           $set: {
-            'replies.$.status': status,
-            'replies.$.updatedBy': userId,
-            'replies.$.updatedAt': new Date().toISOString(),
+            'replies.$[elem].status': status,
+            'replies.$[elem].updatedBy': userId,
+            'replies.$[elem].updatedAt': new Date().toISOString(),
           },
+        },
+        {
+          arrayFilters: [
+            {
+              'elem._id': new mongoose.Types.ObjectId(String(id)),
+            },
+          ],
+          new: true,
         }
       ).exec();
       if (!reply) {
@@ -433,16 +446,19 @@ export const blockUnblockComment = expressAsyncHandler(
         }
         if (Boolean(isBlocked) === true) {
           const reply = await Comment.findOneAndUpdate(
-            {
-              _id: new mongoose.Types.ObjectId(String(commentId)),
-              'replies._id': new mongoose.Types.ObjectId(String(id)),
-            },
+            { _id: new mongoose.Types.ObjectId(String(commentId)) },
             {
               $set: {
-                'replies.$.status': STATUS_TYPE.blocked,
-                'replies.$.updatedBy': userId,
-                'replies.$.updatedAt': new Date().toISOString(),
+                'replies.$[elem].status': STATUS_TYPE.blocked,
+                'replies.$[elem].updatedBy': userId,
+                'replies.$[elem].updatedAt': new Date().toISOString(),
               },
+            },
+            {
+              arrayFilters: [
+                { 'elem._id': new mongoose.Types.ObjectId(String(id)) },
+              ],
+              new: true,
             }
           ).exec();
           if (!reply) {
@@ -451,16 +467,19 @@ export const blockUnblockComment = expressAsyncHandler(
           }
         } else if (Boolean(isBlocked) === false) {
           const reply = await Comment.findOneAndUpdate(
-            {
-              _id: new mongoose.Types.ObjectId(String(commentId)),
-              'replies._id': new mongoose.Types.ObjectId(String(id)),
-            },
+            { _id: new mongoose.Types.ObjectId(String(commentId)) },
             {
               $set: {
-                'replies.$.status': STATUS_TYPE.active,
-                'replies.$.updatedBy': userId,
-                'replies.$.updatedAt': new Date().toISOString(),
+                'replies.$[elem].status': STATUS_TYPE.active,
+                'replies.$[elem].updatedBy': userId,
+                'replies.$[elem].updatedAt': new Date().toISOString(),
               },
+            },
+            {
+              arrayFilters: [
+                { 'elem._id': new mongoose.Types.ObjectId(String(id)) },
+              ],
+              new: true,
             }
           ).exec();
           if (!reply) {

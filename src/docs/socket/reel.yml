@@ -1,0 +1,168 @@
+/socket/reel:
+  get:
+    tags: ["socket"]
+    summary: WebSocket - Reel Namespace
+    description: |
+      **WebSocket Namespace**: `/reel`  
+      ---
+      ### 🔁 Client to Server Events
+
+      #### 🟡 joinRoom
+      Join a reel room to receive real-time updates.
+      **Payload (Text):**
+      ```json
+      "686f5f33601990d8a84b4721"
+      ```
+
+      #### 🔴 leaveRoom
+      Leave the previously joined reel room.
+      **Payload (Text):**
+      ```json
+      "686f5f33601990d8a84b4721"
+      ```
+
+      ---
+
+      ### 🔁 Server to Client Events
+
+      #### ✅ joinedRoom
+      Confirmation after joining a room.
+      **Example:**
+      ```json
+      "User joined 686f5f33601990d8a84b4721"
+      ```
+
+      #### ✅ leftRoom
+      Confirmation after leaving a room.
+      **Example:**
+      ```json
+      "User left 686f5f33601990d8a84b4721"
+      ```
+
+      #### 📥 newComment
+      Sent when a new **comment** or **reply** is created.
+      
+      **Example - Comment:**
+      ```json
+      {
+        "type": "comment",
+        "reelId": "689b1dc14596003b2f9129a3",
+        "comment": {
+          "id": "68b6d2c4d57406b94071c987",
+          "reel": "689b1dc14596003b2f9129a3",
+          "commentedBy": {
+            "id": "6892d4649c9c7a8ab6253584",
+            "name": "tester1",
+            "displayName": "newName",
+            "profile": "http://192.168.1.20:5000/profile/d0565dbc-239a-41be-a4a6-bc0689ad3e6d.jpeg"
+          },
+          "content": "hi",
+          "status": "active",
+          "replies": [],
+          "createdAt": "2025-09-02T11:19:32.379Z",
+          "isLiked": false,
+          "totalLikes": 0
+        },
+        "totalComments": 1
+      }
+      ```
+
+      **Example - Reply:**
+      ```json
+      {
+        "type": "reply",
+        "reelId": "689b1dc14596003b2f9129a3",
+        "commentId": "68b6d2c4d57406b94071c987",
+        "reply": {
+          "id": "68b6d2dad57406b94071c9b9",
+          "content": "hii",
+          "createdAt": "2025-09-02T11:19:54.751Z",
+          "isLiked": false,
+          "totalLikes": 0,
+          "status": "active",
+          "repliedBy": {
+            "id": "6892d4649c9c7a8ab6253584",
+            "name": "tester1",
+            "displayName": "newName",
+            "profile": "http://192.168.1.20:5000/profile/d0565dbc-239a-41be-a4a6-bc0689ad3e6d.jpeg"
+          }
+        },
+        "totalComments": 1
+      }
+      ```
+
+      #### ❌ commentDeleted
+      Sent when a **comment** or **reply** is deleted.
+      
+      **Example - Comment Deleted:**
+      ```json
+      {
+        "type": "comment",
+        "commentId": "68b6d2c4d57406b94071c987",
+        "replyId": null,
+        "reelId": "689b1dc14596003b2f9129a3",
+        "totalComments": 0
+      }
+      ```
+
+      **Example - Reply Deleted:**
+      ```json
+      {
+        "type": "reply",
+        "commentId": "68b6d2c4d57406b94071c987",
+        "replyId": "68b6d2dad57406b94071c9b9",
+        "reelId": "689b1dc14596003b2f9129a3",
+        "totalComments": 1
+      }
+      ```
+
+      #### ❤️ likeUnlikeComment
+      Sent when a comment or reply is liked or unliked.
+      
+      **Example - Comment Liked:**
+      ```json
+      {
+        "type": "comment",
+        "commentId": "68b6d335d57406b94071ca23",
+        "replyId": null,
+        "userId": "6892d4649c9c7a8ab6253584",
+        "isLiked": true,
+        "totalLikes": 1
+      }
+      ```
+
+      **Example - Reply Liked:**
+      ```json
+      {
+        "type": "reply",
+        "commentId": "68b6d335d57406b94071ca23",
+        "replyId": "68b6d33ad57406b94071ca2b",
+        "userId": "6892d4649c9c7a8ab6253584",
+        "isLiked": true,
+        "totalLikes": 1
+      }
+      ```
+
+      ---
+
+      ### 💡 Usage
+      1. **Connect to the WebSocket server** using Socket.IO:
+         ```js
+         const socket = io("ws://<host>:<port>/reel", {
+           path: "/socket.io",
+         });
+         ```
+
+      2. **Listen for events**:
+         ```js
+         socket.on("newComment", (data) => console.log(data));
+         ```
+
+      3. **Join a reel room** to start receiving updates:
+         ```js
+         socket.emit("joinRoom", "686f5f33601990d8a84b4721");
+         ```
+
+    responses:
+      200:
+        description: WebSocket virtual endpoint for Swagger documentation only. No actual HTTP response.

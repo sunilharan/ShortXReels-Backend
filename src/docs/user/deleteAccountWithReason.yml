@@ -1,4 +1,4 @@
-/user/deleteAccountWithReason:
+/user/deleteAccount:
   post:
     tags: ['User']
     summary: 'Delete your account with reason'

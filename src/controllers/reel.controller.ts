@@ -12,179 +12,194 @@ import { parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 import { yearMonthChartAggregation } from './common.controller';
 
 export const getReels = expressAsyncHandler(async (req: any, res) => {
-  const userId = req.user.id;
-  const savedReels = req.user.savedReels;
-  const limit = parseInt(req.query.limit) || 10;
-  const profileUserId = req.query.profileUserId || '';
-  const removeReels = JSON.parse(req.query.removeReelIds || '[]');
-  const categoryId = req.query.categoryId || '';
-  const addReels = JSON.parse(req.query.addReelIds || '[]');
-  const role = req.role;
-  const matchQuery: any = {
-    status: STATUS_TYPE.active,
-  };
+  try {
+    const userId = req.user.id;
+    const savedReels = req.user.savedReels;
+    const limit = parseInt(req.query.limit) || 10;
+    const profileUserId = req.query.profileUserId || '';
+    const removeReels = JSON.parse(req.query.removeReelIds || '[]');
+    const categoryId = req.query.categoryId || '';
+    const addReels = JSON.parse(req.query.addReelIds || '[]');
+    const role = req.role;
 
-  if (role === UserRole.User) {
-    matchQuery.createdBy = { $ne: new mongoose.Types.ObjectId(String(userId)) };
-  } else if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
-    if (categoryId && categoryId !== 'recommended') {
-      matchQuery.categories = {
-        $in: [new mongoose.Types.ObjectId(String(categoryId))],
+    const matchQuery: any = { status: STATUS_TYPE.active };
+
+    if (role === UserRole.User) {
+      matchQuery.createdBy = {
+        $ne: new mongoose.Types.ObjectId(String(userId)),
       };
+    } else if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
+      if (categoryId && categoryId !== 'recommended') {
+        matchQuery.categories = {
+          $in: [new mongoose.Types.ObjectId(String(categoryId))],
+        };
+      }
     }
-  }
-  if (removeReels.length) {
-    matchQuery._id = {
-      $nin: removeReels.map(
-        (id: string) => new mongoose.Types.ObjectId(String(id))
-      ),
-    };
-  }
+    let totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
 
-  let reels: any[] = [];
-  let totalRecords = 0;
-
-  if (addReels.length) {
-    const addReelQuery = {
-      _id: {
-        $in: addReels.map(
+    if (removeReels.length) {
+      matchQuery._id = {
+        $nin: removeReels.map(
           (id: string) => new mongoose.Types.ObjectId(String(id))
         ),
-      },
+      };
+    }
+
+    const reelsMap = new Map<string, any>();
+    const addUniqueReels = (newReels: any[]) => {
+      newReels.forEach((r) => reelsMap.set(r.id.toString(), r));
     };
-    reels = await fetchReels(
-      userId,
-      addReelQuery,
-      { skip: 0, limit: addReels.length },
-      savedReels
-    );
-  }
 
-  if (profileUserId) {
-    matchQuery.createdBy = new mongoose.Types.ObjectId(String(profileUserId));
-    reels = [
-      ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
-    ];
+    if (addReels.length) {
+      const addReelQuery = {
+        _id: {
+          $in: addReels.map(
+            (id: string) => new mongoose.Types.ObjectId(String(id))
+          ),
+        },
+      };
+      const addResults = await fetchReels(
+        userId,
+        addReelQuery,
+        { skip: 0, limit: addReels.length },
+        savedReels
+      );
+      addUniqueReels(addResults);
+    }
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
-  } else if (categoryId === 'recommended') {
-    reels = [
-      ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
-    ];
+    let primaryResults: any[] = [];
+    if (profileUserId) {
+      matchQuery.createdBy = new mongoose.Types.ObjectId(String(profileUserId));
+      primaryResults = await fetchReels(
+        userId,
+        matchQuery,
+        { skip: 0, limit },
+        savedReels
+      );
+      totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
+    } else if (categoryId === 'recommended') {
+      primaryResults = await fetchReels(
+        userId,
+        matchQuery,
+        { skip: 0, limit },
+        savedReels
+      );
+    } else if (categoryId) {
+      const primaryQuery = {
+        ...matchQuery,
+        categories: { $in: [new mongoose.Types.ObjectId(String(categoryId))] },
+      };
+      primaryResults = await fetchReels(
+        userId,
+        primaryQuery,
+        { skip: 0, limit },
+        savedReels
+      );
+    } else {
+      primaryResults = await fetchReels(
+        userId,
+        matchQuery,
+        { skip: 0, limit },
+        savedReels
+      );
+    }
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
-  } else if (categoryId) {
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
-    const primaryQuery = {
-      ...matchQuery,
-      categories: { $in: [new mongoose.Types.ObjectId(String(categoryId))] },
-    };
-    const primaryReels = await fetchReels(
-      userId,
-      primaryQuery,
-      { skip: 0, limit },
-      savedReels
-    );
-    reels = [...reels, ...primaryReels];
-    if (reels.length < limit && role === UserRole.User) {
+    addUniqueReels(primaryResults);
+
+    if (categoryId && role === UserRole.User && reelsMap.size < limit) {
       const fallbackQuery = {
         ...matchQuery,
         categories: { $nin: [new mongoose.Types.ObjectId(String(categoryId))] },
       };
-      const fallbackLimit = limit - reels.length;
-      const fallbackReels = await fetchReels(
+      const remaining = limit - reelsMap.size;
+      const fallbackResults = await fetchReels(
         userId,
         fallbackQuery,
-        { skip: 0, limit: fallbackLimit },
+        { skip: 0, limit: remaining },
         savedReels
       );
-      reels = [...reels, ...fallbackReels];
+      addUniqueReels(fallbackResults);
     }
-  } else {
-    reels = [
-      ...reels,
-      ...(await fetchReels(userId, matchQuery, { skip: 0, limit }, savedReels)),
-    ];
 
-    totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
+    const finalReels = Array.from(reelsMap.values()).slice(0, limit);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reels: finalReels,
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+      },
+    });
+  } catch (error) {
+    throw error;
   }
-
-  const reelsMap = new Map<string, any>();
-  reels.forEach((reel: any) => reelsMap.set(reel.id.toString(), reel));
-  const finalReels = Array.from(reelsMap.values()).slice(0, limit);
-
-  res.status(200).json({
-    success: true,
-    data: {
-      reels: finalReels,
-      totalRecords,
-      totalPages: Math.ceil(totalRecords / limit),
-    },
-  });
 });
 
 export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
-  const userId = req.user.id;
-  const savedReels = req.user.savedReels;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-  const id = req.query.userId;
-  const sortType = req.query.sortType;
-  const sortQuery: any = {};
-  if (sortType === SORT_TYPE.popular) {
-    sortQuery.totalViews = -1;
-    sortQuery.totalLikes = -1;
-    sortQuery.totalComments = -1;
-    sortQuery.createdAt = -1;
-  } else if (sortType === SORT_TYPE.latest) {
-    sortQuery.createdAt = -1;
-  } else if (sortType === SORT_TYPE.oldest) {
-    sortQuery.createdAt = 1;
-  } else {
-    sortQuery.createdAt = -1;
-  }
-  if (!id) {
-    res.status(400);
-    throw new Error('invalid_request');
-  }
-  const user = await User.findById(id)
-    .select(
-      'id name email phone gender birth status profile displayName description'
-    )
-    .exec();
-  if (!user || user.status !== STATUS_TYPE.active) {
-    res.status(404);
-    throw new Error('user_not_found');
-  }
-  const matchQuery = {
-    createdBy: new mongoose.Types.ObjectId(String(user.id)),
-    status: STATUS_TYPE.active,
-  };
-  const total = await Reel.countDocuments(matchQuery).exec();
-  const reels = await fetchReels(
-    userId,
-    matchQuery,
-    {
-      skip,
-      limit,
-      sortQuery,
-    },
-    savedReels
-  );
+  try {
+    const userId = req.user.id;
+    const savedReels = req.user.savedReels;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const id = req.query.userId;
+    const sortType = req.query.sortType;
+    const sortQuery: any = {};
+    if (sortType === SORT_TYPE.popular) {
+      sortQuery.totalViews = -1;
+      sortQuery.totalLikes = -1;
+      sortQuery.totalComments = -1;
+      sortQuery.createdAt = -1;
+    } else if (sortType === SORT_TYPE.latest) {
+      sortQuery.createdAt = -1;
+    } else if (sortType === SORT_TYPE.oldest) {
+      sortQuery.createdAt = 1;
+    } else {
+      sortQuery.createdAt = -1;
+    }
+    if (!id) {
+      res.status(400);
+      throw new Error('invalid_request');
+    }
+    const user = await User.findById(id)
+      .select(
+        'id name email phone gender birth status profile displayName description'
+      )
+      .exec();
+    if (!user || user.status !== STATUS_TYPE.active) {
+      res.status(404);
+      throw new Error('user_not_found');
+    }
+    const matchQuery = {
+      createdBy: new mongoose.Types.ObjectId(String(user.id)),
+      status: STATUS_TYPE.active,
+    };
+    const total = await Reel.countDocuments(matchQuery).exec();
+    const reels = await fetchReels(
+      userId,
+      matchQuery,
+      {
+        skip,
+        limit,
+        sortQuery,
+      },
+      savedReels
+    );
 
-  res.status(200).json({
-    success: true,
-    data: {
-      ...user?.toJSON(),
-      reels,
-      totalRecords: total,
-      totalReels: total,
-      totalPages: Math.ceil(total / limit),
-    },
-  });
+    res.status(200).json({
+      success: true,
+      data: {
+        ...user?.toJSON(),
+        reels,
+        totalRecords: total,
+        totalReels: total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const dashboardReels = expressAsyncHandler(async (req: any, res) => {

@@ -1,12 +1,12 @@
 /user:
   delete:
-    tags: ["User"]
-    summary: "Delete your account"
+    tags: ['User']
+    summary: 'Delete your account without reason'
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
     responses:
       200:
-        description: "User deleted successfully"
+        description: 'User deleted successfully'
         content:
           application/json:
             schema:
@@ -17,14 +17,14 @@
                 message:
                   type: string
       400:
-        description: "Bad Request"
+        description: 'Bad Request'
       401:
-        description: "Unauthorized"
+        description: 'Unauthorized'
       403:
-        description: "Forbidden"
+        description: 'Forbidden'
       404:
-        description: "Not Found"
+        description: 'Not Found'
       409:
-        description: "Conflict"
+        description: 'Conflict'
       500:
-        description: "Internal Server Error"
+        description: 'Internal Server Error'

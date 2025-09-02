@@ -22,6 +22,7 @@ import { topUsersAggregation } from './user.controller';
 import { topReelsAggregation } from './reel.controller';
 
 export const getEncodeData = expressAsyncHandler(async (req: any, res) => {
+  try {
   const key = enc.Utf8.parse(config.aesKey);
   const iv = enc.Utf8.parse(config.aesIv);
   const val = req.body.data;
@@ -45,6 +46,9 @@ export const getEncodeData = expressAsyncHandler(async (req: any, res) => {
     },
     message: '',
   });
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const getDecodedData = expressAsyncHandler(async (req: any, res) => {

@@ -1237,6 +1237,7 @@ export const blockedCommentContent = expressAsyncHandler(
 );
 
 export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
+  try {
   const { pipeline, limit } = getContentReportsAggregation(
     req.query,
     REPORT_TYPE.reel
@@ -1251,7 +1252,9 @@ export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
     success: true,
     data: { reports, totalRecords: total, totalPages },
   });
-});
+} catch (error) {
+  throw error;
+}});
 
 export const getReportsByCommentId = expressAsyncHandler(
   async (req: any, res) => {
@@ -1273,6 +1276,7 @@ export const getReportsByCommentId = expressAsyncHandler(
 );
 
 export const validateReport = expressAsyncHandler(async (req: any, res) => {
+  try {
   const userId = req.user.id;
   const { id, result, notes, isBlocked } = req.body;
 
@@ -1406,7 +1410,9 @@ export const validateReport = expressAsyncHandler(async (req: any, res) => {
     },
     message: t('report_validated'),
   });
-});
+} catch (error) {
+  throw error;
+}});
 
 export const statusChange = expressAsyncHandler(async (req: any, res) => {
   try {

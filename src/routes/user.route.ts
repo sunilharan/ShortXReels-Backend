@@ -9,7 +9,7 @@ import {
   refreshToken,
   currentUser,
   logout,
-  deleteAccount,
+  deleteAccountWithoutReason,
   updateUser,
   sendOtp,
   verifyOtp,
@@ -44,8 +44,8 @@ router.post('/logout', logout);
 
 router.use(authenticate);
 router.get('/currentUser', currentUser);
-router.delete('/', deleteAccount);
-router.post('/deleteAccountWithReason', deleteAccountWithReason);
+router.delete('/', deleteAccountWithoutReason);
+router.post('/deleteAccount', deleteAccountWithReason);
 router.put(
   '/updateProfile',
   uploadFiles({
