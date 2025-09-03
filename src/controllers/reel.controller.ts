@@ -340,6 +340,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
             $push: {
               id: '$_id',
               caption: '$caption',
+              description: '$description',
               mediaType: '$mediaType',
               media: '$media',
               duration: '$duration',
@@ -398,6 +399,7 @@ export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
           _id: 0,
           id: '$_id',
           caption: 1,
+          description: 1,
           media: 1,
           mediaType: 1,
           duration: 1,
@@ -507,6 +509,7 @@ async function getReelsByRole(req: any, res: any, role?: string) {
     }
     if (search) {
       matchQuery.caption = { $regex: search, $options: 'i' };
+      matchQuery.description = { $regex: search, $options: 'i' };
     }
     if (category) {
       matchQuery.categories = {
@@ -560,17 +563,26 @@ async function getReelsByRole(req: any, res: any, role?: string) {
 }
 
 export const userReels = expressAsyncHandler(async (req: any, res) => {
-  await getReelsByRole(req, res, UserRole.User);
+  try {
+    await getReelsByRole(req, res, UserRole.User);
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const adminReels = expressAsyncHandler(async (req: any, res) => {
-  await getReelsByRole(req, res);
+  try {
+    await getReelsByRole(req, res);
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const createReel = expressAsyncHandler(async (req: any, res) => {
   try {
     const {
       caption,
+      description,
       categories: rawCategories,
       mediaType,
       duration,
@@ -581,12 +593,23 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
     const categories = JSON.parse(rawCategories).map(
       (id: any) => new mongoose.Types.ObjectId(String(id))
     );
-    const reelData: any = {
-      createdBy: new mongoose.Types.ObjectId(String(userId)),
-      caption,
-      categories,
-      mediaType,
-    };
+    const reelData: any = {};
+    if (caption) {
+      reelData.caption = caption;
+    }
+    if (description) {
+      reelData.description = description;
+    }
+    if (categories) {
+      reelData.categories = categories;
+    }
+    if (mediaType) {
+      reelData.mediaType = mediaType;
+    }
+    if (duration) {
+      reelData.duration = duration;
+    }
+    reelData.createdBy = new mongoose.Types.ObjectId(String(userId));
 
     const mediaFiles = files.media || [];
     const thumbnail = files.thumbnail?.[0];
@@ -624,20 +647,15 @@ export const createReel = expressAsyncHandler(async (req: any, res) => {
       { path: 'likedBy', select: 'name profile displayName' },
       { path: 'viewedBy', select: 'name profile displayName' },
     ]);
-
-    if (role === UserRole.Admin || role === UserRole.SuperAdmin) {
-      res.status(201).json({
-        success: true,
-        data: {
-          ...populated?.toJSON(),
-          totalViews: 0,
-          totalLikes: 0,
-          totalComments: 0,
-        },
-      });
-    } else if (role === UserRole.User) {
-      res.status(201).json({ success: true, data: populated });
-    }
+    res.status(201).json({
+      success: true,
+      data: {
+        ...populated?.toJSON(),
+        totalViews: 0,
+        totalLikes: 0,
+        totalComments: 0,
+      },
+    });
   } catch (error) {
     throw error;
   }
@@ -1050,6 +1068,7 @@ export const topReelsAggregation = (): any[] => {
         _id: 0,
         id: '$_id',
         caption: 1,
+        description: 1,
         totalLikes: 1,
         totalViews: 1,
         totalComments: 1,
@@ -1311,6 +1330,7 @@ export const fetchReels = async (
         _id: 0,
         id: '$_id',
         caption: 1,
+        description: 1,
         media: 1,
         mediaType: 1,
         duration: 1,

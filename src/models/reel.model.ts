@@ -7,6 +7,7 @@ import { config } from '../config/config';
 export interface IReel extends Document {
   createdBy: PopulatedDoc<IUser & Document>;
   caption: string;
+  description?: string;
   thumbnail?: string;
   media?: string | string[];
   duration?: number;
@@ -25,6 +26,7 @@ const reelSchema = new Schema<IReel>(
   {
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     caption: { type: String, required: true },
+    description: { type: String },
     thumbnail: { type: String },
     media: Schema.Types.Mixed,
     mediaType: {

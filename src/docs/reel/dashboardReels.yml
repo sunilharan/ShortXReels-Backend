@@ -53,6 +53,8 @@
                                   type: string
                             caption:
                               type: string
+                            description:
+                              type: string
                             thumbnail:
                               type: string
                             media:

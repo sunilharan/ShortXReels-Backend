@@ -4,7 +4,12 @@ import { AES, enc, mode, pad } from 'crypto-js';
 import { config } from '../config/config';
 import { decryptData } from '../utils/encrypt';
 import { Role } from '../models/role.model';
-import { MEDIA_TYPE, REPORT_STATUS, REPORT_TYPE, STATUS_TYPE } from '../config/enums';
+import {
+  MEDIA_TYPE,
+  REPORT_STATUS,
+  REPORT_TYPE,
+  STATUS_TYPE,
+} from '../config/enums';
 import { Reel } from '../models/reel.model';
 import { Report } from '../models/report.model';
 import { UserRole } from '../config/constants';
@@ -23,29 +28,29 @@ import { topReelsAggregation } from './reel.controller';
 
 export const getEncodeData = expressAsyncHandler(async (req: any, res) => {
   try {
-  const key = enc.Utf8.parse(config.aesKey);
-  const iv = enc.Utf8.parse(config.aesIv);
-  const val = req.body.data;
-  const cipher = AES.encrypt(val, key, {
-    iv: iv,
-    mode: mode.CBC,
-    padding: pad.Pkcs7,
-  });
-  const buff = enc.Base64.parse(cipher.toString());
-  const decipher = AES.decrypt({ ciphertext: buff } as any, key, {
-    iv: iv,
-    mode: mode.CBC,
-    padding: pad.Pkcs7,
-  });
-  const decrypted = decipher.toString(enc.Utf8);
-  res.status(200).send({
-    success: true,
-    data: {
-      encData: cipher.toString(),
-      decData: decrypted,
-    },
-    message: '',
-  });
+    const key = enc.Utf8.parse(config.aesKey);
+    const iv = enc.Utf8.parse(config.aesIv);
+    const val = req.body.data;
+    const cipher = AES.encrypt(val, key, {
+      iv: iv,
+      mode: mode.CBC,
+      padding: pad.Pkcs7,
+    });
+    const buff = enc.Base64.parse(cipher.toString());
+    const decipher = AES.decrypt({ ciphertext: buff } as any, key, {
+      iv: iv,
+      mode: mode.CBC,
+      padding: pad.Pkcs7,
+    });
+    const decrypted = decipher.toString(enc.Utf8);
+    res.status(200).send({
+      success: true,
+      data: {
+        encData: cipher.toString(),
+        decData: decrypted,
+      },
+      message: '',
+    });
   } catch (error) {
     throw error;
   }
@@ -77,28 +82,32 @@ export const getRoles = expressAsyncHandler(async (_, res) => {
 });
 
 export const checkHealth = expressAsyncHandler(async (_, res) => {
-  const mongoState = mongoose.connection.readyState;
-  const mongoStates = [
-    'disconnected',
-    'connected',
-    'connecting',
-    'disconnecting',
-  ];
-  const isHealthy = mongoState === 1;
-  const success = isHealthy ? true : false;
-  const status = isHealthy ? 200 : 503;
-  res.status(status).json({
-    success,
-    server: {
-      status: 'running',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-    },
-    database: {
-      type: 'MongoDB',
-      status: mongoStates[mongoState],
-    },
-  });
+  try {
+    const mongoState = mongoose.connection.readyState;
+    const mongoStates = [
+      'disconnected',
+      'connected',
+      'connecting',
+      'disconnecting',
+    ];
+    const isHealthy = mongoState === 1;
+    const success = isHealthy ? true : false;
+    const status = isHealthy ? 200 : 503;
+    res.status(status).json({
+      success,
+      server: {
+        status: 'running',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString(),
+      },
+      database: {
+        type: 'MongoDB',
+        status: mongoStates[mongoState],
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const yearMonthChartAggregation = (year?: number): any[] => {
@@ -476,6 +485,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        description: '$reel.description',
                         status: '$reel.status',
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },
@@ -658,7 +668,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                           ],
                         },
                       },
-                    },  
+                    },
                     {
                       $lookup: {
                         from: 'users',
@@ -707,6 +717,7 @@ export const adminDashboardDetails = expressAsyncHandler(
                       {
                         id: '$reel._id',
                         caption: '$reel.caption',
+                        description: '$reel.description',
                         status: '$reel.status',
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },

@@ -1,6 +1,6 @@
 /socket/reel:
   get:
-    tags: ["socket"]
+    tags: ['socket']
     summary: WebSocket - Reel Namespace
     description: |
       **WebSocket Namespace**: `/reel`  
@@ -41,7 +41,7 @@
 
       #### 📥 newComment
       Sent when a new **comment** or **reply** is created.
-      
+
       **Example - Comment:**
       ```json
       {
@@ -93,7 +93,7 @@
 
       #### ❌ commentDeleted
       Sent when a **comment** or **reply** is deleted.
-      
+
       **Example - Comment Deleted:**
       ```json
       {
@@ -118,7 +118,7 @@
 
       #### ❤️ likeUnlikeComment
       Sent when a comment or reply is liked or unliked.
-      
+
       **Example - Comment Liked:**
       ```json
       {
@@ -161,6 +161,11 @@
       3. **Join a reel room** to start receiving updates:
          ```js
          socket.emit("joinRoom", "686f5f33601990d8a84b4721");
+         ```
+
+      4. **Leave a reel room** to stop receiving updates:
+         ```js
+         socket.emit("leaveRoom", "686f5f33601990d8a84b4721");
          ```
 
     responses:

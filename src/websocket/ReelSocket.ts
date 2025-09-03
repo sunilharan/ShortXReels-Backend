@@ -19,13 +19,6 @@ class ReelSocket implements SocketInterface {
         socket.emit('leftRoom', `User left ${id}`);
       }
     });
-    socket.on('disconnect', () => {
-      socket.rooms.forEach((room) => {
-        if (room !== socket.id) {
-          socket.leave(room);
-        }
-      });
-    });
     return next();
   }
 }

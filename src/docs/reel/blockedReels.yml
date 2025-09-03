@@ -76,6 +76,8 @@
                             type: string
                           caption:
                             type: string
+                          description:
+                            type: string
                           status:
                             type: string
                           media:

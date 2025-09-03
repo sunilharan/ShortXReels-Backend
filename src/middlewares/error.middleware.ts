@@ -2,8 +2,12 @@ import expressAsyncHandler from 'express-async-handler';
 import i18next from 'i18next';
 
 export const notFound = expressAsyncHandler((req: any, res: any) => {
-  res.status(404);
-  throw new Error(`Not Found - ${req.originalUrl}`);
+  try {
+    res.status(404);
+    throw new Error(`Not Found - ${req.originalUrl}`);
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const errorHandler = (err: any, req: any, res: any, _: any): void => {

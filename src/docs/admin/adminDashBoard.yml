@@ -74,6 +74,8 @@
                                 type: string
                               caption:
                                 type: string
+                              description:
+                                type: string
                               status:
                                 type: string
                               totalLikes:
@@ -149,6 +151,8 @@
                                     type: string
                                   caption:
                                     type: string
+                                  description:
+                                    type: string
                                   status:
                                     type: string
                                   media:
@@ -211,6 +215,8 @@
                                   id:
                                     type: string
                                   caption:
+                                    type: string
+                                  description:
                                     type: string
                                   status:
                                     type: string

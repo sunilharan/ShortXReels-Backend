@@ -70,6 +70,8 @@
                                 type: string
                           caption:
                             type: string
+                          description:
+                            type: string
                           mediaType:
                             type: string
                             enum: ['video', 'image']

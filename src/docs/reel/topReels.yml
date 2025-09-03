@@ -45,6 +45,8 @@
                             type: string
                           caption:
                             type: string
+                          description:
+                            type: string
                           totalLikes:
                             type: integer
                           totalViews:

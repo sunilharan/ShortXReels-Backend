@@ -465,43 +465,47 @@ export const logout = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const deleteAccountWithoutReason = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    await User.findByIdAndUpdate(userId, {
-      status: STATUS_TYPE.deleted,
-      $unset: { token: '' },
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    }).exec();
-    res.status(200).json({
-      success: true,
-      message: t('user_deleted'),
-    });
-  } catch (error) {
-    throw error;
+export const deleteAccountWithoutReason = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await User.findByIdAndUpdate(userId, {
+        status: STATUS_TYPE.deleted,
+        $unset: { token: '' },
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }).exec();
+      res.status(200).json({
+        success: true,
+        message: t('user_deleted'),
+      });
+    } catch (error) {
+      throw error;
+    }
   }
-});
+);
 
-export const deleteAccountWithReason = expressAsyncHandler(async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const deleteReason = req.body.deleteReason || '';
-    await User.findByIdAndUpdate(userId, {
-      status: STATUS_TYPE.deleted,
-      $unset: { token: '' },
-      deleteReason,
-      updatedBy: userId,
-      updatedAt: new Date().toISOString(),
-    }).exec();
-    res.status(200).json({
-      success: true,
-      message: t('user_deleted'),
-    });
-  } catch (error) {
-    throw error;
+export const deleteAccountWithReason = expressAsyncHandler(
+  async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const deleteReason = req.body.deleteReason || '';
+      await User.findByIdAndUpdate(userId, {
+        status: STATUS_TYPE.deleted,
+        $unset: { token: '' },
+        deleteReason,
+        updatedBy: userId,
+        updatedAt: new Date().toISOString(),
+      }).exec();
+      res.status(200).json({
+        success: true,
+        message: t('user_deleted'),
+      });
+    } catch (error) {
+      throw error;
+    }
   }
-});
+);
 
 export const updateUser = expressAsyncHandler(async (req: any, res) => {
   try {
@@ -821,11 +825,19 @@ const getUsersByRole = async (req: any, res: any, roleName: string) => {
 };
 
 export const adminGetAppUsers = expressAsyncHandler(async (req: any, res) => {
-  return getUsersByRole(req, res, UserRole.User);
+  try {
+    return getUsersByRole(req, res, UserRole.User);
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const adminGetAdminUsers = expressAsyncHandler(async (req: any, res) => {
-  return getUsersByRole(req, res, UserRole.Admin);
+  try {
+    return getUsersByRole(req, res, UserRole.Admin);
+  } catch (error) {
+    throw error;
+  }
 });
 
 export const saveUnsaveReel = expressAsyncHandler(async (req: any, res) => {

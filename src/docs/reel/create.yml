@@ -17,6 +17,8 @@
             properties:
               caption:
                 type: string
+              description:
+                type: string
               categories:
                 type: string
                 example: '["653f5b6b6b6b6b6b6b6b6b6b", "653f5b6b6b6b6b6b6b6b6b6c"]'
@@ -57,6 +59,8 @@
                         profile:
                           type: string
                     caption:
+                      type: string
+                    description:
                       type: string
                     categories:
                       type: array
