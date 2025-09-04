@@ -110,6 +110,8 @@ export const createReport = expressAsyncHandler(async (req: any, res) => {
 
 export const getReports = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
+    const savedReels = req.user.savedReels;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
@@ -222,6 +224,15 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
       },
       {
         $addFields: {
+          isLiked: { $in: [userId, { $ifNull: ['$reel.likedBy', []] }] },
+          isSaved: {
+            $in: [
+              '$_id',
+              savedReels.map(
+                (id: any) => new mongoose.Types.ObjectId(String(id))
+              ),
+            ],
+          },
           'reel.totalLikes': { $size: { $ifNull: ['$reel.likedBy', []] } },
           'reel.totalViews': { $size: { $ifNull: ['$reel.viewedBy', []] } },
           'reel.totalComments': {
@@ -337,6 +348,14 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
         },
       },
       {
+        $lookup: {
+          from: 'categories',
+          localField: 'reel.categories',
+          foreignField: '_id',
+          as: 'reel.categories',
+        },
+      },
+      {
         $project: {
           _id: 0,
           id: '$_id',
@@ -347,9 +366,24 @@ export const getReports = expressAsyncHandler(async (req: any, res) => {
             description: '$reel.description',
             isBlocked: { $eq: ['$reel.status', STATUS_TYPE.blocked] },
             status: '$reel.status',
+            isLiked: '$reel.isLiked',
+            isSaved: '$reel.isSaved',
             totalViews: '$reel.totalViews',
             totalLikes: '$reel.totalLikes',
             totalComments: '$reel.totalComments',
+            categories: {
+              $map: {
+                input: '$reel.categories',
+                as: 'category',
+                in: {
+                  id: '$$category._id',
+                  name: '$$category.name',
+                  image: {
+                    $concat: [config.host + '/category/', '$$category.image'],
+                  },
+                },
+              },
+            },
             media: {
               $cond: [
                 { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
@@ -629,6 +663,8 @@ export const deleteReport = expressAsyncHandler(async (req: any, res) => {
 export const blockedReelsContent = expressAsyncHandler(
   async (req: any, res) => {
     try {
+      const userId = req.user.id;
+      const savedReels = req.user.savedReels;
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
@@ -763,6 +799,15 @@ export const blockedReelsContent = expressAsyncHandler(
         },
         {
           $addFields: {
+            isLiked: { $in: [userId, { $ifNull: ['$reel.likedBy', []] }] },
+            isSaved: {
+              $in: [
+                '$_id',
+                savedReels.map(
+                  (id: any) => new mongoose.Types.ObjectId(String(id))
+                ),
+              ],
+            },
             totalLikes: { $size: { $ifNull: ['$reel.likedBy', []] } },
             totalViews: { $size: { $ifNull: ['$reel.viewedBy', []] } },
             totalComments: {
@@ -772,6 +817,14 @@ export const blockedReelsContent = expressAsyncHandler(
                 0,
               ],
             },
+          },
+        },
+        {
+          $lookup: {
+            from: 'categories',
+            localField: 'reel.categories',
+            foreignField: '_id',
+            as: 'reel.categories',
           },
         },
         {
@@ -786,9 +839,24 @@ export const blockedReelsContent = expressAsyncHandler(
             caption: '$reel.caption',
             description: '$reel.description',
             status: '$reel.status',
+            isLiked: '$isLiked',
+            isSaved: '$isSaved',
             totalLikes: '$totalLikes',
             totalViews: '$totalViews',
             totalComments: '$totalComments',
+            categories: {
+              $map: {
+                input: '$reel.categories',
+                as: 'category',
+                in: {
+                  id: '$$category._id',
+                  name: '$$category.name',
+                  image: {
+                    $concat: [config.host + '/category/', '$$category.image'],
+                  },
+                },
+              },
+            },
             blockedBy: {
               id: '$reel.blockedBy._id',
               name: '$reel.blockedBy.name',
@@ -878,6 +946,8 @@ export const blockedReelsContent = expressAsyncHandler(
 export const blockedCommentContent = expressAsyncHandler(
   async (req: any, res) => {
     try {
+      const userId = req.user.id;
+      const savedReels = req.user.savedReels;
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
@@ -1043,6 +1113,15 @@ export const blockedCommentContent = expressAsyncHandler(
                 '$replyObj.updatedBy',
               ],
             },
+            isLiked: { $in: [userId, { $ifNull: ['$reel.likedBy', []] }] },
+            isSaved: {
+              $in: [
+                '$_id',
+                savedReels.map(
+                  (id: any) => new mongoose.Types.ObjectId(String(id))
+                ),
+              ],
+            },
             'reel.totalLikes': { $size: { $ifNull: ['$reel.likedBy', []] } },
             'reel.totalViews': { $size: { $ifNull: ['$reel.viewedBy', []] } },
             'reel.totalComments': {
@@ -1066,6 +1145,14 @@ export const blockedCommentContent = expressAsyncHandler(
           $unwind: '$blockedBy',
         },
         {
+          $lookup: {
+            from: 'categories',
+            localField: 'reel.categories',
+            foreignField: '_id',
+            as: 'reel.categories',
+          },
+        },
+        {
           $project: {
             _id: 0,
             reportType: 1,
@@ -1078,9 +1165,24 @@ export const blockedCommentContent = expressAsyncHandler(
               caption: '$reel.caption',
               description: '$reel.description',
               status: '$reel.status',
+              isLiked: '$isLiked',
+              isSaved: '$isSaved',
               totalLikes: '$reel.totalLikes',
               totalViews: '$reel.totalViews',
               totalComments: '$reel.totalComments',
+              categories: {
+                $map: {
+                  input: '$reel.categories',
+                  as: 'category',
+                  in: {
+                    id: '$$category._id',
+                    name: '$$category.name',
+                    image: {
+                      $concat: [config.host + '/category/', '$$category.image'],
+                    },
+                  },
+                },
+              },
               media: {
                 $cond: [
                   { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },
@@ -1247,9 +1349,13 @@ export const blockedCommentContent = expressAsyncHandler(
 
 export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
+    const savedReels = req.user.savedReels;
     const { pipeline, limit } = getContentReportsAggregation(
       req.query,
-      REPORT_TYPE.reel
+      REPORT_TYPE.reel,
+      userId,
+      savedReels
     );
     const reportsAggregate = await Report.aggregate(pipeline).exec();
 
@@ -1269,9 +1375,13 @@ export const getReportsByReelId = expressAsyncHandler(async (req: any, res) => {
 export const getReportsByCommentId = expressAsyncHandler(
   async (req: any, res) => {
     try {
+      const userId = req.user.id;
+      const savedReels = req.user.savedReels;
       const { pipeline, limit } = getContentReportsAggregation(
         req.query,
-        REPORT_TYPE.comment
+        REPORT_TYPE.comment,
+        userId,
+        savedReels
       );
       const reportsAggregate = await Report.aggregate(pipeline).exec();
 
@@ -1567,7 +1677,9 @@ export const getContentReportsAggregation = (
     page = 1,
     limit = 10,
   }: any,
-  type: string
+  type: string,
+  userId: string,
+  savedReels: string[]
 ) => {
   const skip = (page - 1) * limit;
   const matchQuery: any = {};
@@ -1651,6 +1763,15 @@ export const getContentReportsAggregation = (
           totalViews: '$reel.totalViews',
           totalLikes: '$reel.totalLikes',
           totalComments: '$reel.totalComments',
+          isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
+          isSaved: {
+            $in: [
+              '$_id',
+              savedReels.map(
+                (id: any) => new mongoose.Types.ObjectId(String(id))
+              ),
+            ],
+          },
           media: {
             $cond: [
               { $eq: ['$reel.mediaType', MEDIA_TYPE.image] },

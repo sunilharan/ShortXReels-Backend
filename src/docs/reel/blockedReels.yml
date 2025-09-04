@@ -80,6 +80,18 @@
                             type: string
                           status:
                             type: string
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                image:
+                                  type: string
+                                  format: uri
                           media:
                             oneOf:
                               - type: string
@@ -113,6 +125,10 @@
                                 type: string
                               profile:
                                 type: string
+                          isLiked:
+                            type: boolean
+                          isSaved:
+                            type: boolean
                           totalLikes:
                             type: number
                           totalViews:

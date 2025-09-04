@@ -104,6 +104,18 @@
                                 type: string
                               description:
                                 type: string
+                              categories:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                    image:
+                                      type: string
+                                      format: uri
                               media:
                                 type: array
                                 items:
@@ -128,6 +140,10 @@
                                     type: string
                                   profile:
                                     type: string
+                              isLiked:
+                                type: boolean
+                              isSaved:
+                                type: boolean
                               totalViews:
                                 type: number
                               totalLikes:

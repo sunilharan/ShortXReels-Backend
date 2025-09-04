@@ -61,7 +61,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       const addResults = await fetchReels(
         userId,
         addReelQuery,
-        { skip: 0, limit: addReels.length },
+        { skip: 0, limit: addReels.length, addCategories: true },
         savedReels
       );
       addUniqueReels(addResults);
@@ -73,7 +73,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       primaryResults = await fetchReels(
         userId,
         matchQuery,
-        { skip: 0, limit },
+        { skip: 0, limit, addCategories: true },
         savedReels
       );
       totalRecords = await countActiveReelsWithActiveUsers(matchQuery, true);
@@ -81,7 +81,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       primaryResults = await fetchReels(
         userId,
         matchQuery,
-        { skip: 0, limit },
+        { skip: 0, limit, addCategories: true },
         savedReels
       );
     } else if (categoryId) {
@@ -92,14 +92,14 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       primaryResults = await fetchReels(
         userId,
         primaryQuery,
-        { skip: 0, limit },
+        { skip: 0, limit, addCategories: true },
         savedReels
       );
     } else {
       primaryResults = await fetchReels(
         userId,
         matchQuery,
-        { skip: 0, limit },
+        { skip: 0, limit, addCategories: true },
         savedReels
       );
     }
@@ -115,7 +115,7 @@ export const getReels = expressAsyncHandler(async (req: any, res) => {
       const fallbackResults = await fetchReels(
         userId,
         fallbackQuery,
-        { skip: 0, limit: remaining },
+        { skip: 0, limit: remaining, addCategories: true },
         savedReels
       );
       addUniqueReels(fallbackResults);
@@ -183,6 +183,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
         skip,
         limit,
         sortQuery,
+        addCategories: true,
       },
       savedReels
     );
@@ -205,7 +206,7 @@ export const getReelsByUser = expressAsyncHandler(async (req: any, res) => {
 export const dashboardReels = expressAsyncHandler(async (req: any, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(String(req.user.id));
-    const savedReels = req.user.savedReels || [];
+    const savedReels = req.user.savedReels;
     const interestIds = req.user?.interests || [];
     const commonAggregation: any = [
       {
@@ -971,7 +972,10 @@ export const blockUnblockReel = expressAsyncHandler(async (req: any, res) => {
   }
 });
 
-export const topReelsAggregation = (): any[] => {
+export const topReelsAggregation = (
+  userId: string,
+  savedReels: string[]
+): any[] => {
   const reelAggregation = [
     {
       $match: {
@@ -1012,6 +1016,15 @@ export const topReelsAggregation = (): any[] => {
     },
     {
       $addFields: {
+        isLiked: { $in: [userId, { $ifNull: ['$likedBy', []] }] },
+        isSaved: {
+          $in: [
+            '$_id',
+            savedReels.map(
+              (id: any) => new mongoose.Types.ObjectId(String(id))
+            ),
+          ],
+        },
         totalLikes: { $size: { $ifNull: ['$likedBy', []] } },
         totalViews: { $size: { $ifNull: ['$viewedBy', []] } },
         totalComments: {
@@ -1064,17 +1077,40 @@ export const topReelsAggregation = (): any[] => {
       },
     },
     {
+      $lookup: {
+        from: 'categories',
+        localField: 'categories',
+        foreignField: '_id',
+        as: 'categories',
+      },
+    },
+    {
       $project: {
         _id: 0,
         id: '$_id',
         caption: 1,
         description: 1,
+        isLiked: 1,
+        isSaved: 1,
         totalLikes: 1,
         totalViews: 1,
         totalComments: 1,
         engagementScore: 1,
         mediaType: 1,
         status: 1,
+        categories: {
+          $map: {
+            input: '$categories',
+            as: 'category',
+            in: {
+              id: '$$category._id',
+              name: '$$category.name',
+              image: {
+                $concat: [config.host + '/category/', '$$category.image'],
+              },
+            },
+          },
+        },
         media: {
           $cond: [
             { $isArray: '$media' },
@@ -1115,6 +1151,8 @@ export const topReelsAggregation = (): any[] => {
 
 export const topReels = expressAsyncHandler(async (req: any, res) => {
   try {
+    const userId = req.user.id;
+    const savedReels = req.user.savedReels;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -1134,7 +1172,7 @@ export const topReels = expressAsyncHandler(async (req: any, res) => {
         $lte: endOfDay(startDate),
       };
     }
-    const reelsAgg = topReelsAggregation();
+    const reelsAgg = topReelsAggregation(userId, savedReels);
     const reelsData = await Reel.aggregate([
       {
         $match: matchQuery,

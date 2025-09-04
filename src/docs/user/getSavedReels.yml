@@ -49,6 +49,18 @@
                             type: string
                           description:
                             type: string
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                image:
+                                  type: string
+                                  format: uri
                           mediaType:
                             type: string
                             enum: ['video', 'image']

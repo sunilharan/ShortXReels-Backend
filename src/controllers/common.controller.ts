@@ -201,6 +201,8 @@ export const yearMonthChartAggregation = (year?: number): any[] => {
 export const adminDashboardDetails = expressAsyncHandler(
   async (req: any, res) => {
     try {
+      const userId = req.user.id;
+      const savedReels = req.user.savedReels;
       const limit = parseInt(req.query.limit) || 5;
       const currentMonthStart = startOfMonth(new Date());
       const previousMonthStart = startOfMonth(subMonths(new Date(), 1));
@@ -280,7 +282,7 @@ export const adminDashboardDetails = expressAsyncHandler(
             previousMonthUserCount) *
           100;
       }
-      const topReelsDataAggregation = topReelsAggregation();
+      const topReelsDataAggregation = topReelsAggregation(userId, savedReels);
       const reelChartAggregation = yearMonthChartAggregation();
       const reelAgg = await Reel.aggregate([
         {
@@ -454,6 +456,14 @@ export const adminDashboardDetails = expressAsyncHandler(
                   as: 'reel.commentStats',
                 },
               },
+              {
+                $lookup: {
+                  from: 'categories',
+                  localField: 'reel.categories',
+                  foreignField: '_id',
+                  as: 'reel.categories',
+                },
+              },
               { $sort: { createdAt: -1 } },
               {
                 $project: {
@@ -487,6 +497,37 @@ export const adminDashboardDetails = expressAsyncHandler(
                         caption: '$reel.caption',
                         description: '$reel.description',
                         status: '$reel.status',
+                        categories: {
+                          $map: {
+                            input: '$reel.categories',
+                            as: 'category',
+                            in: {
+                              id: '$$category._id',
+                              name: '$$category.name',
+                              image: {
+                                $concat: [
+                                  config.host + '/category/',
+                                  '$$category.image',
+                                ],
+                              },
+                            },
+                          },
+                        },
+                        isLiked: {
+                          $in: [
+                            new mongoose.Types.ObjectId(String(userId)),
+                            '$reel.likedBy',
+                          ],
+                        },
+                        isSaved: {
+                          $in: [
+                            '$_id',
+                            savedReels.map(
+                              (id: any) =>
+                                new mongoose.Types.ObjectId(String(id))
+                            ),
+                          ],
+                        },
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },
                         },
@@ -686,6 +727,14 @@ export const adminDashboardDetails = expressAsyncHandler(
                   as: 'reel.commentStats',
                 },
               },
+              {
+                $lookup: {
+                  from: 'categories',
+                  localField: 'reel.categories',
+                  foreignField: '_id',
+                  as: 'reel.categories',
+                },
+              },
               { $sort: { createdAt: -1 } },
               {
                 $project: {
@@ -719,6 +768,37 @@ export const adminDashboardDetails = expressAsyncHandler(
                         caption: '$reel.caption',
                         description: '$reel.description',
                         status: '$reel.status',
+                        categories: {
+                          $map: {
+                            input: '$reel.categories',
+                            as: 'category',
+                            in: {
+                              id: '$$category._id',
+                              name: '$$category.name',
+                              image: {
+                                $concat: [
+                                  config.host + '/category/',
+                                  '$$category.image',
+                                ],
+                              },
+                            },
+                          },
+                        },
+                        isLiked: {
+                          $in: [
+                            new mongoose.Types.ObjectId(String(userId)),
+                            '$reel.likedBy',
+                          ],
+                        },
+                        isSaved: {
+                          $in: [
+                            '$_id',
+                            savedReels.map(
+                              (id: any) =>
+                                new mongoose.Types.ObjectId(String(id))
+                            ),
+                          ],
+                        },
                         totalLikes: {
                           $size: { $ifNull: ['$reel.likedBy', []] },
                         },

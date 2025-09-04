@@ -78,6 +78,10 @@
                                 type: string
                               status:
                                 type: string
+                              isLiked:
+                                type: boolean
+                              isSaved:
+                                type: boolean
                               totalLikes:
                                 type: integer
                               totalViews:
@@ -88,6 +92,18 @@
                                 type: integer
                               mediaType:
                                 type: string
+                              categories:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                    name:
+                                      type: string
+                                    image:
+                                      type: string
+                                      format: uri
                               media:
                                 oneOf:
                                   - type: string
@@ -155,6 +171,18 @@
                                     type: string
                                   status:
                                     type: string
+                                  categories:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        id:
+                                          type: string
+                                        name:
+                                          type: string
+                                        image:
+                                          type: string
+                                          format: uri
                                   media:
                                     oneOf:
                                       - type: string
@@ -168,6 +196,10 @@
                                   thumbnail:
                                     type: string
                                     format: uri
+                                  isLiked:
+                                    type: boolean
+                                  isSaved:
+                                    type: boolean
                                   totalLikes:
                                     type: integer
                                   totalViews:
@@ -220,12 +252,28 @@
                                     type: string
                                   status:
                                     type: string
+                                  isLiked:
+                                    type: boolean
+                                  isSaved:
+                                    type: boolean
                                   totalLikes:
                                     type: integer
                                   totalViews:
                                     type: integer
                                   totalComments:
                                     type: integer
+                                  categories:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        id:
+                                          type: string
+                                        name:
+                                          type: string
+                                        image:
+                                          type: string
+                                          format: uri
                                   media:
                                     type: array
                                     items:

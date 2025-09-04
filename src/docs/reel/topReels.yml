@@ -47,10 +47,26 @@
                             type: string
                           description:
                             type: string
+                          isLiked:
+                            type: boolean
+                          isSaved:
+                            type: boolean
                           totalLikes:
                             type: integer
                           totalViews:
                             type: integer
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                image:
+                                  type: string
+                                  format: uri
                           media:
                             oneOf:
                               - type: string

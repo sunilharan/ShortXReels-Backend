@@ -86,6 +86,17 @@
                           duration:
                             type: number
                             description: 'Duration in seconds (only for videos)'
+                          categories:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                image:
+                                  type: string
                           totalLikes:
                             type: number
                           totalComments:
